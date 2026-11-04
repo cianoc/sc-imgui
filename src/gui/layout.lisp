@@ -17,7 +17,7 @@
 
 (defmacro with-grid ((&key (columns 2) id flags) &body body)
   "A table of COLUMNS columns; each top-level form lands in the next cell."
-  (let ((id (or id (format nil "grid-~(~x~)" (sxhash body)))))
+  (let ((id (or id (format nil "grid-~(~x~)" (sxhash (prin1-to-string body))))))
     `(when (%imgui:begin-table ,id ,columns ,(%flags-form "TABLE-FLAGS" flags) (vec2 0 0) 0.0f0)
        (unwind-protect
             (progn ,@(loop for form in body

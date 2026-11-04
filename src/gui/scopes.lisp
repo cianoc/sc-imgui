@@ -2,9 +2,9 @@
 
 (defmacro with-window ((title &key flags) &body body)
   "Begin/End; BODY runs only when Begin returns true.  End always runs."
-  `(progn
-     (let ((open (%imgui:begin ,title (cffi:null-pointer) ,(%flags-form "WINDOW-FLAGS" flags))))
-       (unwind-protect (when open ,@body)
+  (let ((open (gensym "OPEN")))
+    `(let ((,open (%imgui:begin ,title (cffi:null-pointer) ,(%flags-form "WINDOW-FLAGS" flags))))
+       (unwind-protect (when ,open ,@body)
          (%imgui:end)))))
 
 (defmacro with-group (() &body body)
@@ -12,10 +12,11 @@
           (unwind-protect (progn ,@body) (%imgui:end-group))))
 
 (defmacro with-child ((id &key (width 0) (height 0) border) &body body)
-  `(let ((open (%imgui:begin-child-str
-                ,id (vec2 ,width ,height)
-                (if ,border %imgui:+child-flags-borders+ %imgui:+child-flags-none+) 0)))
-     (unwind-protect (when open ,@body) (%imgui:end-child))))
+  (let ((open (gensym "OPEN")))
+    `(let ((,open (%imgui:begin-child-str
+                   ,id (vec2 ,width ,height)
+                   (if ,border %imgui:+child-flags-borders+ %imgui:+child-flags-none+) 0)))
+       (unwind-protect (when ,open ,@body) (%imgui:end-child)))))
 
 (defmacro with-section ((label &key default-open) &body body)
   `(when (%imgui:collapsing-header-tree-node-flags

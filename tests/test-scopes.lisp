@@ -60,3 +60,23 @@
   (is (= (logior %imgui:+window-flags-no-title-bar+ %imgui:+window-flags-no-resize+)
          (gui:enum-flags "WINDOW-FLAGS" '(:no-title-bar :no-resize))))
   (signals error (gui:enum-flags "WINDOW-FLAGS" :no-such-flag)))
+
+(test scope-macros-do-not-capture-open
+  (with-headless-imgui ()
+    (let ((open :users) seen)
+      (with-test-frame ()
+        (gui:with-window ("w")
+          (push open seen)
+          (gui:with-child ("c") (push open seen))))
+      (is (equal '(:users :users) seen)))))
+
+(defun default-grid-id (body)
+  (let ((form (macroexpand-1 `(gui:with-grid () ,@body))))
+    (second (second form))))
+
+(test with-grid-default-id-distinguishes-deep-bodies
+  (let ((a '((text "A") (text "B") (text "C") (text "D")))
+        (z '((text "A") (text "B") (text "C") (text "Z"))))
+    (is (stringp (default-grid-id a)))
+    (is (string/= (default-grid-id a) (default-grid-id z)))
+    (is (string= (default-grid-id a) (default-grid-id (copy-tree a))))))
