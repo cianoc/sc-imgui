@@ -21,7 +21,13 @@ DISABLE-PANEL restarts) instead of being caught and shown in a failed window.")
            (if *debug-on-error*
                (let ((seen nil))
                  (restart-case
-                     (handler-bind ((error (lambda (c) (setf seen c))))
+                     ;; Enter the debugger here, inside the RESTART-CASE, so
+                     ;; that no outer handler (the frame loop's, which would
+                     ;; close the window, or trivial-main-thread's runner, which
+                     ;; would drop the condition) ever sees the error.
+                     (handler-bind ((error (lambda (c)
+                                             (setf seen c)
+                                             (invoke-debugger c))))
                        (funcall (fdefinition (gui-entry-function-name entry))))
                    (retry-panel () :report "Leave the panel enabled; retry next frame." nil)
                    (disable-panel ()

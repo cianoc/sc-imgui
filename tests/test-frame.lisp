@@ -56,7 +56,43 @@
   (with-frame-env
     (let ((gui:*debug-on-error* t))
       (gui:define-gui bad () (error "boom"))
-      (handler-bind ((error (lambda (c) (declare (ignore c))
-                              (invoke-restart 'gui.runtime:disable-panel))))
+      ;; The panel error goes straight to the debugger; stand in for it.
+      (let ((sb-ext:*invoke-debugger-hook*
+              (lambda (c hook) (declare (ignore c hook))
+                (invoke-restart 'gui.runtime:disable-panel))))
         (frame))
       (is (gui.runtime:gui-entry-failure (gui.runtime:find-gui 'bad))))))
+
+(defun debugger-hook-invoking (restart log)
+  "An *INVOKE-DEBUGGER-HOOK* that records the restarts on offer in LOG (a cons
+cell) and then invokes RESTART."
+  (lambda (c hook)
+    (declare (ignore hook))
+    (setf (car log) (mapcar #'restart-name (compute-restarts c)))
+    (invoke-restart restart)))
+
+(defun frame-under-loop-handler (frame)
+  "Call FRAME inside a handler like the frame loop's outer one, which would
+report and close the window.  Returns true if that handler ran."
+  (block outer
+    (handler-bind ((error (lambda (c) (declare (ignore c))
+                            (return-from outer t))))
+      (funcall frame)
+      nil)))
+
+(test debug-on-error-bypasses-outer-handlers
+  ;; Under the real loop an outer ERROR handler sits above the panels.  With
+  ;; *DEBUG-ON-ERROR* the debugger must be reached (both restarts offered)
+  ;; before that handler, which must never run.
+  (dolist (restart '(gui.runtime:retry-panel gui.runtime:disable-panel))
+    (with-frame-env
+      (let ((gui:*debug-on-error* t)
+            (log (list nil)))
+        (gui:define-gui bad () (error "boom"))
+        (let ((sb-ext:*invoke-debugger-hook* (debugger-hook-invoking restart log)))
+          (is (not (frame-under-loop-handler #'frame))))
+        (is (member 'gui.runtime:retry-panel (car log)))
+        (is (member 'gui.runtime:disable-panel (car log)))
+        (if (eq restart 'gui.runtime:disable-panel)
+            (is (gui.runtime:gui-entry-failure (gui.runtime:find-gui 'bad)))
+            (is (null (gui.runtime:gui-entry-failure (gui.runtime:find-gui 'bad)))))))))
