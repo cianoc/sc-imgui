@@ -167,6 +167,9 @@ int shim_headless_create(int width, int height) {
   // the "backend" supports dynamic textures; there is no renderer here, so
   // claim that and leave the texture updates unconsumed.
   io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
+  // The OpenGL3 backend sets this in production, so draw lists may exceed 64k
+  // vertices there.  Without it ImGui asserts on 16-bit indices; match production.
+  io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
   g_headless = true;
   return 0;
 }

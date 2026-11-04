@@ -26,10 +26,8 @@
 
 (test all-plot-kinds-draw-cleanly
   (with-headless-imgui ()
-    ;; 256 points: the headless context has no renderer backend, so ImGui's
-    ;; draw lists are limited to 16-bit vertex indices (65536 vertices).
-    (let ((ys (make-array 256 :element-type 'single-float :initial-element 0.5))
-          (xs (make-array 256 :element-type 'double-float :initial-element 1d0)))
+    (let ((ys (make-array 4096 :element-type 'single-float :initial-element 0.5))
+          (xs (make-array 4096 :element-type 'double-float :initial-element 1d0)))
       (%shim:clear-asserts)
       (dotimes (i 2)
         (with-test-frame ()
