@@ -30,3 +30,50 @@ cimgui's `docking_inter` HEAD (`2a6a93f`, 2026-10-18) is not used: its generated
 output was produced from non-docking ImGui (no `ImGuiConfigFlags_DockingEnable`,
 no dock API), as its own commit message half-admits. `5d7cc7e` is the newest
 commit whose output contains the docking API.
+
+## Running from SLIME or Sly
+
+```lisp
+(ql:quickload :sc-imgui)
+(gui:start)                     ; opens the window, returns T at once
+
+(gui:define-gui hello ()
+  (when (%imgui:begin "Hello" (cffi:null-pointer) 0)
+    (when (%imgui:button "Click" '(%imgui::x 0.0 %imgui::y 0.0))
+      (print :clicked gui.runtime:*report-stream*)))
+  (%imgui:end))
+```
+
+Re-evaluate a `define-gui` form (C-c C-c) and the window picks up the new
+definition on the next frame. `(gui:stop)` closes the window, as does the
+window's close button; `(gui:start)` opens it again with the same panels.
+
+The frame loop runs on SBCL's main thread (macOS requires it for Cocoa), handed
+over with `trivial-main-thread`. SLIME and Sly run the REPL in its own thread
+(SBCL's default `:spawn` communication style) and leave the main thread idle, so
+`start` returns immediately. Calling `start` *from* the main thread (a plain
+`sbcl` terminal REPL, or a script) runs the loop in that call and blocks until
+`stop`; a script should do its work in another thread and leave the main thread
+idle, as `tests/smoke.lisp` does.
+
+- `(gui:start &key width height title)` returns `NIL` if already running.
+- `(gui:stop &key (wait t))` returns `T` if the loop was running; with `wait` it
+  waits up to 5 s for the window to close (never when called from the main
+  thread, e.g. from a panel).
+- `(gui:running-p)`.
+- `gui:*ini-path*` (default `"sc-imgui.ini"`, merged with
+  `*default-pathname-defaults*` at `start`; `NIL` disables) is where ImGui saves
+  window layout.
+- Errors are reported to the `*standard-output*` of the thread that called
+  `start` (the REPL), never to the main thread's own output.
+
+## Tests
+
+```
+make test              # all FiveAM suites (headless, no window)
+make test SUITE=loop   # one suite
+make smoke             # opens a real window for a few seconds
+```
+
+On Linux without a display, run the smoke test under Xvfb:
+`xvfb-run -s "-screen 0 1280x1024x24" make smoke`.

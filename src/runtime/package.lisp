@@ -9,4 +9,5 @@
            #:enqueue-task #:run-queued-tasks
            #:*report-stream* #:report-error
            #:*debug-on-error* #:draw-registered-guis
-           #:retry-panel #:disable-panel))
+           #:retry-panel #:disable-panel
+           #:*ini-path* #:start #:stop #:running-p))

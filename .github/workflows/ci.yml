@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      # Only the top-level submodules: the nested ones inside cimgui/ and
+      # cimplot/ must stay uninitialised (see README), so no `recursive`.
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Check out top-level submodules
+        run: |
+          git submodule sync
+          git submodule update --init \
+            native/third_party/imgui native/third_party/cimgui \
+            native/third_party/implot native/third_party/cimplot \
+            native/third_party/glfw
+
+      - name: Install packages
+        run: |
+          sudo apt-get update
+          # GLFW 3.4 builds its X11 and Wayland backends by default on Linux,
+          # so it needs the Wayland/xkbcommon headers as well as X11 and GL.
+          # libffi-dev: cffi-libffi groves libffi's headers.
+          sudo apt-get install -y --no-install-recommends \
+            sbcl build-essential cmake pkg-config curl ca-certificates \
+            xvfb xauth libgl1-mesa-dri libgl1-mesa-dev \
+            libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev \
+            libwayland-dev libxkbcommon-dev \
+            libffi-dev
+          sbcl --version
+
+      - name: Install Quicklisp
+        run: |
+          curl -fsSLo /tmp/quicklisp.lisp https://beta.quicklisp.org/quicklisp.lisp
+          sbcl --noinform --non-interactive \
+            --load /tmp/quicklisp.lisp \
+            --eval '(quicklisp-quickstart:install)' \
+            --eval '(ql-util:without-prompting (ql:add-to-init-file))'
+
+      - name: Build native shim
+        run: make native
+
+      - name: Unit tests
+        run: make test
+
+      - name: Smoke test (real window under Xvfb, Mesa llvmpipe)
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+        run: xvfb-run -s "-screen 0 1280x1024x24" make smoke

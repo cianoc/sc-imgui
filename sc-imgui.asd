@@ -4,7 +4,7 @@
 ;;; load a "sc-imgui/..." subsystem.  Components arrive in later tasks.
 (asdf:defsystem "sc-imgui"
   :description "Dear ImGui + ImPlot for Common Lisp (SBCL)."
-  :depends-on ("sc-imgui/bindings" "bordeaux-threads" "trivial-main-thread" "alexandria")
+  :depends-on ("sc-imgui/bindings" "bordeaux-threads" "trivial-main-thread" "alexandria" "uiop")
   :pathname "src/"
   :serial t
   :components ((:module "runtime"
@@ -13,7 +13,8 @@
                              (:file "registry")
                              (:file "tasks")
                              (:file "report")
-                             (:file "frame")))
+                             (:file "frame")
+                             (:file "loop")))
                (:module "gui"
                 :serial t
                 :components ((:file "package")
@@ -57,4 +58,5 @@
                (:file "headless")
                (:file "test-bindings")
                (:file "test-registry")
-               (:file "test-frame")))
+               (:file "test-frame")
+               (:file "test-loop")))

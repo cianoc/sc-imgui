@@ -90,7 +90,9 @@ int shim_open_window(int width, int height, const char *title, const char *ini_p
   } else {
     io.IniFilename = nullptr;
   }
-  if (!ImGui_ImplGlfw_InitForOpenGL(g_window, true) || !ImGui_ImplOpenGL3_Init(glsl_version)) {
+  bool glfw_ok = ImGui_ImplGlfw_InitForOpenGL(g_window, true);
+  if (!glfw_ok || !ImGui_ImplOpenGL3_Init(glsl_version)) {
+    if (glfw_ok) ImGui_ImplGlfw_Shutdown();
     destroy_contexts();
     glfwDestroyWindow(g_window);
     g_window = nullptr;
@@ -105,7 +107,9 @@ int shim_should_close(void) {
   return (!g_window || glfwWindowShouldClose(g_window)) ? 1 : 0;
 }
 
+// begin/end_frame are no-ops unless shim_open_window succeeded.
 void shim_begin_frame(void) {
+  if (!g_backends) return;
   glfwPollEvents();
   ImGui_ImplOpenGL3_NewFrame();
   ImGui_ImplGlfw_NewFrame();
@@ -113,6 +117,7 @@ void shim_begin_frame(void) {
 }
 
 void shim_end_frame(void) {
+  if (!g_backends) return;
   ImGui::Render();
   int w = 0, h = 0;
   glfwGetFramebufferSize(g_window, &w, &h);
@@ -135,6 +140,7 @@ void shim_shutdown(void) {
     g_window = nullptr;
     glfwTerminate();
   }
+  g_headless = false;
 }
 
 const char *shim_last_error(void) { return g_last_error.c_str(); }
