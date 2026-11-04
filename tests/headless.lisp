@@ -22,6 +22,11 @@
   "Plist form of a by-value ImVec2 argument."
   (list '%imgui::x (float x 1.0f0) '%imgui::y (float y 1.0f0)))
 
+(defun vec4 (x y z w)
+  "Plist form of a by-value ImVec4 argument."
+  (list '%imgui::x (float x 1.0f0) '%imgui::y (float y 1.0f0)
+        '%imgui::z (float z 1.0f0) '%imgui::w (float w 1.0f0)))
+
 (defun last-item-center ()
   "Center of the last item, as (values x y)."
   (let ((min (%imgui:get-item-rect-min))

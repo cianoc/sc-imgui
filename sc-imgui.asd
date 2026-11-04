@@ -18,7 +18,10 @@
                (:module "gui"
                 :serial t
                 :components ((:file "package")
-                             (:file "define-gui")))))
+                             (:file "define-gui")
+                             (:file "foreign")
+                             (:file "scopes")
+                             (:file "layout")))))
 
 (asdf:defsystem "sc-imgui/generator"
   :description "Generates CFFI bindings from cimgui/cimplot JSON definitions."
@@ -59,4 +62,5 @@
                (:file "test-bindings")
                (:file "test-registry")
                (:file "test-frame")
-               (:file "test-loop")))
+               (:file "test-loop")
+               (:file "test-scopes")))
