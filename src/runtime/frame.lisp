@@ -6,6 +6,10 @@
   "When true, panel errors reach the debugger (with RETRY-PANEL and
 DISABLE-PANEL restarts) instead of being caught and shown in a failed window.")
 
+(defvar *refit-windows* nil
+  "True while a panel that was just redefined is called: GUI:WITH-WINDOW then
+refits each of its windows to its contents.")
+
 (defvar *retry-button-centers* (make-hash-table :test 'equal)
   "Entry name -> (x y) center of its failed window's Retry button.  For tests.")
 
@@ -13,7 +17,8 @@ DISABLE-PANEL restarts) instead of being caught and shown in a failed window.")
   (with-output-to-string (s) (sb-debug:print-backtrace :count 30 :stream s)))
 
 (defun %call-panel (entry)
-  "Call ENTRY's function; return normally whether or not it failed."
+  "Call ENTRY's function; return normally whether or not it failed.  Returns
+true only when the panel function returned normally."
   (let ((name (gui-entry-name entry)))
     (cffi:with-foreign-object (state '(:struct %imgui::im-gui-error-recovery-state))
       (%imgui:error-recovery-store-state state)
@@ -28,11 +33,13 @@ DISABLE-PANEL restarts) instead of being caught and shown in a failed window.")
                      (handler-bind ((error (lambda (c)
                                              (setf seen c)
                                              (invoke-debugger c))))
-                       (funcall (fdefinition (gui-entry-function-name entry))))
+                       (funcall (fdefinition (gui-entry-function-name entry)))
+                       t)
                    (retry-panel () :report "Leave the panel enabled; retry next frame." nil)
                    (disable-panel ()
                      :report "Mark the panel failed and show its failed window."
-                     (mark-gui-failed name seen))))
+                     (mark-gui-failed name seen)
+                     nil)))
                (block panel
                  (handler-bind
                      ((error (lambda (c)
@@ -40,7 +47,8 @@ DISABLE-PANEL restarts) instead of being caught and shown in a failed window.")
                                  (mark-gui-failed name c)
                                  (report-error name c bt))
                                (return-from panel nil))))
-                   (funcall (fdefinition (gui-entry-function-name entry))))))
+                   (funcall (fdefinition (gui-entry-function-name entry)))
+                   t)))
         ;; Pop anything the panel left open so later panels are not nested in it.
         (%imgui:error-recovery-try-to-recover-state state)))))
 
@@ -73,4 +81,11 @@ DISABLE-PANEL restarts) instead of being caught and shown in a failed window.")
     (when (gui-entry-visible entry)
       (if (gui-entry-failure entry)
           (%draw-failed-window entry)
-          (%call-panel entry)))))
+          (let* ((name (gui-entry-name entry))
+                 (refit (gui-refit-pending name)))
+            ;; A redefined panel's windows refit once: the mark is cleared only
+            ;; after a call that returned normally.
+            (when (and (let ((*refit-windows* (and refit t)))
+                         (%call-panel entry))
+                       refit)
+              (clear-gui-refit name refit)))))))

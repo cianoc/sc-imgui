@@ -5,6 +5,7 @@
            #:gui-entry-visible #:gui-entry-failure
            #:register-gui #:unregister-gui #:find-gui
            #:set-gui-visible #:mark-gui-failed #:clear-gui-failure
+           #:gui-entry-refit #:gui-refit-pending #:clear-gui-refit #:*refit-windows*
            #:registry-snapshot #:%reset-registry
            #:enqueue-task #:run-queued-tasks
            #:*report-stream* #:report-error

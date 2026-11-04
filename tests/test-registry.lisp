@@ -48,3 +48,20 @@
 
 (test define-gui-rejects-arguments
   (signals error (macroexpand-1 '(gui:define-gui x (a) nil))))
+
+(test redefine-marks-refit
+  (with-clean-registry ()
+    (gui.runtime:register-gui 'panel-a 'panel-a)
+    (is (null (gui.runtime:gui-refit-pending 'panel-a)) "first registration needs no refit")
+    (gui.runtime:register-gui 'panel-a 'panel-a)
+    (let ((first (gui.runtime:gui-refit-pending 'panel-a)))
+      (is (not (null first)))
+      ;; A redefinition while the old token is in use keeps its own refit.
+      (gui.runtime:register-gui 'panel-a 'panel-a)
+      (let ((second (gui.runtime:gui-refit-pending 'panel-a)))
+        (is (not (eq first second)))
+        (gui.runtime:clear-gui-refit 'panel-a first)
+        (is (eq second (gui.runtime:gui-refit-pending 'panel-a)))
+        (gui.runtime:clear-gui-refit 'panel-a second)
+        (is (null (gui.runtime:gui-refit-pending 'panel-a)))))
+    (is (null (gui.runtime:gui-refit-pending 'no-such-panel)))))

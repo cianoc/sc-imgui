@@ -45,7 +45,11 @@ commit whose output contains the docking API.
 ```
 
 Re-evaluate a `define-gui` form (C-c C-c) and the window picks up the new
-definition on the next frame. `(gui:stop)` closes the window, as does the
+definition on the next frame. Each window the panel opens with `gui:with-window`
+then refits its size to its new contents once, so added widgets are not cut
+off. After that you can resize it by hand as usual, and the size is saved as
+usual. Windows of other panels, and windows opened with a bare `%imgui:begin`
+as above, keep their size. `(gui:stop)` closes the window, as does the
 window's close button; `(gui:start)` opens it again with the same panels.
 
 The frame loop runs on SBCL's main thread (macOS requires it for Cocoa), handed

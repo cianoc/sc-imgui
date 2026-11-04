@@ -1,9 +1,15 @@
 (in-package #:gui)
 
 (defmacro with-window ((title &key flags) &body body)
-  "Begin/End; BODY runs only when Begin returns true.  End always runs."
+  "Begin/End; BODY runs only when Begin returns true.  End always runs.  On the
+first frame after its panel is redefined, the window refits to its contents."
   (let ((open (gensym "OPEN")))
-    `(let ((,open (%imgui:begin ,title (cffi:null-pointer) ,(%flags-form "WINDOW-FLAGS" flags))))
+    `(let ((,open (progn
+                    (when gui.runtime:*refit-windows*
+                      ;; A 0 axis means auto-fit: ImGui fits it over 2 frames,
+                      ;; shrinking or growing, then leaves the size alone.
+                      (%imgui:set-next-window-size (vec2 0 0) %imgui:+cond-always+))
+                    (%imgui:begin ,title (cffi:null-pointer) ,(%flags-form "WINDOW-FLAGS" flags)))))
        (unwind-protect (when ,open ,@body)
          (%imgui:end)))))
 

@@ -96,3 +96,85 @@ report and close the window.  Returns true if that handler ran."
         (if (eq restart 'gui.runtime:disable-panel)
             (is (gui.runtime:gui-entry-failure (gui.runtime:find-gui 'bad)))
             (is (null (gui.runtime:gui-entry-failure (gui.runtime:find-gui 'bad)))))))))
+
+;;; Redefining a panel refits its GUI:WITH-WINDOW windows to their contents.
+
+(defvar *window-sizes* (make-hash-table :test 'equal)
+  "Window title -> (width height), recorded inside the window each frame.")
+(defvar *refit-widgets* 1 "Buttons drawn in the REFIT-A window.")
+(defvar *refit-manual-size* nil "When set, REFIT-A sets this size once (Always).")
+
+(defun record-window-size (title)
+  (let ((size (%imgui:get-window-size)))
+    (setf (gethash title *window-sizes*)
+          (list (getf size '%imgui::x) (getf size '%imgui::y)))))
+
+(defun window-size (title) (gethash title *window-sizes*))
+
+(defun redefine-panel (form)
+  "Evaluate a DEFINE-GUI FORM at run time, as re-evaluating it at the REPL does."
+  (handler-bind ((warning #'muffle-warning)) (eval form)))
+
+(defparameter *refit-a-form*
+  '(gui:define-gui refit-a ()
+    (gui:with-window ("refit-a")
+      (dotimes (i *refit-widgets*)
+        (%imgui:button (format nil "button number ~D" i) (vec2 0 0)))
+      (when *refit-manual-size*
+        (%imgui:set-window-size-vec2 (vec2 (first *refit-manual-size*)
+                                           (second *refit-manual-size*))
+                                     %imgui:+cond-always+)
+        (setf *refit-manual-size* nil))
+      (record-window-size "refit-a"))))
+
+(defparameter *refit-b-form*
+  '(gui:define-gui refit-b ()
+    (gui:with-window ("refit-b")
+      (%imgui:button "b" (vec2 0 0))
+      (record-window-size "refit-b"))))
+
+(defun run-frames (n) (dotimes (i n) (with-test-frame () (gui.runtime:draw-registered-guis))))
+
+(test redefinition-refits-windows
+  (with-frame-env
+    (clrhash *window-sizes*)
+    (let ((*refit-widgets* 1) (*refit-manual-size* nil))
+      (redefine-panel *refit-a-form*)
+      (redefine-panel *refit-b-form*)
+      (run-frames 5)
+      (let ((a0 (window-size "refit-a")) (b0 (window-size "refit-b")))
+        (is (consp a0)) (is (consp b0))
+        ;; More content alone does not resize an existing window ...
+        (setf *refit-widgets* 8)
+        (run-frames 3)
+        (is (equal a0 (window-size "refit-a")))
+        ;; ... but redefining its panel refits it once.
+        (redefine-panel *refit-a-form*)
+        (run-frames 3)
+        (let ((a1 (window-size "refit-a")))
+          (is (> (second a1) (second a0)) "height ~S should exceed ~S" a1 a0)
+          (is (equal b0 (window-size "refit-b")) "unchanged panel's window moved: ~S -> ~S"
+              b0 (window-size "refit-b"))
+          (run-frames 5)
+          (is (equal a1 (window-size "refit-a"))))
+        ;; After the refit a manual size sticks.
+        (setf *refit-manual-size* (list 300.0 150.0))
+        (run-frames 5)
+        (is (equal '(300.0 150.0) (window-size "refit-a")))
+        (is (equal b0 (window-size "refit-b")))))))
+
+(test fixed-failed-panel-refits
+  (with-frame-env
+    (clrhash *window-sizes*)
+    (let ((*refit-widgets* 1) (*refit-manual-size* nil)
+          (gui.runtime:*report-stream* (make-broadcast-stream)))
+      (redefine-panel *refit-a-form*)
+      (run-frames 3)
+      (let ((a0 (window-size "refit-a")))
+        (redefine-panel '(gui:define-gui refit-a () (error "broken")))
+        (run-frames 2)
+        (is (gui.runtime:gui-entry-failure (gui.runtime:find-gui 'refit-a)))
+        (setf *refit-widgets* 8)
+        (redefine-panel *refit-a-form*)
+        (run-frames 3)
+        (is (> (second (window-size "refit-a")) (second a0)))))))
