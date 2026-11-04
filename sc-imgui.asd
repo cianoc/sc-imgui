@@ -21,7 +21,8 @@
                              (:file "define-gui")
                              (:file "foreign")
                              (:file "scopes")
-                             (:file "layout")))))
+                             (:file "layout")
+                             (:file "widgets")))))
 
 (asdf:defsystem "sc-imgui/generator"
   :description "Generates CFFI bindings from cimgui/cimplot JSON definitions."
@@ -64,4 +65,5 @@
                (:file "test-registry")
                (:file "test-frame")
                (:file "test-loop")
-               (:file "test-scopes")))
+               (:file "test-scopes")
+               (:file "test-widgets")))

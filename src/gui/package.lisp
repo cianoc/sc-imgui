@@ -10,4 +10,7 @@
            #:enum-flags #:with-window #:with-group #:with-child #:with-section
            #:with-id #:with-disabled #:with-style #:with-row #:with-grid
            #:same-line #:new-line #:separator #:spacing #:indent #:unindent
-           #:set-next-item-width))
+           #:set-next-item-width
+           #:widget-value-error
+           #:slider #:slider-value #:drag #:drag-value #:checkbox #:checkbox-value
+           #:combo #:combo-value #:input-text #:input-text-value #:button #:text))

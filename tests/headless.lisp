@@ -59,3 +59,40 @@ before and after."
      (gui.runtime:%reset-registry)
      (unwind-protect (progn ,@body)
        (gui.runtime:%reset-registry))))
+
+(defmacro in-window (&body body)
+  "Run BODY inside a window named \"w\", recording the last item's rect in
+*ITEM-RECT* before the window closes.  Returns BODY's values."
+  `(gui:with-window ("w")
+     (multiple-value-prog1 (progn ,@body)
+       (setf *item-rect* (last-item-rect)
+             *item-width* (%imgui:calc-item-width)))))
+
+(defvar *item-rect* nil "Rect recorded by IN-WINDOW, as (min-x min-y max-x max-y).")
+(defvar *item-width* nil
+  "Item width in effect at the end of the window body, recorded by IN-WINDOW.")
+
+(defun last-item-rect ()
+  "Rect of the last item, as (min-x min-y max-x max-y)."
+  (let ((min (%imgui:get-item-rect-min))
+        (max (%imgui:get-item-rect-max)))
+    (list (getf min '%imgui::x) (getf min '%imgui::y)
+          (getf max '%imgui::x) (getf max '%imgui::y))))
+
+(defun click-item (draw-fn &key (x-fn (lambda (r) (/ (+ (first r) (third r)) 2))))
+  "Prime DRAW-FN (which must use IN-WINDOW) so its item has a rect, then click
+the item at X-FN of the rect.  Returns the list of DRAW-FN's values per frame."
+  (setf *item-rect* nil)
+  (dotimes (i 2) (with-test-frame () (funcall draw-fn)))
+  (let ((r *item-rect*))
+    (frames-with-click (funcall x-fn r) (/ (+ (second r) (fourth r)) 2) draw-fn)))
+
+(defun click-item-at-right-edge (draw-fn)
+  "Click the item's frame 2 pixels in from its right edge.  The item rect also
+covers the label, so the frame's edge is min-x plus the item width."
+  (click-item draw-fn :x-fn (lambda (r) (- (+ (first r) *item-width*) 2))))
+
+(defun type-text (string draw-fn)
+  "Queue STRING as typed characters and run two frames of DRAW-FN."
+  (%imgui:im-gui-io-add-input-characters-utf8 (%imgui:get-io-nil) string)
+  (dotimes (i 2) (with-test-frame () (funcall draw-fn))))

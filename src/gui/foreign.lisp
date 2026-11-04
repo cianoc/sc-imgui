@@ -51,3 +51,11 @@ a stable weak-table integer (never an address)."
     ((signed-byte 32) (%imgui:push-id-int object))
     (string (%imgui:push-id-str object))
     (t (%imgui:push-id-int (stable-object-id object)))))
+
+;;; One 64-byte scratch buffer for float/int/bool out-values.  Allocated on
+;;; first use and reused by every widget call; drawing is single-threaded.
+
+(defvar *scratch* nil)
+
+(defun scratch ()
+  (or *scratch* (setf *scratch* (cffi:foreign-alloc :uint8 :count 64 :initial-element 0))))
