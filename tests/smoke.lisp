@@ -87,6 +87,15 @@
         (note "skip on-screen window count ~A (unavailable here)" when)
         (check (funcall expected count) "~D on-screen window(s) ~A" count when))))
 
+(defun check-window-gone-within (seconds when)
+  "Poll until no window of ours is on screen, failing after SECONDS."
+  (let ((deadline (+ (get-internal-real-time)
+                     (round (* seconds internal-time-units-per-second)))))
+    (loop for count = (%shim:onscreen-window-count)
+          until (or (<= count 0) (> (get-internal-real-time) deadline))
+          do (sleep 0.02))
+    (check-window-count (format nil "within ~,1F s ~A" seconds when) #'zerop)))
+
 (defun check-window-gone (when)
   (sleep 0.5)
   (check-window-count when #'zerop))
@@ -138,6 +147,23 @@
     (let ((f0 *frames*))
       (wait-frames 60)
       (check t "restarted loop ran ~D frames" (- *frames* f0)))
+    ;; 6. The title-bar close button (AppKit's performClose:, on the main
+    ;; thread) ends the loop and the window leaves the screen.
+    (let ((sent :pending))
+      (gui:call-in-gui-thread (lambda () (setf sent (%shim:test-perform-close))))
+      (wait-until (lambda () (not (eq sent :pending))))
+      (if (minusp sent)
+          (note "skip close-button check (unavailable here)")
+          (progn
+            (wait-until (lambda () (not (gui:running-p))))
+            (check t "running-p false after the close button")
+            (check-window-gone-within 1.0 "after the close button"))))
+    (unless (gui:running-p)
+      (let ((again (gui:start :title "sc-imgui smoke (after close)")))
+        (check (eq again t) "start after close (gui:start) returned ~S" again))
+      (let ((f0 *frames*))
+        (wait-frames 60)
+        (check t "loop after close ran ~D frames" (- *frames* f0))))
     (let ((stopped (gui:stop)))
       (check (eq stopped t) "final (gui:stop) returned ~S" stopped)
       (check (not (gui:running-p)) "running-p false after final stop")

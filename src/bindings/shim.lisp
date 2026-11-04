@@ -17,3 +17,4 @@
 (cffi:defcfun ("shim_last_assert" last-assert) :string)
 (cffi:defcfun ("shim_clear_asserts" clear-asserts) :void)
 (cffi:defcfun ("shim_onscreen_window_count" onscreen-window-count) :int)
+(cffi:defcfun ("shim_test_perform_close" test-perform-close) :int) ; tests only; main thread

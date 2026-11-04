@@ -68,7 +68,7 @@ if(NOT APPLE)
   find_package(OpenGL REQUIRED)
   target_link_libraries(sc_imgui_shim PRIVATE OpenGL::GL)
 else()
-  target_link_libraries(sc_imgui_shim PRIVATE "-framework OpenGL" "-framework Cocoa" "-framework CoreGraphics")
+  target_link_libraries(sc_imgui_shim PRIVATE "-framework OpenGL" "-framework Cocoa" "-framework CoreGraphics" "-framework QuartzCore")
 endif()
 
 enable_testing()

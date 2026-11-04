@@ -185,6 +185,9 @@ void shim_clear_asserts(void) {
 
 #ifndef __APPLE__
 int shim_onscreen_window_count(void) { return -1; }  // macOS version in shim_macos.mm
+int shim_test_perform_close(void) { return -1; }     // macOS version in shim_macos.mm
+#else
+int shim_test_perform_close(void) { return shim_macos_perform_close(g_window); }
 #endif
 
 }  // extern "C"

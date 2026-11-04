@@ -76,6 +76,10 @@
   ;; -1 where the count is unavailable (non-macOS); otherwise no window is open.
   (is (<= -1 (%shim:onscreen-window-count) 0)))
 
+(test test-perform-close-without-a-window
+  ;; The close-button hook has nothing to close in a test run.
+  (is (= -1 (%shim:test-perform-close))))
+
 ;;; `const char*` arguments accept NIL (passed as NULL) as well as strings.
 
 (test nil-string-argument

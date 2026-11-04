@@ -18,6 +18,7 @@ int         shim_assert_count(void);
 const char *shim_last_assert(void);           /* "expr @ file:line" */
 void        shim_clear_asserts(void);
 int         shim_onscreen_window_count(void);  /* on-screen windows owned by this process; -1 where unavailable (non-macOS) */
+int         shim_test_perform_close(void);     /* tests: [NSWindow performClose:] on the window (main thread); 0 = sent, -1 = no window or not macOS */
 
 #ifdef __cplusplus
 }

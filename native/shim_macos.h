@@ -8,4 +8,7 @@ struct GLFWwindow;
 // without the main run loop running afterwards.
 void shim_macos_close_window(GLFWwindow *window);
 
+// Tests: simulate a click on WINDOW's close button.  -1 if there is none.
+int shim_macos_perform_close(GLFWwindow *window);
+
 #endif
