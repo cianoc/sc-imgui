@@ -87,7 +87,7 @@ defcstruct forms, a struct used by value always after the structs it contains."
                       collect (cons name (struct-type-symbol name)))))))
 
 (defun emit-function (f prefix package lookup typedefs)
-  "Return a defcfun form for F, or (values nil reason) when it is skipped."
+  "Return a list of forms (defcfun, plus a wrapper defun for bool returns) for F,\nor (values nil reason) when it is skipped."
   (when (getf f :variadic-p)
     (return-from emit-function (values nil "variadic")))
   (when (getf f :templated-p)
@@ -111,27 +111,35 @@ defcstruct forms, a struct used by value always after the structs it contains."
                                             n)))))
              (if (/= (length names) (length (remove-duplicates names :test #'string=)))
                  (values nil "duplicate argument names")
-                 `(cffi:defcfun (,c-name
-                                 ,(intern (string-upcase (c-name->lisp-name c-name prefix))
-                                          package))
-                      ,(if (find-if #'struct-type-p args :key #'third)
-                           ;; cffi-libffi (used for by-value structs) cannot
-                           ;; translate a (:boolean :uchar) result.
-                           ret
-                           (storage-type ret))
-                    ,@(loop for (nil nil type) in args
-                            for n in names
-                            collect `(,(intern (string-upcase n) package) ,type)))))))))
+                 (let* ((name (intern (string-upcase (c-name->lisp-name c-name prefix))
+                                      package))
+                        (params (loop for (nil nil type) in args
+                                      for n in names
+                                      collect `(,(intern (string-upcase n) package) ,type))))
+                   (if (eq ret :bool)
+                       ;; Bool-return rule (uniform): C `bool` defines only the
+                       ;; low byte of the result register, and cffi-libffi cannot
+                       ;; translate a custom return type.  So the raw call returns
+                       ;; :uint8 (NAME-RAW) and NAME is a thin wrapper returning T/NIL.
+                       (let ((raw (intern (string-upcase
+                                           (format nil "~A-raw" (symbol-name name)))
+                                          package)))
+                         (list `(cffi:defcfun (,c-name ,raw) :uint8 ,@params)
+                               `(cl:defun ,name ,(mapcar #'first params)
+                                  (cl:/= 0 (,raw ,@(mapcar #'first params))))))
+                       (list `(cffi:defcfun (,c-name ,name) ,ret ,@params))))))))))
 
 (defun starts-with-p (prefix string)
   (and (>= (length string) (length prefix))
        (string= prefix string :end2 (length prefix))))
 
 (defun emit-forms (model &key (prefix "ig") (package "%IMGUI") (enum-prefix "ImGui")
-                              strict-prefix external-structs)
+                              strict-prefix external-structs name-prefixes)
   "Turn MODEL into defcstruct, defconstant and defcfun forms (in that order).
 PREFIX is stripped from function names; with STRICT-PREFIX only functions that
 start with it are emitted.  ENUM-PREFIX is stripped from enum constant names.
+NAME-PREFIXES, when non-nil, keeps only structs and enums whose C names start
+with one of the prefixes (others may still be referenced as EXTERNAL-STRUCTS).
 EXTERNAL-STRUCTS is an alist of (c-name . symbol) for by-value structs defined
 in another package.  Opaque structs are reported with
 `opaque-struct-warning'.  The second value lists (c-name reason) for each
@@ -140,6 +148,12 @@ slots (usable as another package's EXTERNAL-STRUCTS)."
   (let* ((pkg (ensure-package package))
          (*package* pkg)
          (typedefs (getf model :typedefs))
+         (keep (lambda (item)
+                 (or (null name-prefixes)
+                     (some (lambda (p) (starts-with-p p (getf item :name))) name-prefixes))))
+         (model (list* :structs (remove-if-not keep (getf model :structs))
+                       :enums (remove-if-not keep (getf model :enums))
+                       model))
          (struct-forms '()) (constant-forms '()) (function-forms '())
          (skipped '()) complete
          lookup)
@@ -165,19 +179,31 @@ slots (usable as another package's EXTERNAL-STRUCTS)."
     (let ((seen (make-hash-table :test 'eq)))
       (dolist (f (getf model :functions))
         (unless (and strict-prefix (not (starts-with-p prefix (getf f :c-name))))
-          (multiple-value-bind (form reason) (emit-function f prefix pkg lookup typedefs)
-            (cond ((null form) (push (list (getf f :c-name) reason) skipped))
-                  ((gethash (second (second form)) seen)
-                   (push (list (getf f :c-name) "duplicate lisp name") skipped))
-                  (t (setf (gethash (second (second form)) seen) t)
-                     (push form function-forms)))))))
+          (multiple-value-bind (fforms reason) (emit-function f prefix pkg lookup typedefs)
+            (let ((names (loop for form in fforms
+                               collect (if (eq (first form) 'cffi:defcfun)
+                                           (second (second form))
+                                           (second form)))))
+              (cond ((null fforms) (push (list (getf f :c-name) reason) skipped))
+                    ((some (lambda (n) (gethash n seen)) names)
+                     (push (list (getf f :c-name) "duplicate lisp name") skipped))
+                    (t (dolist (n names) (setf (gethash n seen) t))
+                       (dolist (form fforms) (push form function-forms)))))))))
     (values (append struct-forms (nreverse constant-forms) (nreverse function-forms))
             (nreverse skipped)
             complete)))
 
 (defun forms-exports (forms)
-  "Symbols naming the defcfun and defconstant forms in FORMS."
-  (loop for form in forms
-        for head = (first form)
-        when (eq head 'cffi:defcfun) collect (second (second form))
-        when (eq head 'cl:defconstant) collect (second form)))
+  "Symbols to export: every function name (the wrapper for bool functions, not
+its NAME-RAW defcfun) and every constant."
+  (let ((wrappers (loop for form in forms
+                        when (eq (first form) 'cl:defun) collect (second form))))
+    (flet ((raw-p (sym)
+             (some (lambda (w) (string= (symbol-name sym)
+                                        (format nil "~A-RAW" (symbol-name w))))
+                   wrappers)))
+      (loop for form in forms
+            for head = (first form)
+            when (and (eq head 'cffi:defcfun) (not (raw-p (second (second form)))))
+              collect (second (second form))
+            when (member head '(cl:defconstant cl:defun)) collect (second form)))))

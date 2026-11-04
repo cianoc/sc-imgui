@@ -2,8 +2,14 @@
   "igButton": [
     {
       "argsT": [
-        {"name": "label", "type": "const char*"},
-        {"name": "size", "type": "const ImVec2"}
+        {
+          "name": "label",
+          "type": "const char*"
+        },
+        {
+          "name": "size",
+          "type": "const ImVec2"
+        }
       ],
       "cimguiname": "igButton",
       "ov_cimguiname": "igButton",
@@ -14,13 +20,33 @@
   "igText": [
     {
       "argsT": [
-        {"name": "fmt", "type": "const char*"},
-        {"name": "...", "type": "..."}
+        {
+          "name": "fmt",
+          "type": "const char*"
+        },
+        {
+          "name": "...",
+          "type": "..."
+        }
       ],
       "cimguiname": "igText",
       "isvararg": "...)",
       "ov_cimguiname": "igText",
       "ret": "void",
+      "stname": ""
+    }
+  ],
+  "igIsWindowFocused": [
+    {
+      "argsT": [
+        {
+          "name": "flags",
+          "type": "ImGuiWindowFlags"
+        }
+      ],
+      "cimguiname": "igIsWindowFocused",
+      "ov_cimguiname": "igIsWindowFocused",
+      "ret": "bool",
       "stname": ""
     }
   ]

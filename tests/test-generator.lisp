@@ -1,6 +1,8 @@
 (in-package #:sc-imgui.tests)
 (in-suite generator)
 
+(defun ensure-package (name) (or (find-package name) (make-package name :use nil)))
+
 (defun fixture-path (name)
   (asdf:system-relative-pathname "sc-imgui/tests" (format nil "tests/fixtures/~A" name)))
 
@@ -68,11 +70,34 @@
   (let* ((forms (fixture-forms))
          (button (find-defcfun forms "igButton")))
     (is (not (null button)))
-    (is (equal "BUTTON" (symbol-name (second (second button)))))
+    (is (equal "BUTTON-RAW" (symbol-name (second (second button)))))
+    (is (find-defun forms "BUTTON"))
     (is (null (find-defcfun forms "igText")))      ; variadic: skipped
     (is (equal 1 (constant-value forms "+WINDOW-FLAGS-NO-TITLE-BAR+")))
     (is (opaque-struct-p forms "IM-BITFIELD-THING"))
     (is (not (opaque-struct-p forms "IM-VEC2")))))
+
+(defun find-defun (forms name)
+  (find-if (lambda (f) (and (eq (first f) 'cl:defun)
+                            (string= (symbol-name (second f)) name)))
+           forms))
+
+(test bool-returns-use-uint8-and-wrapper
+  ;; Rule: every C `bool` return is a :uint8 defcfun (NAME-RAW) plus a wrapper
+  ;; NAME returning T/NIL; same with and without by-value struct args.
+  (let ((forms (fixture-forms)))
+    (dolist (case '(("igButton" "BUTTON") ("igIsWindowFocused" "IS-WINDOW-FOCUSED")))
+      (destructuring-bind (c-name name) case
+        (let ((raw (find-defcfun forms c-name))
+              (wrapper (find-defun forms name)))
+          (is (not (null raw)))
+          (is (eq :uint8 (third raw)))
+          (is (equal (concatenate 'string name "-RAW") (symbol-name (second (second raw)))))
+          (is (not (null wrapper)))
+          (is (eq (second (second raw)) (first (third (fourth wrapper))))
+              "wrapper calls the raw function"))))
+    ;; igButton still takes the by-value struct
+    (is (equal "IM-VEC2" (symbol-name (second (second (fifth (find-defcfun forms "igButton")))))))))
 
 (test opaque-struct-warns
   (let (warned)
@@ -110,4 +135,27 @@
          (names (mapcar #'symbol-name (forms-exports forms))))
     (is (member "BUTTON" names :test #'string=))
     (is (member "+WINDOW-FLAGS-NO-TITLE-BAR+" names :test #'string=))
+    (is (member "IS-WINDOW-FOCUSED" names :test #'string=))
+    (is (not (member "BUTTON-RAW" names :test #'string=)))
     (is (not (member "IM-VEC2" names :test #'string=)))))
+
+(test name-prefixes-filter-structs-and-enums
+  (let* ((model (list :functions nil :typedefs (make-hash-table :test 'equal)
+                      :structs (list (list :name "ImPlotThing"
+                                           :fields (list (list :name "p" :type "ImVec2")))
+                                     (list :name "ImGuiOther"
+                                           :fields (list (list :name "a" :type "int"))))
+                      :enums (list (list :name "ImPlotFlags_" :values '(("ImPlotFlags_None" . 0)))
+                                   (list :name "ImGuiFlags_" :values '(("ImGuiFlags_None" . 0))))))
+         (forms (handler-bind ((warning #'muffle-warning))
+                  (emit-forms model :package "%IMPLOT" :prefix "ImPlot_" :enum-prefix "ImPlot"
+                                    :name-prefixes '("ImPlot")
+                                    :external-structs
+                                    (list (cons "ImVec2" (intern "IM-VEC2" (ensure-package "%IMGUI"))))))))
+    (is (find-struct forms "IM-PLOT-THING"))
+    (is (null (find-struct forms "IM-GUI-OTHER")))
+    (is (equal 0 (constant-value forms "+FLAGS-NONE+")))
+    (is (= 1 (count-if (lambda (f) (eq (first f) 'cl:defconstant)) forms)))
+    ;; ImVec2 comes from %imgui, not redefined
+    (is (equal "%IMGUI" (package-name (symbol-package
+                                       (second (second (third (find-struct forms "IM-PLOT-THING"))))))))))

@@ -39,7 +39,7 @@ Ends with an export form for every generated function and constant."
       (format out "~%"))))
 
 (defun generate-library (&key dir library path package prefix enum-prefix
-                              strict-prefix external-structs fallback-typedefs)
+                              strict-prefix external-structs fallback-typedefs name-prefixes)
   "Generate one bindings file.  FALLBACK-TYPEDEFS (a hash table) supplies
 typedefs the library's own table lacks.  Returns (values forms skipped opaque
 complete-structs)."
@@ -56,7 +56,7 @@ complete-structs)."
                            (warn "~A: ~A" library w)
                            (muffle-warning w))))
           (emit-forms model :prefix prefix :package package :enum-prefix enum-prefix
-                            :strict-prefix strict-prefix
+                            :strict-prefix strict-prefix :name-prefixes name-prefixes
                             :external-structs external-structs))
       (write-bindings-file path forms package library (git-head dir))
       (format t "~&~A: ~D forms written to ~A (~D functions skipped, ~D opaque structs)~%"
@@ -80,6 +80,8 @@ OUTPUT-DIR from the JSON that cimgui and cimplot generated."
                         :path (merge-pathnames "implot.lisp" out)
                         :package "%IMPLOT" :prefix "ImPlot_" :enum-prefix "ImPlot"
                         :strict-prefix t
+                        ;; ImAxis_ is ImPlot's own axis enum (cimplot-defined).
+                        :name-prefixes '("ImPlot" "ImAxis")
                         :external-structs complete
                         :fallback-typedefs
                         (getf (load-library-model cimgui-dir) :typedefs)))
