@@ -46,3 +46,11 @@ for its first frame and cannot be hovered until the next."
                              nil)
           collect (progn (when event (funcall event))
                          (with-test-frame () (funcall draw-fn))))))
+
+(defmacro with-clean-registry (() &body body)
+  "Run BODY against an empty panel registry and task queue, resetting both
+before and after."
+  `(progn
+     (gui.runtime:%reset-registry)
+     (unwind-protect (progn ,@body)
+       (gui.runtime:%reset-registry))))

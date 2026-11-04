@@ -3,7 +3,20 @@
 ;;; Primary system: Quicklisp's quickload requires it to exist before it will
 ;;; load a "sc-imgui/..." subsystem.  Components arrive in later tasks.
 (asdf:defsystem "sc-imgui"
-  :description "Dear ImGui + ImPlot for Common Lisp (SBCL).")
+  :description "Dear ImGui + ImPlot for Common Lisp (SBCL)."
+  :depends-on ("sc-imgui/bindings" "bordeaux-threads" "trivial-main-thread" "alexandria")
+  :pathname "src/"
+  :serial t
+  :components ((:module "runtime"
+                :serial t
+                :components ((:file "package")
+                             (:file "registry")
+                             (:file "tasks")
+                             (:file "report")))
+               (:module "gui"
+                :serial t
+                :components ((:file "package")
+                             (:file "define-gui")))))
 
 (asdf:defsystem "sc-imgui/generator"
   :description "Generates CFFI bindings from cimgui/cimplot JSON definitions."
@@ -34,11 +47,12 @@
 ;;; tests/suites.lisp); run with `make test` or `make test SUITE=<name>`.
 (asdf:defsystem "sc-imgui/tests"
   :description "FiveAM tests for sc-imgui."
-  :depends-on ("fiveam" "sc-imgui/generator" "sc-imgui/bindings")
+  :depends-on ("fiveam" "sc-imgui/generator" "sc-imgui/bindings" "sc-imgui")
   :pathname "tests/"
   :serial t
   :components ((:file "package")
                (:file "suites")
                (:file "test-generator")
                (:file "headless")
-               (:file "test-bindings")))
+               (:file "test-bindings")
+               (:file "test-registry")))
