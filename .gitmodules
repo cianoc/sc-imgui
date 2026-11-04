@@ -1,0 +1,17 @@
+[submodule "native/third_party/imgui"]
+	path = native/third_party/imgui
+	url = https://github.com/ocornut/imgui.git
+	branch = docking
+[submodule "native/third_party/cimgui"]
+	path = native/third_party/cimgui
+	url = https://github.com/cimgui/cimgui.git
+	branch = docking_inter
+[submodule "native/third_party/implot"]
+	path = native/third_party/implot
+	url = https://github.com/epezent/implot.git
+[submodule "native/third_party/cimplot"]
+	path = native/third_party/cimplot
+	url = https://github.com/cimgui/cimplot.git
+[submodule "native/third_party/glfw"]
+	path = native/third_party/glfw
+	url = https://github.com/glfw/glfw.git
