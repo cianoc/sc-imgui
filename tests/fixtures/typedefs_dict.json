@@ -1,0 +1,5 @@
+{
+  "ImGuiWindowFlags": "int",
+  "ImGuiID": "ImU32",
+  "ImU32": "unsigned int"
+}

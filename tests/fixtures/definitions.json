@@ -1,0 +1,27 @@
+{
+  "igButton": [
+    {
+      "argsT": [
+        {"name": "label", "type": "const char*"},
+        {"name": "size", "type": "const ImVec2"}
+      ],
+      "cimguiname": "igButton",
+      "ov_cimguiname": "igButton",
+      "ret": "bool",
+      "stname": ""
+    }
+  ],
+  "igText": [
+    {
+      "argsT": [
+        {"name": "fmt", "type": "const char*"},
+        {"name": "...", "type": "..."}
+      ],
+      "cimguiname": "igText",
+      "isvararg": "...)",
+      "ov_cimguiname": "igText",
+      "ret": "void",
+      "stname": ""
+    }
+  ]
+}
