@@ -58,6 +58,10 @@
     (is (eq :int (c-type->cffi "ImGuiWindowFlags" td)))
     (is (equal "IM-VEC2" (symbol-name (second (c-type->cffi "ImVec2" td)))))
     (is (equal "IM-VEC4" (symbol-name (second (c-type->cffi "const ImVec4" td)))))
+    ;; cimgui's layout-identical by-value `_c` structs map to the real struct
+    (is (equal "IM-VEC2" (symbol-name (second (c-type->cffi "ImVec2_c" td)))))
+    (is (equal "IM-VEC4" (symbol-name (second (c-type->cffi "ImVec4_c" td)))))
+    (is (null (c-type->cffi "Unknown_c" td)))
     (is (eq :uint32 (c-type->cffi "ImGuiID" td)))
     (is (eq :size (c-type->cffi "size_t" td)))
     (is (eq :uint64 (c-type->cffi "unsigned long long" td)))

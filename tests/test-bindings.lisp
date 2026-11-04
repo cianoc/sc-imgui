@@ -1,0 +1,73 @@
+(in-package #:sc-imgui.tests)
+(in-suite bindings)
+
+(test library-loads
+  (is (cffi:foreign-library-loaded-p 'sc-imgui.bindings::shim)))
+
+(test missing-library-lists-paths
+  (let ((sc-imgui.bindings:*library-search-paths* (list #p"/nonexistent/")))
+    (signals sc-imgui.bindings:shim-library-not-found
+      (sc-imgui.bindings:load-shim-library))
+    (handler-case (sc-imgui.bindings:load-shim-library)
+      (error (e) (is (search "/nonexistent/" (princ-to-string e)))))))
+
+(test headless-frame-runs
+  (with-headless-imgui ()
+    (with-test-frame ()
+      (%imgui:begin "t" (cffi:null-pointer) 0)
+      (%imgui:end))
+    (is (= 0 (%shim:assert-count)))))
+
+(test assert-does-not-abort
+  (with-headless-imgui ()
+    (with-test-frame () (%imgui:end))   ; End without Begin
+    (is (>= (%shim:assert-count) 1))
+    (%shim:clear-asserts)))
+
+(test io-struct-is-not-opaque
+  (with-headless-imgui (:width 800)
+    (let ((size (cffi:foreign-slot-pointer (%imgui:get-io-nil) '(:struct %imgui::im-gui-io)
+                                           '%imgui::display-size)))
+      (is (= 800.0 (cffi:foreign-slot-value size '(:struct %imgui::im-vec2) '%imgui::x))))))
+
+(test frame-ends-when-body-errors
+  (with-headless-imgui ()
+    (signals error (with-test-frame () (error "boom")))
+    ;; The frame was closed, so a fresh one can start.
+    (with-test-frame ()
+      (%imgui:begin "t" (cffi:null-pointer) 0)
+      (%imgui:end))))
+
+(test vec2-struct-return-by-value
+  (with-headless-imgui ()
+    (let (size)
+      (with-test-frame ()
+        (%imgui:set-next-window-pos (vec2 10 20) 0 (vec2 0 0))
+        (%imgui:begin "t" (cffi:null-pointer) 0)
+        (%imgui:button "B" (vec2 50 30))
+        (setf size (multiple-value-list (last-item-center)))
+        (%imgui:end))
+      (is (every #'realp size)))))
+
+(test frames-with-click-clicks-a-button
+  (with-headless-imgui ()
+    (let (cx cy)
+      (flet ((draw ()
+               (%imgui:set-next-window-pos (vec2 10 20) 0 (vec2 0 0))
+               (%imgui:begin "t" (cffi:null-pointer) 0)
+               (prog1 (%imgui:button "B" (vec2 80 40))
+                 (multiple-value-setq (cx cy) (last-item-center))
+                 (%imgui:end))))
+        (with-test-frame () (draw))
+        (with-test-frame () (draw))
+        (is (equal '(nil nil t nil) (frames-with-click cx cy #'draw)))
+        (is (= 0 (%shim:assert-count)))))))
+
+(test mouse-over-nothing-does-not-click
+  (with-headless-imgui ()
+    (flet ((draw ()
+             (%imgui:set-next-window-pos (vec2 10 20) 0 (vec2 0 0))
+             (%imgui:begin "t" (cffi:null-pointer) 0)
+             (prog1 (%imgui:button "B" (vec2 80 40))
+               (%imgui:end))))
+      (is (equal '(nil nil nil nil) (frames-with-click 700 500 #'draw :warmup 2))))))

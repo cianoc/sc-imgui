@@ -59,6 +59,15 @@ are always known."
             (list :struct (lookup-struct structs s)))
            ((member s *builtin-structs* :test #'string=)
             (list :struct (struct-type-symbol s)))
+           ;; cimgui returns/passes small structs as layout-identical `Foo_c`
+           ;; (ImVec2_c, ImRect_c, ...); map them to the real struct Foo.
+           ((and (> (length s) 2)
+                 (string= "_c" s :start2 (- (length s) 2))
+                 (let ((base (subseq s 0 (- (length s) 2))))
+                   (or (and (lookup-struct structs base)
+                            (list :struct (lookup-struct structs base)))
+                       (and (member base *builtin-structs* :test #'string=)
+                            (list :struct (struct-type-symbol base)))))))
            (t
             (let ((target (and typedefs (gethash s typedefs))))
               (when (and target
