@@ -49,14 +49,34 @@ definition on the next frame. `(gui:stop)` closes the window, as does the
 window's close button; `(gui:start)` opens it again with the same panels.
 
 The frame loop runs on SBCL's main thread (macOS requires it for Cocoa), handed
-over with `trivial-main-thread`. SLIME and Sly run the REPL in its own thread
-(SBCL's default `:spawn` communication style) and leave the main thread idle, so
-`start` returns immediately. Calling `start` *from* the main thread (a plain
-`sbcl` terminal REPL, or a script) runs the loop in that call and blocks until
-`stop`; a script should do its work in another thread and leave the main thread
-idle, as `tests/smoke.lisp` does.
+over with `trivial-main-thread`, so `start` returns immediately and the REPL
+stays free. That only works when the REPL evaluates in some *other* thread.
+`start` called on the main thread signals `gui:main-thread-busy` and changes
+nothing, because running the loop there would freeze the REPL until the window
+closed.
 
-- `(gui:start &key width height title)` returns `NIL` if already running.
+### SLIME: give the REPL its own thread
+
+Recent SLIME runs the REPL (and `C-x C-e`) on SBCL's main thread. Add this to
+`~/.swank.lisp` and restart SLIME (`M-x slime-restart-inferior-lisp`):
+
+```lisp
+(setf swank::*main-thread-used* t)
+```
+
+Swank then gives the REPL its own thread and leaves the main thread idle for
+the frame loop. To check, evaluate this in the REPL; it should return `NIL`:
+
+```lisp
+(eq sb-thread:*current-thread* (sb-thread:main-thread))
+```
+
+A plain `sbcl` terminal REPL also evaluates on the main thread. Scripts should
+call `start` from another thread and leave the main thread idle, as
+`tests/smoke.lisp` does.
+
+- `(gui:start &key width height title)` returns `NIL` if already running;
+  signals `gui:main-thread-busy` on the main thread.
 - `(gui:stop &key (wait t))` returns `T` if the loop was running; with `wait` it
   waits up to 5 s for the window to close (never when called from the main
   thread, e.g. from a panel).

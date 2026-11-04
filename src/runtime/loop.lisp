@@ -1,8 +1,10 @@
 (in-package #:gui.runtime)
 
 ;;; The frame loop.  It runs on SBCL's main thread (via trivial-main-thread),
-;;; which SLIME and Sly leave idle, so START returns at once and the REPL stays
-;;; free.  START and STOP may be called from any thread.
+;;; so START returns at once and the REPL stays free.  That needs the REPL to
+;;; evaluate in some other thread: START called on the main thread signals
+;;; MAIN-THREAD-BUSY instead of running the loop.  STOP may be called from any
+;;; thread.
 
 (defvar *ini-path* #p"sc-imgui.ini"
   "Where ImGui saves window layout, merged with *DEFAULT-PATHNAME-DEFAULTS* at
@@ -15,6 +17,22 @@ START.  NIL disables saving.  Changes take effect at the next START.")
 (defun running-p ()
   "True while the frame loop is running (or START has queued it)."
   (and *running* t))
+
+(define-condition main-thread-busy (error)
+  ()
+  (:report (lambda (c stream)
+             (declare (ignore c))
+             (format stream "~@<GUI:START was called on SBCL's main thread.  The frame loop ~
+needs the main thread free (macOS only lets it drive windows), but this REPL is ~
+evaluating on the main thread, so the loop would freeze it until the window ~
+closed.~:@>~%~%~
+With SLIME, put~%~%  (setf swank::*main-thread-used* t)~%~%~
+~@<in ~~/.swank.lisp and restart SLIME; the REPL then runs in its own thread.  ~
+Check with~:@>~%~%  (eq sb-thread:*current-thread* (sb-thread:main-thread))~%~%~
+~@<which should be NIL in the REPL.  A script should call GUI:START from another ~
+thread and leave the main thread idle, as tests/smoke.lisp does.~:@>")))
+  (:documentation "Signalled by START when called on SBCL's main thread, which
+the frame loop needs for itself."))
 
 (defun %ini-namestring ()
   (and *ini-path*
@@ -48,9 +66,12 @@ START.  NIL disables saving.  Changes take effect at the next START.")
         (setf *running* nil)))))
 
 (defun start (&key (width 1280) (height 800) (title "sc-imgui"))
-  "Open the window and run the frame loop on the main thread.  Returns T at
+  "Open the window and run the frame loop on SBCL's main thread.  Returns T at
 once, or NIL if the loop is already running.  Errors are reported to the
-caller's *STANDARD-OUTPUT*."
+caller's *STANDARD-OUTPUT*.  Must not be called on the main thread itself:
+that signals MAIN-THREAD-BUSY and changes nothing."
+  (when (trivial-main-thread:main-thread-p)
+    (error 'main-thread-busy))
   (let ((ini (%ini-namestring)))
     (bt2:with-lock-held (*loop-lock*)
       (when *running*
