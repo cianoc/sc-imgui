@@ -12,7 +12,8 @@
                 :components ((:file "package")
                              (:file "registry")
                              (:file "tasks")
-                             (:file "report")))
+                             (:file "report")
+                             (:file "frame")))
                (:module "gui"
                 :serial t
                 :components ((:file "package")
@@ -55,4 +56,5 @@
                (:file "test-generator")
                (:file "headless")
                (:file "test-bindings")
-               (:file "test-registry")))
+               (:file "test-registry")
+               (:file "test-frame")))
