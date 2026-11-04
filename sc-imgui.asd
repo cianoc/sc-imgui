@@ -43,6 +43,7 @@
   :pathname "src/bindings/"
   :serial t
   :components ((:file "package")
+               (:file "types")
                (:file "library")
                (:file "shim")
                (:file "imgui")

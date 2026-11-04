@@ -75,3 +75,35 @@
 (test onscreen-window-count-without-a-window
   ;; -1 where the count is unavailable (non-macOS); otherwise no window is open.
   (is (<= -1 (%shim:onscreen-window-count) 0)))
+
+;;; `const char*` arguments accept NIL (passed as NULL) as well as strings.
+
+(test nil-string-argument
+  (with-headless-imgui ()
+    (with-test-frame ()
+      (%imgui:begin "t" (cffi:null-pointer) 0)
+      (%imgui:text-unformatted "hi" nil)
+      (%imgui:end))
+    (is (= 0 (%shim:assert-count)))))
+
+(test string-arguments-with-struct-by-value
+  ;; Calls that take an ImVec2 by value go through cffi-libffi; the string
+  ;; argument type must translate there too, for NIL and for strings.
+  (with-headless-imgui ()
+    (with-test-frame ()
+      (%imgui:begin "t" (cffi:null-pointer) 0)
+      (%imgui:progress-bar 0.5 (vec2 100 10) nil)
+      (%imgui:progress-bar 0.5 (vec2 100 10) "half")
+      ;; The string reached C intact: the button's ID hashes "abc".
+      (%imgui:invisible-button "abc" (vec2 20 20) 0)
+      (is (= (%imgui:get-id-str "abc") (%imgui:get-item-id)))
+      (is (/= (%imgui:get-id-str "abc") (%imgui:get-id-str "abd")))
+      (%imgui:end))
+    (is (= 0 (%shim:assert-count)))))
+
+(test shim-accepts-nil-ini-path
+  ;; With a headless context open the shim refuses a window; reaching that
+  ;; refusal shows the NIL ini-path was passed (as NULL) without error.
+  (with-headless-imgui ()
+    (is (/= 0 (%shim:open-window 10 10 "x" nil)))
+    (is (search "already open" (%shim:last-error)))))

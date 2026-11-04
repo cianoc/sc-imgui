@@ -103,6 +103,17 @@
     ;; igButton still takes the by-value struct
     (is (equal "IM-VEC2" (symbol-name (second (second (fifth (find-defcfun forms "igButton")))))))))
 
+;; `const char*` arguments use sc-imgui.bindings:optional-string (NIL passes
+;; NULL); `const char*` returns stay CFFI :string.
+(test const-char-arguments-accept-nil
+  (let ((button (find-defcfun (fixture-forms) "igButton")))
+    (is (equal "LABEL" (symbol-name (first (fourth button)))))
+    (is (eq 'sc-imgui.bindings:optional-string (second (fourth button)))))
+  (let ((forms (sc-imgui.generator::emit-function
+                (list :c-name "igGetVersion" :ret "const char*" :args nil)
+                "ig" (ensure-package "%IMGUI") nil (make-hash-table :test 'equal))))
+    (is (eq :string (third (first forms))))))
+
 (test opaque-struct-warns
   (let (warned)
     (handler-bind ((opaque-struct-warning

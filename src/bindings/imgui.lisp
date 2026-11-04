@@ -4231,8 +4231,8 @@
   (self :pointer)
   (pos (:struct im-vec2))
   (col :uint32)
-  (text-begin :string)
-  (text-end :string))
+  (text-begin sc-imgui.bindings:optional-string)
+  (text-end sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("ImDrawList_AddText_FontPtr" im-draw-list-add-text-font-ptr)
     :void
@@ -4241,8 +4241,8 @@
   (font-size :float)
   (pos (:struct im-vec2))
   (col :uint32)
-  (text-begin :string)
-  (text-end :string)
+  (text-begin sc-imgui.bindings:optional-string)
+  (text-end sc-imgui.bindings:optional-string)
   (wrap-width :float)
   (cpu-fine-clip-rect :pointer))
 
@@ -4650,7 +4650,7 @@
 (cffi:defcfun ("ImFontAtlas_AddFontFromFileTTF" im-font-atlas-add-font-from-file-ttf)
     :pointer
   (self :pointer)
-  (filename :string)
+  (filename sc-imgui.bindings:optional-string)
   (size-pixels :float)
   (font-cfg :pointer)
   (glyph-ranges :pointer))
@@ -4659,7 +4659,7 @@
                im-font-atlas-add-font-from-memory-compressed-base85-ttf)
     :pointer
   (self :pointer)
-  (compressed-font-data-base85 :string)
+  (compressed-font-data-base85 sc-imgui.bindings:optional-string)
   (size-pixels :float)
   (font-cfg :pointer)
   (glyph-ranges :pointer))
@@ -4792,8 +4792,8 @@
 (cffi:defcfun ("ImFontGlyphRangesBuilder_AddText" im-font-glyph-ranges-builder-add-text)
     :void
   (self :pointer)
-  (text :string)
-  (text-end :string))
+  (text sc-imgui.bindings:optional-string)
+  (text-end sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("ImFontGlyphRangesBuilder_BuildRanges" im-font-glyph-ranges-builder-build-ranges)
     :void
@@ -4858,16 +4858,16 @@
   (size :float)
   (max-width :float)
   (wrap-width :float)
-  (text-begin :string)
-  (text-end :string)
+  (text-begin sc-imgui.bindings:optional-string)
+  (text-end sc-imgui.bindings:optional-string)
   (out-remaining :pointer))
 
 (cffi:defcfun ("ImFont_CalcWordWrapPosition" im-font-calc-word-wrap-position)
     :string
   (self :pointer)
   (size :float)
-  (text :string)
-  (text-end :string)
+  (text sc-imgui.bindings:optional-string)
+  (text-end sc-imgui.bindings:optional-string)
   (wrap-width :float))
 
 (cffi:defcfun ("ImFont_ClearOutputData" im-font-clear-output-data)
@@ -4928,8 +4928,8 @@
   (pos (:struct im-vec2))
   (col :uint32)
   (clip-rect (:struct im-vec4))
-  (text-begin :string)
-  (text-end :string)
+  (text-begin sc-imgui.bindings:optional-string)
+  (text-end sc-imgui.bindings:optional-string)
   (wrap-width :float)
   (flags :int))
 
@@ -5125,7 +5125,7 @@
 (cffi:defcfun ("ImGuiIO_AddInputCharactersUTF8" im-gui-io-add-input-characters-utf8)
     :void
   (self :pointer)
-  (str :string))
+  (str sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("ImGuiIO_AddKeyAnalogEvent" im-gui-io-add-key-analog-event)
     :void
@@ -5236,8 +5236,8 @@
     :void
   (self :pointer)
   (pos :int)
-  (text :string)
-  (text-end :string))
+  (text sc-imgui.bindings:optional-string)
+  (text-end sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("ImGuiInputTextCallbackData_SelectAll" im-gui-input-text-callback-data-select-all)
     :void
@@ -5601,7 +5601,7 @@
 (cffi:defcfun ("ImGuiPayload_IsDataType" im-gui-payload-is-data-type-raw)
     :uint8
   (self :pointer)
-  (type :string))
+  (type sc-imgui.bindings:optional-string))
 
 (common-lisp:defun im-gui-payload-is-data-type (self type)
   (common-lisp:/= 0 (im-gui-payload-is-data-type-raw self type)))
@@ -5988,13 +5988,13 @@
 (cffi:defcfun ("ImGuiTextBuffer_append" im-gui-text-buffer-append)
     :void
   (self :pointer)
-  (str :string)
-  (str-end :string))
+  (str sc-imgui.bindings:optional-string)
+  (str-end sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("ImGuiTextBuffer_appendf0" im-gui-text-buffer-appendf0)
     :void
   (self :pointer)
-  (fmt :string))
+  (fmt sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("ImGuiTextBuffer_begin" im-gui-text-buffer-begin)
     :string
@@ -6040,8 +6040,8 @@
 (cffi:defcfun ("ImGuiTextFilterItem_ImGuiTextFilterItem"
                im-gui-text-filter-item-im-gui-text-filter-item)
     :pointer
-  (b :string)
-  (e :string))
+  (b sc-imgui.bindings:optional-string)
+  (e sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("ImGuiTextFilterItem_destroy" im-gui-text-filter-item-destroy)
     :void
@@ -6058,7 +6058,7 @@
 (cffi:defcfun ("ImGuiTextFilter_Draw" im-gui-text-filter-draw-raw)
     :uint8
   (self :pointer)
-  (label :string))
+  (label sc-imgui.bindings:optional-string))
 
 (common-lisp:defun im-gui-text-filter-draw (self label)
   (common-lisp:/= 0 (im-gui-text-filter-draw-raw self label)))
@@ -6066,15 +6066,15 @@
 (cffi:defcfun ("ImGuiTextFilter_DrawWithHint" im-gui-text-filter-draw-with-hint-raw)
     :uint8
   (self :pointer)
-  (label :string)
-  (hint :string))
+  (label sc-imgui.bindings:optional-string)
+  (hint sc-imgui.bindings:optional-string))
 
 (common-lisp:defun im-gui-text-filter-draw-with-hint (self label hint)
   (common-lisp:/= 0 (im-gui-text-filter-draw-with-hint-raw self label hint)))
 
 (cffi:defcfun ("ImGuiTextFilter_ImGuiTextFilter" im-gui-text-filter-im-gui-text-filter)
     :pointer
-  (default-filter :string))
+  (default-filter sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("ImGuiTextFilter_IsActive" im-gui-text-filter-is-active-raw)
     :uint8
@@ -6086,8 +6086,8 @@
 (cffi:defcfun ("ImGuiTextFilter_PassFilter" im-gui-text-filter-pass-filter-raw)
     :uint8
   (self :pointer)
-  (text :string)
-  (text-end :string))
+  (text sc-imgui.bindings:optional-string)
+  (text-end sc-imgui.bindings:optional-string))
 
 (common-lisp:defun im-gui-text-filter-pass-filter (self text text-end)
   (common-lisp:/= 0 (im-gui-text-filter-pass-filter-raw self text text-end)))
@@ -6099,7 +6099,7 @@
 (cffi:defcfun ("ImGuiTextIndex_append" im-gui-text-index-append)
     :void
   (self :pointer)
-  (base :string)
+  (base sc-imgui.bindings:optional-string)
   (old-size :int)
   (new-size :int))
 
@@ -6110,13 +6110,13 @@
 (cffi:defcfun ("ImGuiTextIndex_get_line_begin" im-gui-text-index-get-line-begin)
     :string
   (self :pointer)
-  (base :string)
+  (base sc-imgui.bindings:optional-string)
   (n :int))
 
 (cffi:defcfun ("ImGuiTextIndex_get_line_end" im-gui-text-index-get-line-end)
     :string
   (self :pointer)
-  (base :string)
+  (base sc-imgui.bindings:optional-string)
   (n :int))
 
 (cffi:defcfun ("ImGuiTextIndex_size" im-gui-text-index-size)
@@ -6214,8 +6214,8 @@
 (cffi:defcfun ("ImGuiWindow_GetID_Str" im-gui-window-get-id-str)
     :uint32
   (self :pointer)
-  (str :string)
-  (str-end :string))
+  (str sc-imgui.bindings:optional-string)
+  (str-end sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("ImGuiWindow_GetID_Ptr" im-gui-window-get-id-ptr)
     :uint32
@@ -6240,7 +6240,7 @@
 (cffi:defcfun ("ImGuiWindow_ImGuiWindow" im-gui-window-im-gui-window)
     :pointer
   (context :pointer)
-  (name :string))
+  (name sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("ImGuiWindow_MenuBarRect" im-gui-window-menu-bar-rect)
     (:struct im-rect)
@@ -6554,7 +6554,7 @@
 
 (cffi:defcfun ("igAcceptDragDropPayload" accept-drag-drop-payload)
     :pointer
-  (type :string)
+  (type sc-imgui.bindings:optional-string)
   (flags :int))
 
 (cffi:defcfun ("igActivateItemByID" activate-item-by-id)
@@ -6581,14 +6581,14 @@
 
 (cffi:defcfun ("igArrowButton" arrow-button-raw)
     :uint8
-  (str-id :string)
+  (str-id sc-imgui.bindings:optional-string)
   (dir :int))
 
 (common-lisp:defun arrow-button (str-id dir) (common-lisp:/= 0 (arrow-button-raw str-id dir)))
 
 (cffi:defcfun ("igArrowButtonEx" arrow-button-ex-raw)
     :uint8
-  (str-id :string)
+  (str-id sc-imgui.bindings:optional-string)
   (dir :int)
   (size-arg (:struct im-vec2))
   (flags :int))
@@ -6598,7 +6598,7 @@
 
 (cffi:defcfun ("igBegin" begin-raw)
     :uint8
-  (name :string)
+  (name sc-imgui.bindings:optional-string)
   (p-open :pointer)
   (flags :int))
 
@@ -6616,7 +6616,7 @@
 
 (cffi:defcfun ("igBeginChild_Str" begin-child-str-raw)
     :uint8
-  (str-id :string)
+  (str-id sc-imgui.bindings:optional-string)
   (size (:struct im-vec2))
   (child-flags :int)
   (window-flags :int))
@@ -6636,7 +6636,7 @@
 
 (cffi:defcfun ("igBeginChildEx" begin-child-ex-raw)
     :uint8
-  (name :string)
+  (name sc-imgui.bindings:optional-string)
   (id :uint32)
   (size-arg (:struct im-vec2))
   (child-flags :int)
@@ -6647,14 +6647,14 @@
 
 (cffi:defcfun ("igBeginColumns" begin-columns)
     :void
-  (str-id :string)
+  (str-id sc-imgui.bindings:optional-string)
   (count :int)
   (flags :int))
 
 (cffi:defcfun ("igBeginCombo" begin-combo-raw)
     :uint8
-  (label :string)
-  (preview-value :string)
+  (label sc-imgui.bindings:optional-string)
+  (preview-value sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun begin-combo (label preview-value flags)
@@ -6737,7 +6737,7 @@
 
 (cffi:defcfun ("igBeginListBox" begin-list-box-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (size (:struct im-vec2)))
 
 (common-lisp:defun begin-list-box (label size) (common-lisp:/= 0 (begin-list-box-raw label size)))
@@ -6749,7 +6749,7 @@
 
 (cffi:defcfun ("igBeginMenu" begin-menu-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (enabled :bool))
 
 (common-lisp:defun begin-menu (label enabled) (common-lisp:/= 0 (begin-menu-raw label enabled)))
@@ -6761,8 +6761,8 @@
 
 (cffi:defcfun ("igBeginMenuEx" begin-menu-ex-raw)
     :uint8
-  (label :string)
-  (icon :string)
+  (label sc-imgui.bindings:optional-string)
+  (icon sc-imgui.bindings:optional-string)
   (enabled :bool))
 
 (common-lisp:defun begin-menu-ex (label icon enabled)
@@ -6776,14 +6776,14 @@
 
 (cffi:defcfun ("igBeginPopup" begin-popup-raw)
     :uint8
-  (str-id :string)
+  (str-id sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun begin-popup (str-id flags) (common-lisp:/= 0 (begin-popup-raw str-id flags)))
 
 (cffi:defcfun ("igBeginPopupContextItem" begin-popup-context-item-raw)
     :uint8
-  (str-id :string)
+  (str-id sc-imgui.bindings:optional-string)
   (popup-flags :int))
 
 (common-lisp:defun begin-popup-context-item (str-id popup-flags)
@@ -6791,7 +6791,7 @@
 
 (cffi:defcfun ("igBeginPopupContextVoid" begin-popup-context-void-raw)
     :uint8
-  (str-id :string)
+  (str-id sc-imgui.bindings:optional-string)
   (popup-flags :int))
 
 (common-lisp:defun begin-popup-context-void (str-id popup-flags)
@@ -6799,7 +6799,7 @@
 
 (cffi:defcfun ("igBeginPopupContextWindow" begin-popup-context-window-raw)
     :uint8
-  (str-id :string)
+  (str-id sc-imgui.bindings:optional-string)
   (popup-flags :int))
 
 (common-lisp:defun begin-popup-context-window (str-id popup-flags)
@@ -6816,7 +6816,7 @@
 (cffi:defcfun ("igBeginPopupMenuEx" begin-popup-menu-ex-raw)
     :uint8
   (id :uint32)
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (extra-window-flags :int))
 
 (common-lisp:defun begin-popup-menu-ex (id label extra-window-flags)
@@ -6824,7 +6824,7 @@
 
 (cffi:defcfun ("igBeginPopupModal" begin-popup-modal-raw)
     :uint8
-  (name :string)
+  (name sc-imgui.bindings:optional-string)
   (p-open :pointer)
   (flags :int))
 
@@ -6833,7 +6833,7 @@
 
 (cffi:defcfun ("igBeginTabBar" begin-tab-bar-raw)
     :uint8
-  (str-id :string)
+  (str-id sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun begin-tab-bar (str-id flags) (common-lisp:/= 0 (begin-tab-bar-raw str-id flags)))
@@ -6849,7 +6849,7 @@
 
 (cffi:defcfun ("igBeginTabItem" begin-tab-item-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (p-open :pointer)
   (flags :int))
 
@@ -6858,7 +6858,7 @@
 
 (cffi:defcfun ("igBeginTable" begin-table-raw)
     :uint8
-  (str-id :string)
+  (str-id sc-imgui.bindings:optional-string)
   (columns :int)
   (flags :int)
   (outer-size (:struct im-vec2))
@@ -6869,7 +6869,7 @@
 
 (cffi:defcfun ("igBeginTableEx" begin-table-ex-raw)
     :uint8
-  (name :string)
+  (name sc-imgui.bindings:optional-string)
   (id :uint32)
   (columns-count :int)
   (flags :int)
@@ -6899,7 +6899,7 @@
 
 (cffi:defcfun ("igBeginViewportSideBar" begin-viewport-side-bar-raw)
     :uint8
-  (name :string)
+  (name sc-imgui.bindings:optional-string)
   (viewport :pointer)
   (dir :int)
   (size :float)
@@ -6930,11 +6930,11 @@
 
 (cffi:defcfun ("igBulletText0" bullet-text0)
     :void
-  (fmt :string))
+  (fmt sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igButton" button-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (size (:struct im-vec2)))
 
 (common-lisp:defun button (label size) (common-lisp:/= 0 (button-raw label size)))
@@ -6952,7 +6952,7 @@
 
 (cffi:defcfun ("igButtonEx" button-ex-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (size-arg (:struct im-vec2))
   (flags :int))
 
@@ -6984,8 +6984,8 @@
 
 (cffi:defcfun ("igCalcTextSize" calc-text-size)
     (:struct im-vec2)
-  (text :string)
-  (text-end :string)
+  (text sc-imgui.bindings:optional-string)
+  (text-end sc-imgui.bindings:optional-string)
   (hide-text-after-double-hash :bool)
   (wrap-width :float))
 
@@ -7012,14 +7012,14 @@
 
 (cffi:defcfun ("igCheckbox" checkbox-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (v :pointer))
 
 (common-lisp:defun checkbox (label v) (common-lisp:/= 0 (checkbox-raw label v)))
 
 (cffi:defcfun ("igCheckboxFlags_IntPtr" checkbox-flags-int-ptr-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (flags :pointer)
   (flags-value :int))
 
@@ -7028,7 +7028,7 @@
 
 (cffi:defcfun ("igCheckboxFlags_UintPtr" checkbox-flags-uint-ptr-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (flags :pointer)
   (flags-value :uint))
 
@@ -7037,7 +7037,7 @@
 
 (cffi:defcfun ("igCheckboxFlags_S64Ptr" checkbox-flags-s64-ptr-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (flags :pointer)
   (flags-value :int64))
 
@@ -7046,7 +7046,7 @@
 
 (cffi:defcfun ("igCheckboxFlags_U64Ptr" checkbox-flags-u64-ptr-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (flags :pointer)
   (flags-value :uint64))
 
@@ -7068,7 +7068,7 @@
 
 (cffi:defcfun ("igClearWindowSettings" clear-window-settings)
     :void
-  (name :string))
+  (name sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igCloseButton" close-button-raw)
     :uint8
@@ -7104,7 +7104,7 @@
 
 (cffi:defcfun ("igCollapsingHeader_TreeNodeFlags" collapsing-header-tree-node-flags-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun collapsing-header-tree-node-flags (label flags)
@@ -7112,7 +7112,7 @@
 
 (cffi:defcfun ("igCollapsingHeader_BoolPtr" collapsing-header-bool-ptr-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (p-visible :pointer)
   (flags :int))
 
@@ -7121,7 +7121,7 @@
 
 (cffi:defcfun ("igColorButton" color-button-raw)
     :uint8
-  (desc-id :string)
+  (desc-id sc-imgui.bindings:optional-string)
   (col (:struct im-vec4))
   (flags :int)
   (size (:struct im-vec2)))
@@ -7157,7 +7157,7 @@
 
 (cffi:defcfun ("igColorEdit3" color-edit3-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (col :pointer)
   (flags :int))
 
@@ -7166,7 +7166,7 @@
 
 (cffi:defcfun ("igColorEdit4" color-edit4-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (col :pointer)
   (flags :int))
 
@@ -7180,7 +7180,7 @@
 
 (cffi:defcfun ("igColorPicker3" color-picker3-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (col :pointer)
   (flags :int))
 
@@ -7189,7 +7189,7 @@
 
 (cffi:defcfun ("igColorPicker4" color-picker4-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (col :pointer)
   (flags :int)
   (ref-col :pointer))
@@ -7204,19 +7204,19 @@
 
 (cffi:defcfun ("igColorTooltip" color-tooltip)
     :void
-  (text :string)
+  (text sc-imgui.bindings:optional-string)
   (col :pointer)
   (flags :int))
 
 (cffi:defcfun ("igColumns" columns)
     :void
   (count :int)
-  (id :string)
+  (id sc-imgui.bindings:optional-string)
   (borders :bool))
 
 (cffi:defcfun ("igCombo_Str_arr" combo-str-arr-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (current-item :pointer)
   (items :pointer)
   (items-count :int)
@@ -7229,9 +7229,9 @@
 
 (cffi:defcfun ("igCombo_Str" combo-str-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (current-item :pointer)
-  (items-separated-by-zeros :string)
+  (items-separated-by-zeros sc-imgui.bindings:optional-string)
   (popup-max-height-in-items :int))
 
 (common-lisp:defun combo-str
@@ -7242,7 +7242,7 @@
 
 (cffi:defcfun ("igCombo_FnStrPtr" combo-fn-str-ptr-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (current-item :pointer)
   (getter :pointer)
   (user-data :pointer)
@@ -7265,14 +7265,14 @@
 
 (cffi:defcfun ("igCreateNewWindowSettings" create-new-window-settings)
     :pointer
-  (name :string))
+  (name sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igDataTypeApplyFromText" data-type-apply-from-text-raw)
     :uint8
-  (buf :string)
+  (buf sc-imgui.bindings:optional-string)
   (data-type :int)
   (p-data :pointer)
-  (format :string)
+  (format sc-imgui.bindings:optional-string)
   (p-data-when-empty :pointer))
 
 (common-lisp:defun data-type-apply-from-text (buf data-type p-data format p-data-when-empty)
@@ -7308,7 +7308,7 @@
   (buf-size :int)
   (data-type :int)
   (p-data :pointer)
-  (format :string))
+  (format sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igDataTypeGetInfo" data-type-get-info)
     :pointer
@@ -7331,8 +7331,8 @@
 
 (cffi:defcfun ("igDebugBreakButton" debug-break-button-raw)
     :uint8
-  (label :string)
-  (description-of-location :string))
+  (label sc-imgui.bindings:optional-string)
+  (description-of-location sc-imgui.bindings:optional-string))
 
 (common-lisp:defun debug-break-button (label description-of-location)
   (common-lisp:/= 0 (debug-break-button-raw label description-of-location)))
@@ -7340,14 +7340,14 @@
 (cffi:defcfun ("igDebugBreakButtonTooltip" debug-break-button-tooltip)
     :void
   (keyboard-only :bool)
-  (description-of-location :string))
+  (description-of-location sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igDebugBreakClearData" debug-break-clear-data)
     :void)
 
 (cffi:defcfun ("igDebugCheckVersionAndDataLayout" debug-check-version-and-data-layout-raw)
     :uint8
-  (version-str :string)
+  (version-str sc-imgui.bindings:optional-string)
   (sz-io :size)
   (sz-style :size)
   (sz-vec2 :size)
@@ -7397,7 +7397,7 @@
 
 (cffi:defcfun ("igDebugLog0" debug-log0)
     :void
-  (fmt :string))
+  (fmt sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igDebugNodeColumns" debug-node-columns)
     :void
@@ -7406,7 +7406,7 @@
 (cffi:defcfun ("igDebugNodeDockNode" debug-node-dock-node)
     :void
   (node :pointer)
-  (label :string))
+  (label sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igDebugNodeDrawCmdShowMeshAndBoundingBox"
                debug-node-draw-cmd-show-mesh-and-bounding-box)
@@ -7422,7 +7422,7 @@
   (window :pointer)
   (viewport :pointer)
   (draw-list :pointer)
-  (label :string))
+  (label sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igDebugNodeFont" debug-node-font)
     :void
@@ -7450,18 +7450,18 @@
 (cffi:defcfun ("igDebugNodePlatformMonitor" debug-node-platform-monitor)
     :void
   (monitor :pointer)
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (idx :int))
 
 (cffi:defcfun ("igDebugNodeStorage" debug-node-storage)
     :void
   (storage :pointer)
-  (label :string))
+  (label sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igDebugNodeTabBar" debug-node-tab-bar)
     :void
   (tab-bar :pointer)
-  (label :string))
+  (label sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igDebugNodeTable" debug-node-table)
     :void
@@ -7489,7 +7489,7 @@
 (cffi:defcfun ("igDebugNodeWindow" debug-node-window)
     :void
   (window :pointer)
-  (label :string))
+  (label sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igDebugNodeWindowSettings" debug-node-window-settings)
     :void
@@ -7498,7 +7498,7 @@
 (cffi:defcfun ("igDebugNodeWindowsList" debug-node-windows-list)
     :void
   (windows :pointer)
-  (label :string))
+  (label sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igDebugNodeWindowsListByBeginStackParent"
                debug-node-windows-list-by-begin-stack-parent)
@@ -7522,12 +7522,12 @@
 
 (cffi:defcfun ("igDebugTextEncoding" debug-text-encoding)
     :void
-  (text :string))
+  (text sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igDebugTextUnformattedWithLocateItem" debug-text-unformatted-with-locate-item)
     :void
-  (line-begin :string)
-  (line-end :string))
+  (line-begin sc-imgui.bindings:optional-string)
+  (line-end sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igDebugTextureIDToU64" debug-texture-id-to-u64)
     :uint64
@@ -7535,9 +7535,9 @@
 
 (cffi:defcfun ("igDemoMarker" demo-marker)
     :void
-  (file :string)
+  (file sc-imgui.bindings:optional-string)
   (line :int)
-  (section :string))
+  (section sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igDestroyContext" destroy-context)
     :void
@@ -7569,12 +7569,12 @@
 
 (cffi:defcfun ("igDockBuilderCopyWindowSettings" dock-builder-copy-window-settings)
     :void
-  (src-name :string)
-  (dst-name :string))
+  (src-name sc-imgui.bindings:optional-string)
+  (dst-name sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igDockBuilderDockWindow" dock-builder-dock-window)
     :void
-  (window-name :string)
+  (window-name sc-imgui.bindings:optional-string)
   (node-id :uint32))
 
 (cffi:defcfun ("igDockBuilderFinish" dock-builder-finish)
@@ -7764,7 +7764,7 @@
   (v-speed :float)
   (p-min :pointer)
   (p-max :pointer)
-  (format :string)
+  (format sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun drag-behavior (id data-type p-v v-speed p-min p-max format flags)
@@ -7772,12 +7772,12 @@
 
 (cffi:defcfun ("igDragFloat" drag-float-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (v :pointer)
   (v-speed :float)
   (v-min :float)
   (v-max :float)
-  (format :string)
+  (format sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun drag-float (label v v-speed v-min v-max format flags)
@@ -7785,12 +7785,12 @@
 
 (cffi:defcfun ("igDragFloat2" drag-float2-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (v :pointer)
   (v-speed :float)
   (v-min :float)
   (v-max :float)
-  (format :string)
+  (format sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun drag-float2 (label v v-speed v-min v-max format flags)
@@ -7798,12 +7798,12 @@
 
 (cffi:defcfun ("igDragFloat3" drag-float3-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (v :pointer)
   (v-speed :float)
   (v-min :float)
   (v-max :float)
-  (format :string)
+  (format sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun drag-float3 (label v v-speed v-min v-max format flags)
@@ -7811,12 +7811,12 @@
 
 (cffi:defcfun ("igDragFloat4" drag-float4-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (v :pointer)
   (v-speed :float)
   (v-min :float)
   (v-max :float)
-  (format :string)
+  (format sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun drag-float4 (label v v-speed v-min v-max format flags)
@@ -7824,14 +7824,14 @@
 
 (cffi:defcfun ("igDragFloatRange2" drag-float-range2-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (v-current-min :pointer)
   (v-current-max :pointer)
   (v-speed :float)
   (v-min :float)
   (v-max :float)
-  (format :string)
-  (format-max :string)
+  (format sc-imgui.bindings:optional-string)
+  (format-max sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun drag-float-range2
@@ -7842,12 +7842,12 @@
 
 (cffi:defcfun ("igDragInt" drag-int-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (v :pointer)
   (v-speed :float)
   (v-min :int)
   (v-max :int)
-  (format :string)
+  (format sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun drag-int (label v v-speed v-min v-max format flags)
@@ -7855,12 +7855,12 @@
 
 (cffi:defcfun ("igDragInt2" drag-int2-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (v :pointer)
   (v-speed :float)
   (v-min :int)
   (v-max :int)
-  (format :string)
+  (format sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun drag-int2 (label v v-speed v-min v-max format flags)
@@ -7868,12 +7868,12 @@
 
 (cffi:defcfun ("igDragInt3" drag-int3-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (v :pointer)
   (v-speed :float)
   (v-min :int)
   (v-max :int)
-  (format :string)
+  (format sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun drag-int3 (label v v-speed v-min v-max format flags)
@@ -7881,12 +7881,12 @@
 
 (cffi:defcfun ("igDragInt4" drag-int4-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (v :pointer)
   (v-speed :float)
   (v-min :int)
   (v-max :int)
-  (format :string)
+  (format sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun drag-int4 (label v v-speed v-min v-max format flags)
@@ -7894,14 +7894,14 @@
 
 (cffi:defcfun ("igDragIntRange2" drag-int-range2-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (v-current-min :pointer)
   (v-current-max :pointer)
   (v-speed :float)
   (v-min :int)
   (v-max :int)
-  (format :string)
-  (format-max :string)
+  (format sc-imgui.bindings:optional-string)
+  (format-max sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun drag-int-range2
@@ -7912,13 +7912,13 @@
 
 (cffi:defcfun ("igDragScalar" drag-scalar-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (data-type :int)
   (p-data :pointer)
   (v-speed :float)
   (p-min :pointer)
   (p-max :pointer)
-  (format :string)
+  (format sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun drag-scalar (label data-type p-data v-speed p-min p-max format flags)
@@ -7926,14 +7926,14 @@
 
 (cffi:defcfun ("igDragScalarN" drag-scalar-n-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (data-type :int)
   (p-data :pointer)
   (components :int)
   (v-speed :float)
   (p-min :pointer)
   (p-max :pointer)
-  (format :string)
+  (format sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun drag-scalar-n
@@ -8027,7 +8027,7 @@
 
 (cffi:defcfun ("igErrorLog" error-log-raw)
     :uint8
-  (msg :string))
+  (msg sc-imgui.bindings:optional-string))
 
 (common-lisp:defun error-log (msg) (common-lisp:/= 0 (error-log-raw msg)))
 
@@ -8095,12 +8095,12 @@
 
 (cffi:defcfun ("igFindRenderedTextEnd" find-rendered-text-end)
     :string
-  (text :string)
-  (text-end :string))
+  (text sc-imgui.bindings:optional-string)
+  (text-end sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igFindSettingsHandler" find-settings-handler)
     :pointer
-  (type-name :string))
+  (type-name sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igFindViewportByID" find-viewport-by-id)
     :pointer
@@ -8116,7 +8116,7 @@
 
 (cffi:defcfun ("igFindWindowByName" find-window-by-name)
     :pointer
-  (name :string))
+  (name sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igFindWindowDisplayIndex" find-window-display-index)
     :int
@@ -8220,7 +8220,7 @@
 
 (cffi:defcfun ("igGetColumnsID" get-columns-id)
     :uint32
-  (str-id :string)
+  (str-id sc-imgui.bindings:optional-string)
   (count :int))
 
 (cffi:defcfun ("igGetContentRegionAvail" get-content-region-avail)
@@ -8308,12 +8308,12 @@
 
 (cffi:defcfun ("igGetID_Str" get-id-str)
     :uint32
-  (str-id :string))
+  (str-id sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igGetID_StrStr" get-id-str-str)
     :uint32
-  (str-id-begin :string)
-  (str-id-end :string))
+  (str-id-begin sc-imgui.bindings:optional-string)
+  (str-id-end sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igGetID_Ptr" get-id-ptr)
     :uint32
@@ -8325,8 +8325,8 @@
 
 (cffi:defcfun ("igGetIDWithSeed_Str" get-id-with-seed-str)
     :uint32
-  (str-id-begin :string)
-  (str-id-end :string)
+  (str-id-begin sc-imgui.bindings:optional-string)
+  (str-id-end sc-imgui.bindings:optional-string)
   (seed :uint32))
 
 (cffi:defcfun ("igGetIDWithSeed_Int" get-id-with-seed-int)
@@ -8735,15 +8735,15 @@
 
 (cffi:defcfun ("igImFileLoadToMemory" im-file-load-to-memory)
     :pointer
-  (filename :string)
-  (mode :string)
+  (filename sc-imgui.bindings:optional-string)
+  (mode sc-imgui.bindings:optional-string)
   (out-file-size :pointer)
   (padding-bytes :int))
 
 (cffi:defcfun ("igImFileOpen" im-file-open)
     :pointer
-  (filename :string)
-  (mode :string))
+  (filename sc-imgui.bindings:optional-string)
+  (mode sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igImFileRead" im-file-read)
     :uint64
@@ -8887,7 +8887,7 @@
   (y :int)
   (w :int)
   (h :int)
-  (in-str :string)
+  (in-str sc-imgui.bindings:optional-string)
   (in-marker-char :char))
 
 (cffi:defcfun ("igImFontAtlasBuildSetupFontLoader" im-font-atlas-build-setup-font-loader)
@@ -9118,9 +9118,9 @@
   (size :float)
   (max-width :float)
   (wrap-width :float)
-  (text-begin :string)
-  (text-end-display :string)
-  (text-end :string)
+  (text-begin sc-imgui.bindings:optional-string)
+  (text-end-display sc-imgui.bindings:optional-string)
+  (text-end sc-imgui.bindings:optional-string)
   (out-remaining :pointer)
   (out-offset :pointer)
   (flags :int))
@@ -9129,8 +9129,8 @@
     :string
   (font :pointer)
   (size :float)
-  (text :string)
-  (text-end :string)
+  (text sc-imgui.bindings:optional-string)
+  (text-end sc-imgui.bindings:optional-string)
   (wrap-width :float)
   (flags :int))
 
@@ -9138,13 +9138,13 @@
     :int
   (buf :pointer)
   (buf-size :size)
-  (fmt :string))
+  (fmt sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igImFormatStringToTempBuffer0" im-format-string-to-temp-buffer0)
     :void
   (out-buf :pointer)
   (out-buf-end :pointer)
-  (fmt :string))
+  (fmt sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igImHashData" im-hash-data)
     :uint32
@@ -9154,11 +9154,11 @@
 
 (cffi:defcfun ("igImHashSkipUncontributingPrefix" im-hash-skip-uncontributing-prefix)
     :string
-  (label :string))
+  (label sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igImHashStr" im-hash-str)
     :uint32
-  (data :string)
+  (data sc-imgui.bindings:optional-string)
   (data-size :size)
   (seed :uint32))
 
@@ -9309,32 +9309,32 @@
 
 (cffi:defcfun ("igImParseFormatFindEnd" im-parse-format-find-end)
     :string
-  (format :string))
+  (format sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igImParseFormatFindStart" im-parse-format-find-start)
     :string
-  (format :string))
+  (format sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igImParseFormatPrecision" im-parse-format-precision)
     :int
-  (format :string)
+  (format sc-imgui.bindings:optional-string)
   (default-value :int))
 
 (cffi:defcfun ("igImParseFormatSanitizeForPrinting" im-parse-format-sanitize-for-printing)
     :void
-  (fmt-in :string)
+  (fmt-in sc-imgui.bindings:optional-string)
   (fmt-out :pointer)
   (fmt-out-size :size))
 
 (cffi:defcfun ("igImParseFormatSanitizeForScanning" im-parse-format-sanitize-for-scanning)
     :string
-  (fmt-in :string)
+  (fmt-in sc-imgui.bindings:optional-string)
   (fmt-out :pointer)
   (fmt-out-size :size))
 
 (cffi:defcfun ("igImParseFormatTrimDecorations" im-parse-format-trim-decorations)
     :string
-  (format :string)
+  (format sc-imgui.bindings:optional-string)
   (buf :pointer)
   (buf-size :size))
 
@@ -9395,7 +9395,7 @@
 
 (cffi:defcfun ("igImStrSkipBlank" im-str-skip-blank)
     :string
-  (str :string))
+  (str sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igImStrTrimBlanks" im-str-trim-blanks)
     :void
@@ -9403,41 +9403,41 @@
 
 (cffi:defcfun ("igImStrbol" im-strbol)
     :string
-  (buf-mid-line :string)
-  (buf-begin :string))
+  (buf-mid-line sc-imgui.bindings:optional-string)
+  (buf-begin sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igImStrchrRange" im-strchr-range)
     :string
-  (str-begin :string)
-  (str-end :string)
+  (str-begin sc-imgui.bindings:optional-string)
+  (str-end sc-imgui.bindings:optional-string)
   (c :char))
 
 (cffi:defcfun ("igImStrdup" im-strdup)
     :pointer
-  (str :string))
+  (str sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igImStrdupcpy" im-strdupcpy)
     :pointer
   (dst :pointer)
   (p-dst-size :pointer)
-  (str :string))
+  (str sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igImStreolRange" im-streol-range)
     :string
-  (str :string)
-  (str-end :string))
+  (str sc-imgui.bindings:optional-string)
+  (str-end sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igImStricmp" im-stricmp)
     :int
-  (str1 :string)
-  (str2 :string))
+  (str1 sc-imgui.bindings:optional-string)
+  (str2 sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igImStristr" im-stristr)
     :string
-  (haystack :string)
-  (haystack-end :string)
-  (needle :string)
-  (needle-end :string))
+  (haystack sc-imgui.bindings:optional-string)
+  (haystack-end sc-imgui.bindings:optional-string)
+  (needle sc-imgui.bindings:optional-string)
+  (needle-end sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igImStrlenW" im-strlen-w)
     :int
@@ -9446,26 +9446,26 @@
 (cffi:defcfun ("igImStrncpy" im-strncpy)
     :void
   (dst :pointer)
-  (src :string)
+  (src sc-imgui.bindings:optional-string)
   (count :size))
 
 (cffi:defcfun ("igImStrnicmp" im-strnicmp)
     :int
-  (str1 :string)
-  (str2 :string)
+  (str1 sc-imgui.bindings:optional-string)
+  (str2 sc-imgui.bindings:optional-string)
   (count :size))
 
 (cffi:defcfun ("igImTextCalcWordWrapNextLineStart" im-text-calc-word-wrap-next-line-start)
     :string
-  (text :string)
-  (text-end :string)
+  (text sc-imgui.bindings:optional-string)
+  (text-end sc-imgui.bindings:optional-string)
   (flags :int))
 
 (cffi:defcfun ("igImTextCharFromUtf8" im-text-char-from-utf8)
     :int
   (out-char :pointer)
-  (in-text :string)
-  (in-text-end :string))
+  (in-text sc-imgui.bindings:optional-string)
+  (in-text-end sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igImTextCharToUtf8" im-text-char-to-utf8)
     :int
@@ -9493,22 +9493,22 @@
   (codepoint-min :uint)
   (codepoint-end :uint)
   (char-class :int)
-  (s :string))
+  (s sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igImTextCountCharsFromUtf8" im-text-count-chars-from-utf8)
     :int
-  (in-text :string)
-  (in-text-end :string))
+  (in-text sc-imgui.bindings:optional-string)
+  (in-text-end sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igImTextCountLines" im-text-count-lines)
     :int
-  (in-text :string)
-  (in-text-end :string))
+  (in-text sc-imgui.bindings:optional-string)
+  (in-text-end sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igImTextCountUtf8BytesFromChar" im-text-count-utf8-bytes-from-char)
     :int
-  (in-text :string)
-  (in-text-end :string))
+  (in-text sc-imgui.bindings:optional-string)
+  (in-text-end sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igImTextCountUtf8BytesFromStr" im-text-count-utf8-bytes-from-str)
     :int
@@ -9517,14 +9517,14 @@
 
 (cffi:defcfun ("igImTextFindPreviousUtf8Codepoint" im-text-find-previous-utf8-codepoint)
     :string
-  (in-text-start :string)
-  (in-p :string))
+  (in-text-start sc-imgui.bindings:optional-string)
+  (in-p sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igImTextFindValidUtf8CodepointEnd" im-text-find-valid-utf8-codepoint-end)
     :string
-  (in-text-start :string)
-  (in-text-end :string)
-  (in-p :string))
+  (in-text-start sc-imgui.bindings:optional-string)
+  (in-text-end sc-imgui.bindings:optional-string)
+  (in-p sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igImTextInitClassifiers" im-text-init-classifiers)
     :void)
@@ -9533,8 +9533,8 @@
     :int
   (out-buf :pointer)
   (out-buf-size :int)
-  (in-text :string)
-  (in-text-end :string)
+  (in-text sc-imgui.bindings:optional-string)
+  (in-text-end sc-imgui.bindings:optional-string)
   (in-remaining :pointer))
 
 (cffi:defcfun ("igImTextStrToUtf8" im-text-str-to-utf8)
@@ -9642,7 +9642,7 @@
 
 (cffi:defcfun ("igImageButton" image-button-raw)
     :uint8
-  (str-id :string)
+  (str-id sc-imgui.bindings:optional-string)
   (tex-ref (:struct im-texture-ref))
   (image-size (:struct im-vec2))
   (uv0 (:struct im-vec2))
@@ -9685,11 +9685,11 @@
 
 (cffi:defcfun ("igInputDouble" input-double-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (v :pointer)
   (step :double)
   (step-fast :double)
-  (format :string)
+  (format sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun input-double (label v step step-fast format flags)
@@ -9697,11 +9697,11 @@
 
 (cffi:defcfun ("igInputFloat" input-float-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (v :pointer)
   (step :float)
   (step-fast :float)
-  (format :string)
+  (format sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun input-float (label v step step-fast format flags)
@@ -9709,9 +9709,9 @@
 
 (cffi:defcfun ("igInputFloat2" input-float2-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (v :pointer)
-  (format :string)
+  (format sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun input-float2 (label v format flags)
@@ -9719,9 +9719,9 @@
 
 (cffi:defcfun ("igInputFloat3" input-float3-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (v :pointer)
-  (format :string)
+  (format sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun input-float3 (label v format flags)
@@ -9729,9 +9729,9 @@
 
 (cffi:defcfun ("igInputFloat4" input-float4-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (v :pointer)
-  (format :string)
+  (format sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun input-float4 (label v format flags)
@@ -9739,7 +9739,7 @@
 
 (cffi:defcfun ("igInputInt" input-int-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (v :pointer)
   (step :int)
   (step-fast :int)
@@ -9750,7 +9750,7 @@
 
 (cffi:defcfun ("igInputInt2" input-int2-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (v :pointer)
   (flags :int))
 
@@ -9758,7 +9758,7 @@
 
 (cffi:defcfun ("igInputInt3" input-int3-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (v :pointer)
   (flags :int))
 
@@ -9766,7 +9766,7 @@
 
 (cffi:defcfun ("igInputInt4" input-int4-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (v :pointer)
   (flags :int))
 
@@ -9774,12 +9774,12 @@
 
 (cffi:defcfun ("igInputScalar" input-scalar-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (data-type :int)
   (p-data :pointer)
   (p-step :pointer)
   (p-step-fast :pointer)
-  (format :string)
+  (format sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun input-scalar (label data-type p-data p-step p-step-fast format flags)
@@ -9787,13 +9787,13 @@
 
 (cffi:defcfun ("igInputScalarN" input-scalar-n-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (data-type :int)
   (p-data :pointer)
   (components :int)
   (p-step :pointer)
   (p-step-fast :pointer)
-  (format :string)
+  (format sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun input-scalar-n
@@ -9804,7 +9804,7 @@
 
 (cffi:defcfun ("igInputText" input-text-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (buf :pointer)
   (buf-size :size)
   (flags :int)
@@ -9820,8 +9820,8 @@
 
 (cffi:defcfun ("igInputTextEx" input-text-ex-raw)
     :uint8
-  (label :string)
-  (hint :string)
+  (label sc-imgui.bindings:optional-string)
+  (hint sc-imgui.bindings:optional-string)
   (buf :pointer)
   (buf-size :int)
   (size-arg (:struct im-vec2))
@@ -9834,7 +9834,7 @@
 
 (cffi:defcfun ("igInputTextMultiline" input-text-multiline-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (buf :pointer)
   (buf-size :size)
   (size (:struct im-vec2))
@@ -9847,8 +9847,8 @@
 
 (cffi:defcfun ("igInputTextWithHint" input-text-with-hint-raw)
     :uint8
-  (label :string)
-  (hint :string)
+  (label sc-imgui.bindings:optional-string)
+  (hint sc-imgui.bindings:optional-string)
   (buf :pointer)
   (buf-size :size)
   (flags :int)
@@ -9860,7 +9860,7 @@
 
 (cffi:defcfun ("igInvisibleButton" invisible-button-raw)
     :uint8
-  (str-id :string)
+  (str-id sc-imgui.bindings:optional-string)
   (size (:struct im-vec2))
   (flags :int))
 
@@ -10196,7 +10196,7 @@
 
 (cffi:defcfun ("igIsPopupOpen_Str" is-popup-open-str-raw)
     :uint8
-  (str-id :string)
+  (str-id sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun is-popup-open-str (str-id flags)
@@ -10350,12 +10350,12 @@
 
 (cffi:defcfun ("igLabelText0" label-text0)
     :void
-  (label :string)
-  (fmt :string))
+  (label sc-imgui.bindings:optional-string)
+  (fmt sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igListBox_Str_arr" list-box-str-arr-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (current-item :pointer)
   (items :pointer)
   (items-count :int)
@@ -10366,7 +10366,7 @@
 
 (cffi:defcfun ("igListBox_FnStrPtr" list-box-fn-str-ptr-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (current-item :pointer)
   (getter :pointer)
   (user-data :pointer)
@@ -10381,11 +10381,11 @@
 
 (cffi:defcfun ("igLoadIniSettingsFromDisk" load-ini-settings-from-disk)
     :void
-  (ini-filename :string))
+  (ini-filename sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igLoadIniSettingsFromMemory" load-ini-settings-from-memory)
     :void
-  (ini-data :string)
+  (ini-data sc-imgui.bindings:optional-string)
   (ini-size :size))
 
 (cffi:defcfun ("igLocalizeGetMsg" localize-get-msg)
@@ -10411,17 +10411,17 @@
 (cffi:defcfun ("igLogRenderedText" log-rendered-text)
     :void
   (ref-pos :pointer)
-  (text :string)
-  (text-end :string))
+  (text sc-imgui.bindings:optional-string)
+  (text-end sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igLogSetNextTextDecoration" log-set-next-text-decoration)
     :void
-  (prefix :string)
-  (suffix :string))
+  (prefix sc-imgui.bindings:optional-string)
+  (suffix sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igLogText0" log-text0)
     :void
-  (fmt :string))
+  (fmt sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igLogToBuffer" log-to-buffer)
     :void
@@ -10434,7 +10434,7 @@
 (cffi:defcfun ("igLogToFile" log-to-file)
     :void
   (auto-open-depth :int)
-  (filename :string))
+  (filename sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igLogToTTY" log-to-tty)
     :void
@@ -10461,8 +10461,8 @@
 
 (cffi:defcfun ("igMenuItem_Bool" menu-item-bool-raw)
     :uint8
-  (label :string)
-  (shortcut :string)
+  (label sc-imgui.bindings:optional-string)
+  (shortcut sc-imgui.bindings:optional-string)
   (selected :bool)
   (enabled :bool))
 
@@ -10471,8 +10471,8 @@
 
 (cffi:defcfun ("igMenuItem_BoolPtr" menu-item-bool-ptr-raw)
     :uint8
-  (label :string)
-  (shortcut :string)
+  (label sc-imgui.bindings:optional-string)
+  (shortcut sc-imgui.bindings:optional-string)
   (p-selected :pointer)
   (enabled :bool))
 
@@ -10481,9 +10481,9 @@
 
 (cffi:defcfun ("igMenuItemEx" menu-item-ex-raw)
     :uint8
-  (label :string)
-  (icon :string)
-  (shortcut :string)
+  (label sc-imgui.bindings:optional-string)
+  (icon sc-imgui.bindings:optional-string)
+  (shortcut sc-imgui.bindings:optional-string)
   (selected :bool)
   (enabled :bool))
 
@@ -10592,7 +10592,7 @@
 
 (cffi:defcfun ("igOpenPopup_Str" open-popup-str-raw)
     :uint8
-  (str-id :string)
+  (str-id sc-imgui.bindings:optional-string)
   (popup-flags :int))
 
 (common-lisp:defun open-popup-str (str-id popup-flags)
@@ -10616,7 +10616,7 @@
 
 (cffi:defcfun ("igOpenPopupOnItemClick" open-popup-on-item-click-raw)
     :uint8
-  (str-id :string)
+  (str-id sc-imgui.bindings:optional-string)
   (popup-flags :int))
 
 (common-lisp:defun open-popup-on-item-click (str-id popup-flags)
@@ -10625,23 +10625,23 @@
 (cffi:defcfun ("igPlotEx" plot-ex)
     :int
   (plot-type :int)
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (values-getter :pointer)
   (data :pointer)
   (values-count :int)
   (values-offset :int)
-  (overlay-text :string)
+  (overlay-text sc-imgui.bindings:optional-string)
   (scale-min :float)
   (scale-max :float)
   (size-arg (:struct im-vec2)))
 
 (cffi:defcfun ("igPlotHistogram_FloatPtr" plot-histogram-float-ptr)
     :void
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (values :pointer)
   (values-count :int)
   (values-offset :int)
-  (overlay-text :string)
+  (overlay-text sc-imgui.bindings:optional-string)
   (scale-min :float)
   (scale-max :float)
   (graph-size (:struct im-vec2))
@@ -10649,23 +10649,23 @@
 
 (cffi:defcfun ("igPlotHistogram_FnFloatPtr" plot-histogram-fn-float-ptr)
     :void
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (values-getter :pointer)
   (data :pointer)
   (values-count :int)
   (values-offset :int)
-  (overlay-text :string)
+  (overlay-text sc-imgui.bindings:optional-string)
   (scale-min :float)
   (scale-max :float)
   (graph-size (:struct im-vec2)))
 
 (cffi:defcfun ("igPlotLines_FloatPtr" plot-lines-float-ptr)
     :void
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (values :pointer)
   (values-count :int)
   (values-offset :int)
-  (overlay-text :string)
+  (overlay-text sc-imgui.bindings:optional-string)
   (scale-min :float)
   (scale-max :float)
   (graph-size (:struct im-vec2))
@@ -10673,12 +10673,12 @@
 
 (cffi:defcfun ("igPlotLines_FnFloatPtr" plot-lines-fn-float-ptr)
     :void
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (values-getter :pointer)
   (data :pointer)
   (values-count :int)
   (values-offset :int)
-  (overlay-text :string)
+  (overlay-text sc-imgui.bindings:optional-string)
   (scale-min :float)
   (scale-max :float)
   (graph-size (:struct im-vec2)))
@@ -10722,7 +10722,7 @@
     :void
   (fraction :float)
   (size-arg (:struct im-vec2))
-  (overlay :string))
+  (overlay sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igPushClipRect" push-clip-rect)
     :void
@@ -10748,12 +10748,12 @@
 
 (cffi:defcfun ("igPushID_Str" push-id-str)
     :void
-  (str-id :string))
+  (str-id sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igPushID_StrStr" push-id-str-str)
     :void
-  (str-id-begin :string)
-  (str-id-end :string))
+  (str-id-begin sc-imgui.bindings:optional-string)
+  (str-id-end sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igPushID_Ptr" push-id-ptr)
     :void
@@ -10820,7 +10820,7 @@
 
 (cffi:defcfun ("igRadioButton_Bool" radio-button-bool-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (active :bool))
 
 (common-lisp:defun radio-button-bool (label active)
@@ -10828,7 +10828,7 @@
 
 (cffi:defcfun ("igRadioButton_IntPtr" radio-button-int-ptr-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (v :pointer)
   (v-button :int))
 
@@ -10850,7 +10850,7 @@
 
 (cffi:defcfun ("igRemoveSettingsHandler" remove-settings-handler)
     :void
-  (type-name :string))
+  (type-name sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igRender" render)
     :void)
@@ -10979,16 +10979,16 @@
 (cffi:defcfun ("igRenderText" render-text)
     :void
   (pos (:struct im-vec2))
-  (text :string)
-  (text-end :string)
+  (text sc-imgui.bindings:optional-string)
+  (text-end sc-imgui.bindings:optional-string)
   (hide-text-after-hash :bool))
 
 (cffi:defcfun ("igRenderTextClipped" render-text-clipped)
     :void
   (pos-min (:struct im-vec2))
   (pos-max (:struct im-vec2))
-  (text :string)
-  (text-end :string)
+  (text sc-imgui.bindings:optional-string)
+  (text-end sc-imgui.bindings:optional-string)
   (text-size-if-known :pointer)
   (align (:struct im-vec2))
   (clip-rect :pointer))
@@ -10998,8 +10998,8 @@
   (draw-list :pointer)
   (pos-min (:struct im-vec2))
   (pos-max (:struct im-vec2))
-  (text :string)
-  (text-end :string)
+  (text sc-imgui.bindings:optional-string)
+  (text-end sc-imgui.bindings:optional-string)
   (text-size-if-known :pointer)
   (align (:struct im-vec2))
   (clip-rect :pointer))
@@ -11010,15 +11010,15 @@
   (pos-min (:struct im-vec2))
   (pos-max (:struct im-vec2))
   (ellipsis-max-x :float)
-  (text :string)
-  (text-end :string)
+  (text sc-imgui.bindings:optional-string)
+  (text-end sc-imgui.bindings:optional-string)
   (text-size-if-known :pointer))
 
 (cffi:defcfun ("igRenderTextWrapped" render-text-wrapped)
     :void
   (pos (:struct im-vec2))
-  (text :string)
-  (text-end :string)
+  (text sc-imgui.bindings:optional-string)
+  (text-end sc-imgui.bindings:optional-string)
   (wrap-width :float))
 
 (cffi:defcfun ("igResetMouseDragDelta" reset-mouse-drag-delta)
@@ -11032,7 +11032,7 @@
 
 (cffi:defcfun ("igSaveIniSettingsToDisk" save-ini-settings-to-disk)
     :void
-  (ini-filename :string))
+  (ini-filename sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igSaveIniSettingsToMemory" save-ini-settings-to-memory)
     :string
@@ -11084,7 +11084,7 @@
 
 (cffi:defcfun ("igSelectable_Bool" selectable-bool-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (selected :bool)
   (flags :int)
   (size (:struct im-vec2)))
@@ -11094,7 +11094,7 @@
 
 (cffi:defcfun ("igSelectable_BoolPtr" selectable-bool-ptr-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (p-selected :pointer)
   (flags :int)
   (size (:struct im-vec2)))
@@ -11112,13 +11112,13 @@
 
 (cffi:defcfun ("igSeparatorText" separator-text)
     :void
-  (label :string))
+  (label sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igSeparatorTextEx" separator-text-ex)
     :void
   (id :uint32)
-  (label :string)
-  (label-end :string)
+  (label sc-imgui.bindings:optional-string)
+  (label-end sc-imgui.bindings:optional-string)
   (extra-width :float))
 
 (cffi:defcfun ("igSetActiveID" set-active-id)
@@ -11137,7 +11137,7 @@
 
 (cffi:defcfun ("igSetClipboardText" set-clipboard-text)
     :void
-  (text :string))
+  (text sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igSetColumnOffset" set-column-offset)
     :void
@@ -11152,7 +11152,7 @@
 (cffi:defcfun ("igSetContextName" set-context-name)
     :void
   (ctx :pointer)
-  (name :string))
+  (name sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igSetCurrentContext" set-current-context)
     :void
@@ -11187,7 +11187,7 @@
 
 (cffi:defcfun ("igSetDragDropPayload" set-drag-drop-payload-raw)
     :uint8
-  (type :string)
+  (type sc-imgui.bindings:optional-string)
   (data :pointer)
   (sz :size)
   (cond :int))
@@ -11223,7 +11223,7 @@
 
 (cffi:defcfun ("igSetItemTooltip0" set-item-tooltip0)
     :void
-  (fmt :string))
+  (fmt sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igSetKeyOwner" set-key-owner)
     :void
@@ -11448,11 +11448,11 @@
 
 (cffi:defcfun ("igSetTabItemClosed" set-tab-item-closed)
     :void
-  (tab-or-docked-window-label :string))
+  (tab-or-docked-window-label sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igSetTooltip0" set-tooltip0)
     :void
-  (fmt :string))
+  (fmt sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igSetWindowClipRectBeforeSetChannel" set-window-clip-rect-before-set-channel)
     :void
@@ -11466,7 +11466,7 @@
 
 (cffi:defcfun ("igSetWindowCollapsed_Str" set-window-collapsed-str)
     :void
-  (name :string)
+  (name sc-imgui.bindings:optional-string)
   (collapsed :bool)
   (cond :int))
 
@@ -11487,7 +11487,7 @@
 
 (cffi:defcfun ("igSetWindowFocus_Str" set-window-focus-str)
     :void
-  (name :string))
+  (name sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igSetWindowHiddenAndSkipItemsForCurrentFrame"
                set-window-hidden-and-skip-items-for-current-frame)
@@ -11512,7 +11512,7 @@
 
 (cffi:defcfun ("igSetWindowPos_Str" set-window-pos-str)
     :void
-  (name :string)
+  (name sc-imgui.bindings:optional-string)
   (pos (:struct im-vec2))
   (cond :int))
 
@@ -11529,7 +11529,7 @@
 
 (cffi:defcfun ("igSetWindowSize_Str" set-window-size-str)
     :void
-  (name :string)
+  (name sc-imgui.bindings:optional-string)
   (size (:struct im-vec2))
   (cond :int))
 
@@ -11611,7 +11611,7 @@
 
 (cffi:defcfun ("igShowFontSelector" show-font-selector)
     :void
-  (label :string))
+  (label sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igShowIDStackToolWindow" show-id-stack-tool-window)
     :void
@@ -11627,7 +11627,7 @@
 
 (cffi:defcfun ("igShowStyleSelector" show-style-selector-raw)
     :uint8
-  (label :string))
+  (label sc-imgui.bindings:optional-string))
 
 (common-lisp:defun show-style-selector (label) (common-lisp:/= 0 (show-style-selector-raw label)))
 
@@ -11646,11 +11646,11 @@
 
 (cffi:defcfun ("igSliderAngle" slider-angle-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (v-rad :pointer)
   (v-degrees-min :float)
   (v-degrees-max :float)
-  (format :string)
+  (format sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun slider-angle (label v-rad v-degrees-min v-degrees-max format flags)
@@ -11664,7 +11664,7 @@
   (p-v :pointer)
   (p-min :pointer)
   (p-max :pointer)
-  (format :string)
+  (format sc-imgui.bindings:optional-string)
   (flags :int)
   (out-grab-bb :pointer))
 
@@ -11673,11 +11673,11 @@
 
 (cffi:defcfun ("igSliderFloat" slider-float-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (v :pointer)
   (v-min :float)
   (v-max :float)
-  (format :string)
+  (format sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun slider-float (label v v-min v-max format flags)
@@ -11685,11 +11685,11 @@
 
 (cffi:defcfun ("igSliderFloat2" slider-float2-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (v :pointer)
   (v-min :float)
   (v-max :float)
-  (format :string)
+  (format sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun slider-float2 (label v v-min v-max format flags)
@@ -11697,11 +11697,11 @@
 
 (cffi:defcfun ("igSliderFloat3" slider-float3-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (v :pointer)
   (v-min :float)
   (v-max :float)
-  (format :string)
+  (format sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun slider-float3 (label v v-min v-max format flags)
@@ -11709,11 +11709,11 @@
 
 (cffi:defcfun ("igSliderFloat4" slider-float4-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (v :pointer)
   (v-min :float)
   (v-max :float)
-  (format :string)
+  (format sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun slider-float4 (label v v-min v-max format flags)
@@ -11721,11 +11721,11 @@
 
 (cffi:defcfun ("igSliderInt" slider-int-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (v :pointer)
   (v-min :int)
   (v-max :int)
-  (format :string)
+  (format sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun slider-int (label v v-min v-max format flags)
@@ -11733,11 +11733,11 @@
 
 (cffi:defcfun ("igSliderInt2" slider-int2-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (v :pointer)
   (v-min :int)
   (v-max :int)
-  (format :string)
+  (format sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun slider-int2 (label v v-min v-max format flags)
@@ -11745,11 +11745,11 @@
 
 (cffi:defcfun ("igSliderInt3" slider-int3-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (v :pointer)
   (v-min :int)
   (v-max :int)
-  (format :string)
+  (format sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun slider-int3 (label v v-min v-max format flags)
@@ -11757,11 +11757,11 @@
 
 (cffi:defcfun ("igSliderInt4" slider-int4-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (v :pointer)
   (v-min :int)
   (v-max :int)
-  (format :string)
+  (format sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun slider-int4 (label v v-min v-max format flags)
@@ -11769,12 +11769,12 @@
 
 (cffi:defcfun ("igSliderScalar" slider-scalar-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (data-type :int)
   (p-data :pointer)
   (p-min :pointer)
   (p-max :pointer)
-  (format :string)
+  (format sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun slider-scalar (label data-type p-data p-min p-max format flags)
@@ -11782,13 +11782,13 @@
 
 (cffi:defcfun ("igSliderScalarN" slider-scalar-n-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (data-type :int)
   (p-data :pointer)
   (components :int)
   (p-min :pointer)
   (p-max :pointer)
-  (format :string)
+  (format sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun slider-scalar-n (label data-type p-data components p-min p-max format flags)
@@ -11797,7 +11797,7 @@
 
 (cffi:defcfun ("igSmallButton" small-button-raw)
     :uint8
-  (label :string))
+  (label sc-imgui.bindings:optional-string))
 
 (common-lisp:defun small-button (label) (common-lisp:/= 0 (small-button-raw label)))
 
@@ -11913,7 +11913,7 @@
 (cffi:defcfun ("igTabBarQueueFocus_Str" tab-bar-queue-focus-str)
     :void
   (tab-bar :pointer)
-  (tab-name :string))
+  (tab-name sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igTabBarQueueReorder" tab-bar-queue-reorder)
     :void
@@ -11945,7 +11945,7 @@
 
 (cffi:defcfun ("igTabItemButton" tab-item-button-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun tab-item-button (label flags)
@@ -11953,7 +11953,7 @@
 
 (cffi:defcfun ("igTabItemCalcSize_Str" tab-item-calc-size-str)
     (:struct im-vec2)
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (has-close-button-or-unsaved-marker :bool))
 
 (cffi:defcfun ("igTabItemCalcSize_WindowPtr" tab-item-calc-size-window-ptr)
@@ -11963,7 +11963,7 @@
 (cffi:defcfun ("igTabItemEx" tab-item-ex-raw)
     :uint8
   (tab-bar :pointer)
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (p-open :pointer)
   (flags :int)
   (docked-window :pointer))
@@ -11977,7 +11977,7 @@
   (bb (:struct im-rect))
   (flags :int)
   (frame-padding (:struct im-vec2))
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (tab-id :uint32)
   (close-button-id :uint32)
   (is-contents-visible :bool)
@@ -11986,7 +11986,7 @@
 
 (cffi:defcfun ("igTabItemSpacing" tab-item-spacing)
     :void
-  (str-id :string)
+  (str-id sc-imgui.bindings:optional-string)
   (flags :int)
   (width :float))
 
@@ -12152,7 +12152,7 @@
 
 (cffi:defcfun ("igTableHeader" table-header)
     :void
-  (label :string))
+  (label sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igTableHeadersRow" table-headers-row)
     :void)
@@ -12288,7 +12288,7 @@
 
 (cffi:defcfun ("igTableSetupColumn" table-setup-column)
     :void
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (flags :int)
   (init-width-or-weight :float)
   (user-data :uint32))
@@ -12336,10 +12336,10 @@
     :uint8
   (bb (:struct im-rect))
   (id :uint32)
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (data-type :int)
   (p-data :pointer)
-  (format :string)
+  (format sc-imgui.bindings:optional-string)
   (p-clamp-min :pointer)
   (p-clamp-max :pointer))
 
@@ -12352,7 +12352,7 @@
     :uint8
   (bb (:struct im-rect))
   (id :uint32)
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (buf :pointer)
   (buf-size :size)
   (flags :int)
@@ -12380,51 +12380,51 @@
 
 (cffi:defcfun ("igText0" text0)
     :void
-  (fmt :string))
+  (fmt sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igTextAligned0" text-aligned0)
     :void
   (align-x :float)
   (width :float)
-  (fmt :string))
+  (fmt sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igTextColored0" text-colored0)
     :void
   (col (:struct im-vec4))
-  (fmt :string))
+  (fmt sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igTextDisabled0" text-disabled0)
     :void
-  (fmt :string))
+  (fmt sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igTextEx" text-ex)
     :void
-  (text :string)
-  (text-end :string)
+  (text sc-imgui.bindings:optional-string)
+  (text-end sc-imgui.bindings:optional-string)
   (flags :int))
 
 (cffi:defcfun ("igTextLink" text-link-raw)
     :uint8
-  (label :string))
+  (label sc-imgui.bindings:optional-string))
 
 (common-lisp:defun text-link (label) (common-lisp:/= 0 (text-link-raw label)))
 
 (cffi:defcfun ("igTextLinkOpenURL" text-link-open-url-raw)
     :uint8
-  (label :string)
-  (url :string))
+  (label sc-imgui.bindings:optional-string)
+  (url sc-imgui.bindings:optional-string))
 
 (common-lisp:defun text-link-open-url (label url)
   (common-lisp:/= 0 (text-link-open-url-raw label url)))
 
 (cffi:defcfun ("igTextUnformatted" text-unformatted)
     :void
-  (text :string)
-  (text-end :string))
+  (text sc-imgui.bindings:optional-string)
+  (text-end sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igTextWrapped0" text-wrapped0)
     :void
-  (fmt :string))
+  (fmt sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igTranslateWindowsInViewport" translate-windows-in-viewport)
     :void
@@ -12436,14 +12436,14 @@
 
 (cffi:defcfun ("igTreeNode_Str" tree-node-str-raw)
     :uint8
-  (label :string))
+  (label sc-imgui.bindings:optional-string))
 
 (common-lisp:defun tree-node-str (label) (common-lisp:/= 0 (tree-node-str-raw label)))
 
 (cffi:defcfun ("igTreeNode_StrStr0" tree-node-str-str0-raw)
     :uint8
-  (str-id :string)
-  (fmt :string))
+  (str-id sc-imgui.bindings:optional-string)
+  (fmt sc-imgui.bindings:optional-string))
 
 (common-lisp:defun tree-node-str-str0 (str-id fmt)
   (common-lisp:/= 0 (tree-node-str-str0-raw str-id fmt)))
@@ -12451,7 +12451,7 @@
 (cffi:defcfun ("igTreeNode_Ptr0" tree-node-ptr0-raw)
     :uint8
   (ptr-id :pointer)
-  (fmt :string))
+  (fmt sc-imgui.bindings:optional-string))
 
 (common-lisp:defun tree-node-ptr0 (ptr-id fmt) (common-lisp:/= 0 (tree-node-ptr0-raw ptr-id fmt)))
 
@@ -12459,8 +12459,8 @@
     :uint8
   (id :uint32)
   (flags :int)
-  (label :string)
-  (label-end :string))
+  (label sc-imgui.bindings:optional-string)
+  (label-end sc-imgui.bindings:optional-string))
 
 (common-lisp:defun tree-node-behavior (id flags label label-end)
   (common-lisp:/= 0 (tree-node-behavior-raw id flags label label-end)))
@@ -12475,7 +12475,7 @@
 
 (cffi:defcfun ("igTreeNodeEx_Str" tree-node-ex-str-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun tree-node-ex-str (label flags)
@@ -12483,9 +12483,9 @@
 
 (cffi:defcfun ("igTreeNodeEx_StrStr0" tree-node-ex-str-str0-raw)
     :uint8
-  (str-id :string)
+  (str-id sc-imgui.bindings:optional-string)
   (flags :int)
-  (fmt :string))
+  (fmt sc-imgui.bindings:optional-string))
 
 (common-lisp:defun tree-node-ex-str-str0 (str-id flags fmt)
   (common-lisp:/= 0 (tree-node-ex-str-str0-raw str-id flags fmt)))
@@ -12494,7 +12494,7 @@
     :uint8
   (ptr-id :pointer)
   (flags :int)
-  (fmt :string))
+  (fmt sc-imgui.bindings:optional-string))
 
 (common-lisp:defun tree-node-ex-ptr0 (ptr-id flags fmt)
   (common-lisp:/= 0 (tree-node-ex-ptr0-raw ptr-id flags fmt)))
@@ -12524,7 +12524,7 @@
 
 (cffi:defcfun ("igTreePush_Str" tree-push-str)
     :void
-  (str-id :string))
+  (str-id sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igTreePush_Ptr" tree-push-ptr)
     :void
@@ -12602,12 +12602,12 @@
 
 (cffi:defcfun ("igVSliderFloat" v-slider-float-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (size (:struct im-vec2))
   (v :pointer)
   (v-min :float)
   (v-max :float)
-  (format :string)
+  (format sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun v-slider-float (label size v v-min v-max format flags)
@@ -12615,12 +12615,12 @@
 
 (cffi:defcfun ("igVSliderInt" v-slider-int-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (size (:struct im-vec2))
   (v :pointer)
   (v-min :int)
   (v-max :int)
-  (format :string)
+  (format sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun v-slider-int (label size v v-min v-max format flags)
@@ -12628,13 +12628,13 @@
 
 (cffi:defcfun ("igVSliderScalar" v-slider-scalar-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (size (:struct im-vec2))
   (data-type :int)
   (p-data :pointer)
   (p-min :pointer)
   (p-max :pointer)
-  (format :string)
+  (format sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun v-slider-scalar (label size data-type p-data p-min p-max format flags)
@@ -12642,24 +12642,24 @@
 
 (cffi:defcfun ("igValue_Bool" value-bool)
     :void
-  (prefix :string)
+  (prefix sc-imgui.bindings:optional-string)
   (b :bool))
 
 (cffi:defcfun ("igValue_Int" value-int)
     :void
-  (prefix :string)
+  (prefix sc-imgui.bindings:optional-string)
   (v :int))
 
 (cffi:defcfun ("igValue_Uint" value-uint)
     :void
-  (prefix :string)
+  (prefix sc-imgui.bindings:optional-string)
   (v :uint))
 
 (cffi:defcfun ("igValue_Float" value-float)
     :void
-  (prefix :string)
+  (prefix sc-imgui.bindings:optional-string)
   (v :float)
-  (float-format :string))
+  (float-format sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igWindowPosAbsToRel" window-pos-abs-to-rel)
     (:struct im-vec2)

@@ -693,14 +693,14 @@
 
 (cffi:defcfun ("ImPlot_AddColormap_Vec4Ptr" add-colormap-vec4-ptr)
     :int
-  (name :string)
+  (name sc-imgui.bindings:optional-string)
   (cols :pointer)
   (size :int)
   (qual :bool))
 
 (cffi:defcfun ("ImPlot_AddColormap_U32Ptr" add-colormap-u32-ptr)
     :int
-  (name :string)
+  (name sc-imgui.bindings:optional-string)
   (cols :pointer)
   (size :int)
   (qual :bool))
@@ -728,16 +728,16 @@
   (draw-list :pointer)
   (top-center (:struct %imgui::im-vec2))
   (col :uint32)
-  (text-begin :string)
-  (text-end :string))
+  (text-begin sc-imgui.bindings:optional-string)
+  (text-end sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("ImPlot_AddTextVertical" add-text-vertical)
     :void
   (draw-list :pointer)
   (pos (:struct %imgui::im-vec2))
   (col :uint32)
-  (text-begin :string)
-  (text-end :string))
+  (text-begin sc-imgui.bindings:optional-string)
+  (text-end sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("ImPlot_AddTime" add-time)
     (:struct im-plot-time)
@@ -769,7 +769,7 @@
   (col (:struct %imgui::im-vec4))
   (pix-offset (:struct %imgui::im-vec2))
   (clamp :bool)
-  (fmt :string))
+  (fmt sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("ImPlot_AnyAxesHeld" any-axes-held-raw)
     :uint8
@@ -796,7 +796,7 @@
 
 (cffi:defcfun ("ImPlot_BeginAlignedPlots" begin-aligned-plots-raw)
     :uint8
-  (group-id :string)
+  (group-id sc-imgui.bindings:optional-string)
   (vertical :bool))
 
 (common-lisp:defun begin-aligned-plots (group-id vertical)
@@ -812,7 +812,7 @@
 
 (cffi:defcfun ("ImPlot_BeginDragDropSourceItem" begin-drag-drop-source-item-raw)
     :uint8
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (flags :int))
 
 (common-lisp:defun begin-drag-drop-source-item (label-id flags)
@@ -846,7 +846,7 @@
 
 (cffi:defcfun ("ImPlot_BeginItem" begin-item-raw)
     :uint8
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (spec (:struct im-plot-spec))
   (item-col (:struct %imgui::im-vec4))
   (item-mkr :int))
@@ -856,7 +856,7 @@
 
 (cffi:defcfun ("ImPlot_BeginLegendPopup" begin-legend-popup-raw)
     :uint8
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (mouse-button :int))
 
 (common-lisp:defun begin-legend-popup (label-id mouse-button)
@@ -864,7 +864,7 @@
 
 (cffi:defcfun ("ImPlot_BeginPlot" begin-plot-raw)
     :uint8
-  (title-id :string)
+  (title-id sc-imgui.bindings:optional-string)
   (size (:struct %imgui::im-vec2))
   (flags :int))
 
@@ -873,7 +873,7 @@
 
 (cffi:defcfun ("ImPlot_BeginSubplots" begin-subplots-raw)
     :uint8
-  (title-id :string)
+  (title-id sc-imgui.bindings:optional-string)
   (rows :int)
   (cols :int)
   (size (:struct %imgui::im-vec2))
@@ -886,7 +886,7 @@
 
 (cffi:defcfun ("ImPlot_BustColorCache" bust-color-cache)
     :void
-  (plot-title-id :string))
+  (plot-title-id sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("ImPlot_BustItemCache" bust-item-cache)
     :void)
@@ -915,7 +915,7 @@
 
 (cffi:defcfun ("ImPlot_CalcTextSizeVertical" calc-text-size-vertical)
     (:struct %imgui::im-vec2)
-  (text :string))
+  (text sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("ImPlot_CancelPlotSelection" cancel-plot-selection)
     :void)
@@ -943,7 +943,7 @@
 
 (cffi:defcfun ("ImPlot_ColormapButton" colormap-button-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (size (:struct %imgui::im-vec2))
   (cmap :int))
 
@@ -956,20 +956,20 @@
 
 (cffi:defcfun ("ImPlot_ColormapScale" colormap-scale)
     :void
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (scale-min :double)
   (scale-max :double)
   (size (:struct %imgui::im-vec2))
-  (format :string)
+  (format sc-imgui.bindings:optional-string)
   (flags :int)
   (cmap :int))
 
 (cffi:defcfun ("ImPlot_ColormapSlider" colormap-slider-raw)
     :uint8
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (t :pointer)
   (out :pointer)
-  (format :string)
+  (format sc-imgui.bindings:optional-string)
   (cmap :int))
 
 (common-lisp:defun colormap-slider (label t out format cmap)
@@ -1222,7 +1222,7 @@
 
 (cffi:defcfun ("ImPlot_GetColormapIndex" get-colormap-index)
     :int
-  (name :string))
+  (name sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("ImPlot_GetColormapName" get-colormap-name)
     :string
@@ -1256,7 +1256,7 @@
 
 (cffi:defcfun ("ImPlot_GetItem" get-item)
     :pointer
-  (label-id :string))
+  (label-id sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("ImPlot_GetItemData" get-item-data)
     :pointer)
@@ -1286,7 +1286,7 @@
 
 (cffi:defcfun ("ImPlot_GetPlot" get-plot)
     :pointer
-  (title :string))
+  (title sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("ImPlot_GetPlotDrawList" get-plot-draw-list)
     :pointer)
@@ -2018,7 +2018,7 @@
 
 (cffi:defcfun ("ImPlot_IsItemHidden" is-item-hidden-raw)
     :uint8
-  (label-id :string))
+  (label-id sc-imgui.bindings:optional-string))
 
 (common-lisp:defun is-item-hidden (label-id) (common-lisp:/= 0 (is-item-hidden-raw label-id)))
 
@@ -2035,7 +2035,7 @@
 
 (cffi:defcfun ("ImPlot_IsLegendEntryHovered" is-legend-entry-hovered-raw)
     :uint8
-  (label-id :string))
+  (label-id sc-imgui.bindings:optional-string))
 
 (common-lisp:defun is-legend-entry-hovered (label-id)
   (common-lisp:/= 0 (is-legend-entry-hovered-raw label-id)))
@@ -2269,7 +2269,7 @@
 
 (cffi:defcfun ("ImPlot_PlotBars_FloatPtrInt" plot-bars-float-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (bar-size :double)
@@ -2278,7 +2278,7 @@
 
 (cffi:defcfun ("ImPlot_PlotBars_doublePtrInt" plot-bars-double-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (bar-size :double)
@@ -2287,7 +2287,7 @@
 
 (cffi:defcfun ("ImPlot_PlotBars_S8PtrInt" plot-bars-s8-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (bar-size :double)
@@ -2296,7 +2296,7 @@
 
 (cffi:defcfun ("ImPlot_PlotBars_U8PtrInt" plot-bars-u8-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (bar-size :double)
@@ -2305,7 +2305,7 @@
 
 (cffi:defcfun ("ImPlot_PlotBars_S16PtrInt" plot-bars-s16-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (bar-size :double)
@@ -2314,7 +2314,7 @@
 
 (cffi:defcfun ("ImPlot_PlotBars_U16PtrInt" plot-bars-u16-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (bar-size :double)
@@ -2323,7 +2323,7 @@
 
 (cffi:defcfun ("ImPlot_PlotBars_S32PtrInt" plot-bars-s32-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (bar-size :double)
@@ -2332,7 +2332,7 @@
 
 (cffi:defcfun ("ImPlot_PlotBars_U32PtrInt" plot-bars-u32-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (bar-size :double)
@@ -2341,7 +2341,7 @@
 
 (cffi:defcfun ("ImPlot_PlotBars_S64PtrInt" plot-bars-s64-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (bar-size :double)
@@ -2350,7 +2350,7 @@
 
 (cffi:defcfun ("ImPlot_PlotBars_U64PtrInt" plot-bars-u64-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (bar-size :double)
@@ -2359,7 +2359,7 @@
 
 (cffi:defcfun ("ImPlot_PlotBars_FloatPtrFloatPtr" plot-bars-float-ptr-float-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -2368,7 +2368,7 @@
 
 (cffi:defcfun ("ImPlot_PlotBars_doublePtrdoublePtr" plot-bars-double-ptrdouble-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -2377,7 +2377,7 @@
 
 (cffi:defcfun ("ImPlot_PlotBars_S8PtrS8Ptr" plot-bars-s8-ptr-s8-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -2386,7 +2386,7 @@
 
 (cffi:defcfun ("ImPlot_PlotBars_U8PtrU8Ptr" plot-bars-u8-ptr-u8-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -2395,7 +2395,7 @@
 
 (cffi:defcfun ("ImPlot_PlotBars_S16PtrS16Ptr" plot-bars-s16-ptr-s16-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -2404,7 +2404,7 @@
 
 (cffi:defcfun ("ImPlot_PlotBars_U16PtrU16Ptr" plot-bars-u16-ptr-u16-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -2413,7 +2413,7 @@
 
 (cffi:defcfun ("ImPlot_PlotBars_S32PtrS32Ptr" plot-bars-s32-ptr-s32-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -2422,7 +2422,7 @@
 
 (cffi:defcfun ("ImPlot_PlotBars_U32PtrU32Ptr" plot-bars-u32-ptr-u32-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -2431,7 +2431,7 @@
 
 (cffi:defcfun ("ImPlot_PlotBars_S64PtrS64Ptr" plot-bars-s64-ptr-s64-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -2440,7 +2440,7 @@
 
 (cffi:defcfun ("ImPlot_PlotBars_U64PtrU64Ptr" plot-bars-u64-ptr-u64-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -2449,7 +2449,7 @@
 
 (cffi:defcfun ("ImPlot_PlotBarsG" plot-bars-g)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (getter :pointer)
   (data :pointer)
   (count :int)
@@ -2458,7 +2458,7 @@
 
 (cffi:defcfun ("ImPlot_PlotBubbles_FloatPtrFloatPtrInt" plot-bubbles-float-ptr-float-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (szs :pointer)
   (count :int)
@@ -2468,7 +2468,7 @@
 
 (cffi:defcfun ("ImPlot_PlotBubbles_doublePtrdoublePtrInt" plot-bubbles-double-ptrdouble-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (szs :pointer)
   (count :int)
@@ -2478,7 +2478,7 @@
 
 (cffi:defcfun ("ImPlot_PlotBubbles_S8PtrS8PtrInt" plot-bubbles-s8-ptr-s8-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (szs :pointer)
   (count :int)
@@ -2488,7 +2488,7 @@
 
 (cffi:defcfun ("ImPlot_PlotBubbles_U8PtrU8PtrInt" plot-bubbles-u8-ptr-u8-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (szs :pointer)
   (count :int)
@@ -2498,7 +2498,7 @@
 
 (cffi:defcfun ("ImPlot_PlotBubbles_S16PtrS16PtrInt" plot-bubbles-s16-ptr-s16-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (szs :pointer)
   (count :int)
@@ -2508,7 +2508,7 @@
 
 (cffi:defcfun ("ImPlot_PlotBubbles_U16PtrU16PtrInt" plot-bubbles-u16-ptr-u16-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (szs :pointer)
   (count :int)
@@ -2518,7 +2518,7 @@
 
 (cffi:defcfun ("ImPlot_PlotBubbles_S32PtrS32PtrInt" plot-bubbles-s32-ptr-s32-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (szs :pointer)
   (count :int)
@@ -2528,7 +2528,7 @@
 
 (cffi:defcfun ("ImPlot_PlotBubbles_U32PtrU32PtrInt" plot-bubbles-u32-ptr-u32-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (szs :pointer)
   (count :int)
@@ -2538,7 +2538,7 @@
 
 (cffi:defcfun ("ImPlot_PlotBubbles_S64PtrS64PtrInt" plot-bubbles-s64-ptr-s64-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (szs :pointer)
   (count :int)
@@ -2548,7 +2548,7 @@
 
 (cffi:defcfun ("ImPlot_PlotBubbles_U64PtrU64PtrInt" plot-bubbles-u64-ptr-u64-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (szs :pointer)
   (count :int)
@@ -2559,7 +2559,7 @@
 (cffi:defcfun ("ImPlot_PlotBubbles_FloatPtrFloatPtrFloatPtr"
                plot-bubbles-float-ptr-float-ptr-float-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (szs :pointer)
@@ -2569,7 +2569,7 @@
 (cffi:defcfun ("ImPlot_PlotBubbles_doublePtrdoublePtrdoublePtr"
                plot-bubbles-double-ptrdouble-ptrdouble-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (szs :pointer)
@@ -2578,7 +2578,7 @@
 
 (cffi:defcfun ("ImPlot_PlotBubbles_S8PtrS8PtrS8Ptr" plot-bubbles-s8-ptr-s8-ptr-s8-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (szs :pointer)
@@ -2587,7 +2587,7 @@
 
 (cffi:defcfun ("ImPlot_PlotBubbles_U8PtrU8PtrU8Ptr" plot-bubbles-u8-ptr-u8-ptr-u8-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (szs :pointer)
@@ -2596,7 +2596,7 @@
 
 (cffi:defcfun ("ImPlot_PlotBubbles_S16PtrS16PtrS16Ptr" plot-bubbles-s16-ptr-s16-ptr-s16-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (szs :pointer)
@@ -2605,7 +2605,7 @@
 
 (cffi:defcfun ("ImPlot_PlotBubbles_U16PtrU16PtrU16Ptr" plot-bubbles-u16-ptr-u16-ptr-u16-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (szs :pointer)
@@ -2614,7 +2614,7 @@
 
 (cffi:defcfun ("ImPlot_PlotBubbles_S32PtrS32PtrS32Ptr" plot-bubbles-s32-ptr-s32-ptr-s32-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (szs :pointer)
@@ -2623,7 +2623,7 @@
 
 (cffi:defcfun ("ImPlot_PlotBubbles_U32PtrU32PtrU32Ptr" plot-bubbles-u32-ptr-u32-ptr-u32-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (szs :pointer)
@@ -2632,7 +2632,7 @@
 
 (cffi:defcfun ("ImPlot_PlotBubbles_S64PtrS64PtrS64Ptr" plot-bubbles-s64-ptr-s64-ptr-s64-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (szs :pointer)
@@ -2641,7 +2641,7 @@
 
 (cffi:defcfun ("ImPlot_PlotBubbles_U64PtrU64PtrU64Ptr" plot-bubbles-u64-ptr-u64-ptr-u64-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (szs :pointer)
@@ -2650,7 +2650,7 @@
 
 (cffi:defcfun ("ImPlot_PlotDigital_FloatPtr" plot-digital-float-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -2658,7 +2658,7 @@
 
 (cffi:defcfun ("ImPlot_PlotDigital_doublePtr" plot-digital-double-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -2666,7 +2666,7 @@
 
 (cffi:defcfun ("ImPlot_PlotDigital_S8Ptr" plot-digital-s8-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -2674,7 +2674,7 @@
 
 (cffi:defcfun ("ImPlot_PlotDigital_U8Ptr" plot-digital-u8-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -2682,7 +2682,7 @@
 
 (cffi:defcfun ("ImPlot_PlotDigital_S16Ptr" plot-digital-s16-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -2690,7 +2690,7 @@
 
 (cffi:defcfun ("ImPlot_PlotDigital_U16Ptr" plot-digital-u16-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -2698,7 +2698,7 @@
 
 (cffi:defcfun ("ImPlot_PlotDigital_S32Ptr" plot-digital-s32-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -2706,7 +2706,7 @@
 
 (cffi:defcfun ("ImPlot_PlotDigital_U32Ptr" plot-digital-u32-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -2714,7 +2714,7 @@
 
 (cffi:defcfun ("ImPlot_PlotDigital_S64Ptr" plot-digital-s64-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -2722,7 +2722,7 @@
 
 (cffi:defcfun ("ImPlot_PlotDigital_U64Ptr" plot-digital-u64-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -2730,7 +2730,7 @@
 
 (cffi:defcfun ("ImPlot_PlotDigitalG" plot-digital-g)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (getter :pointer)
   (data :pointer)
   (count :int)
@@ -2738,13 +2738,13 @@
 
 (cffi:defcfun ("ImPlot_PlotDummy" plot-dummy)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (spec (:struct im-plot-spec)))
 
 (cffi:defcfun ("ImPlot_PlotErrorBars_FloatPtrFloatPtrFloatPtrInt"
                plot-error-bars-float-ptr-float-ptr-float-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (err :pointer)
@@ -2754,7 +2754,7 @@
 (cffi:defcfun ("ImPlot_PlotErrorBars_doublePtrdoublePtrdoublePtrInt"
                plot-error-bars-double-ptrdouble-ptrdouble-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (err :pointer)
@@ -2763,7 +2763,7 @@
 
 (cffi:defcfun ("ImPlot_PlotErrorBars_S8PtrS8PtrS8PtrInt" plot-error-bars-s8-ptr-s8-ptr-s8-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (err :pointer)
@@ -2772,7 +2772,7 @@
 
 (cffi:defcfun ("ImPlot_PlotErrorBars_U8PtrU8PtrU8PtrInt" plot-error-bars-u8-ptr-u8-ptr-u8-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (err :pointer)
@@ -2782,7 +2782,7 @@
 (cffi:defcfun ("ImPlot_PlotErrorBars_S16PtrS16PtrS16PtrInt"
                plot-error-bars-s16-ptr-s16-ptr-s16-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (err :pointer)
@@ -2792,7 +2792,7 @@
 (cffi:defcfun ("ImPlot_PlotErrorBars_U16PtrU16PtrU16PtrInt"
                plot-error-bars-u16-ptr-u16-ptr-u16-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (err :pointer)
@@ -2802,7 +2802,7 @@
 (cffi:defcfun ("ImPlot_PlotErrorBars_S32PtrS32PtrS32PtrInt"
                plot-error-bars-s32-ptr-s32-ptr-s32-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (err :pointer)
@@ -2812,7 +2812,7 @@
 (cffi:defcfun ("ImPlot_PlotErrorBars_U32PtrU32PtrU32PtrInt"
                plot-error-bars-u32-ptr-u32-ptr-u32-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (err :pointer)
@@ -2822,7 +2822,7 @@
 (cffi:defcfun ("ImPlot_PlotErrorBars_S64PtrS64PtrS64PtrInt"
                plot-error-bars-s64-ptr-s64-ptr-s64-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (err :pointer)
@@ -2832,7 +2832,7 @@
 (cffi:defcfun ("ImPlot_PlotErrorBars_U64PtrU64PtrU64PtrInt"
                plot-error-bars-u64-ptr-u64-ptr-u64-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (err :pointer)
@@ -2842,7 +2842,7 @@
 (cffi:defcfun ("ImPlot_PlotErrorBars_FloatPtrFloatPtrFloatPtrFloatPtr"
                plot-error-bars-float-ptr-float-ptr-float-ptr-float-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (neg :pointer)
@@ -2853,7 +2853,7 @@
 (cffi:defcfun ("ImPlot_PlotErrorBars_doublePtrdoublePtrdoublePtrdoublePtr"
                plot-error-bars-double-ptrdouble-ptrdouble-ptrdouble-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (neg :pointer)
@@ -2864,7 +2864,7 @@
 (cffi:defcfun ("ImPlot_PlotErrorBars_S8PtrS8PtrS8PtrS8Ptr"
                plot-error-bars-s8-ptr-s8-ptr-s8-ptr-s8-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (neg :pointer)
@@ -2875,7 +2875,7 @@
 (cffi:defcfun ("ImPlot_PlotErrorBars_U8PtrU8PtrU8PtrU8Ptr"
                plot-error-bars-u8-ptr-u8-ptr-u8-ptr-u8-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (neg :pointer)
@@ -2886,7 +2886,7 @@
 (cffi:defcfun ("ImPlot_PlotErrorBars_S16PtrS16PtrS16PtrS16Ptr"
                plot-error-bars-s16-ptr-s16-ptr-s16-ptr-s16-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (neg :pointer)
@@ -2897,7 +2897,7 @@
 (cffi:defcfun ("ImPlot_PlotErrorBars_U16PtrU16PtrU16PtrU16Ptr"
                plot-error-bars-u16-ptr-u16-ptr-u16-ptr-u16-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (neg :pointer)
@@ -2908,7 +2908,7 @@
 (cffi:defcfun ("ImPlot_PlotErrorBars_S32PtrS32PtrS32PtrS32Ptr"
                plot-error-bars-s32-ptr-s32-ptr-s32-ptr-s32-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (neg :pointer)
@@ -2919,7 +2919,7 @@
 (cffi:defcfun ("ImPlot_PlotErrorBars_U32PtrU32PtrU32PtrU32Ptr"
                plot-error-bars-u32-ptr-u32-ptr-u32-ptr-u32-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (neg :pointer)
@@ -2930,7 +2930,7 @@
 (cffi:defcfun ("ImPlot_PlotErrorBars_S64PtrS64PtrS64PtrS64Ptr"
                plot-error-bars-s64-ptr-s64-ptr-s64-ptr-s64-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (neg :pointer)
@@ -2941,7 +2941,7 @@
 (cffi:defcfun ("ImPlot_PlotErrorBars_U64PtrU64PtrU64PtrU64Ptr"
                plot-error-bars-u64-ptr-u64-ptr-u64-ptr-u64-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (neg :pointer)
@@ -2951,137 +2951,137 @@
 
 (cffi:defcfun ("ImPlot_PlotHeatmap_FloatPtr" plot-heatmap-float-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (rows :int)
   (cols :int)
   (scale-min :double)
   (scale-max :double)
-  (label-fmt :string)
+  (label-fmt sc-imgui.bindings:optional-string)
   (bounds-min (:struct im-plot-point))
   (bounds-max (:struct im-plot-point))
   (spec (:struct im-plot-spec)))
 
 (cffi:defcfun ("ImPlot_PlotHeatmap_doublePtr" plot-heatmap-double-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (rows :int)
   (cols :int)
   (scale-min :double)
   (scale-max :double)
-  (label-fmt :string)
+  (label-fmt sc-imgui.bindings:optional-string)
   (bounds-min (:struct im-plot-point))
   (bounds-max (:struct im-plot-point))
   (spec (:struct im-plot-spec)))
 
 (cffi:defcfun ("ImPlot_PlotHeatmap_S8Ptr" plot-heatmap-s8-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (rows :int)
   (cols :int)
   (scale-min :double)
   (scale-max :double)
-  (label-fmt :string)
+  (label-fmt sc-imgui.bindings:optional-string)
   (bounds-min (:struct im-plot-point))
   (bounds-max (:struct im-plot-point))
   (spec (:struct im-plot-spec)))
 
 (cffi:defcfun ("ImPlot_PlotHeatmap_U8Ptr" plot-heatmap-u8-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (rows :int)
   (cols :int)
   (scale-min :double)
   (scale-max :double)
-  (label-fmt :string)
+  (label-fmt sc-imgui.bindings:optional-string)
   (bounds-min (:struct im-plot-point))
   (bounds-max (:struct im-plot-point))
   (spec (:struct im-plot-spec)))
 
 (cffi:defcfun ("ImPlot_PlotHeatmap_S16Ptr" plot-heatmap-s16-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (rows :int)
   (cols :int)
   (scale-min :double)
   (scale-max :double)
-  (label-fmt :string)
+  (label-fmt sc-imgui.bindings:optional-string)
   (bounds-min (:struct im-plot-point))
   (bounds-max (:struct im-plot-point))
   (spec (:struct im-plot-spec)))
 
 (cffi:defcfun ("ImPlot_PlotHeatmap_U16Ptr" plot-heatmap-u16-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (rows :int)
   (cols :int)
   (scale-min :double)
   (scale-max :double)
-  (label-fmt :string)
+  (label-fmt sc-imgui.bindings:optional-string)
   (bounds-min (:struct im-plot-point))
   (bounds-max (:struct im-plot-point))
   (spec (:struct im-plot-spec)))
 
 (cffi:defcfun ("ImPlot_PlotHeatmap_S32Ptr" plot-heatmap-s32-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (rows :int)
   (cols :int)
   (scale-min :double)
   (scale-max :double)
-  (label-fmt :string)
+  (label-fmt sc-imgui.bindings:optional-string)
   (bounds-min (:struct im-plot-point))
   (bounds-max (:struct im-plot-point))
   (spec (:struct im-plot-spec)))
 
 (cffi:defcfun ("ImPlot_PlotHeatmap_U32Ptr" plot-heatmap-u32-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (rows :int)
   (cols :int)
   (scale-min :double)
   (scale-max :double)
-  (label-fmt :string)
+  (label-fmt sc-imgui.bindings:optional-string)
   (bounds-min (:struct im-plot-point))
   (bounds-max (:struct im-plot-point))
   (spec (:struct im-plot-spec)))
 
 (cffi:defcfun ("ImPlot_PlotHeatmap_S64Ptr" plot-heatmap-s64-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (rows :int)
   (cols :int)
   (scale-min :double)
   (scale-max :double)
-  (label-fmt :string)
+  (label-fmt sc-imgui.bindings:optional-string)
   (bounds-min (:struct im-plot-point))
   (bounds-max (:struct im-plot-point))
   (spec (:struct im-plot-spec)))
 
 (cffi:defcfun ("ImPlot_PlotHeatmap_U64Ptr" plot-heatmap-u64-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (rows :int)
   (cols :int)
   (scale-min :double)
   (scale-max :double)
-  (label-fmt :string)
+  (label-fmt sc-imgui.bindings:optional-string)
   (bounds-min (:struct im-plot-point))
   (bounds-max (:struct im-plot-point))
   (spec (:struct im-plot-spec)))
 
 (cffi:defcfun ("ImPlot_PlotHistogram_FloatPtr" plot-histogram-float-ptr)
     :double
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (bins :int)
@@ -3091,7 +3091,7 @@
 
 (cffi:defcfun ("ImPlot_PlotHistogram_doublePtr" plot-histogram-double-ptr)
     :double
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (bins :int)
@@ -3101,7 +3101,7 @@
 
 (cffi:defcfun ("ImPlot_PlotHistogram_S8Ptr" plot-histogram-s8-ptr)
     :double
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (bins :int)
@@ -3111,7 +3111,7 @@
 
 (cffi:defcfun ("ImPlot_PlotHistogram_U8Ptr" plot-histogram-u8-ptr)
     :double
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (bins :int)
@@ -3121,7 +3121,7 @@
 
 (cffi:defcfun ("ImPlot_PlotHistogram_S16Ptr" plot-histogram-s16-ptr)
     :double
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (bins :int)
@@ -3131,7 +3131,7 @@
 
 (cffi:defcfun ("ImPlot_PlotHistogram_U16Ptr" plot-histogram-u16-ptr)
     :double
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (bins :int)
@@ -3141,7 +3141,7 @@
 
 (cffi:defcfun ("ImPlot_PlotHistogram_S32Ptr" plot-histogram-s32-ptr)
     :double
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (bins :int)
@@ -3151,7 +3151,7 @@
 
 (cffi:defcfun ("ImPlot_PlotHistogram_U32Ptr" plot-histogram-u32-ptr)
     :double
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (bins :int)
@@ -3161,7 +3161,7 @@
 
 (cffi:defcfun ("ImPlot_PlotHistogram_S64Ptr" plot-histogram-s64-ptr)
     :double
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (bins :int)
@@ -3171,7 +3171,7 @@
 
 (cffi:defcfun ("ImPlot_PlotHistogram_U64Ptr" plot-histogram-u64-ptr)
     :double
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (bins :int)
@@ -3181,7 +3181,7 @@
 
 (cffi:defcfun ("ImPlot_PlotHistogram2D_FloatPtr" plot-histogram2-d-float-ptr)
     :double
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -3192,7 +3192,7 @@
 
 (cffi:defcfun ("ImPlot_PlotHistogram2D_doublePtr" plot-histogram2-d-double-ptr)
     :double
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -3203,7 +3203,7 @@
 
 (cffi:defcfun ("ImPlot_PlotHistogram2D_S8Ptr" plot-histogram2-d-s8-ptr)
     :double
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -3214,7 +3214,7 @@
 
 (cffi:defcfun ("ImPlot_PlotHistogram2D_U8Ptr" plot-histogram2-d-u8-ptr)
     :double
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -3225,7 +3225,7 @@
 
 (cffi:defcfun ("ImPlot_PlotHistogram2D_S16Ptr" plot-histogram2-d-s16-ptr)
     :double
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -3236,7 +3236,7 @@
 
 (cffi:defcfun ("ImPlot_PlotHistogram2D_U16Ptr" plot-histogram2-d-u16-ptr)
     :double
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -3247,7 +3247,7 @@
 
 (cffi:defcfun ("ImPlot_PlotHistogram2D_S32Ptr" plot-histogram2-d-s32-ptr)
     :double
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -3258,7 +3258,7 @@
 
 (cffi:defcfun ("ImPlot_PlotHistogram2D_U32Ptr" plot-histogram2-d-u32-ptr)
     :double
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -3269,7 +3269,7 @@
 
 (cffi:defcfun ("ImPlot_PlotHistogram2D_S64Ptr" plot-histogram2-d-s64-ptr)
     :double
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -3280,7 +3280,7 @@
 
 (cffi:defcfun ("ImPlot_PlotHistogram2D_U64Ptr" plot-histogram2-d-u64-ptr)
     :double
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -3291,7 +3291,7 @@
 
 (cffi:defcfun ("ImPlot_PlotImage" plot-image)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (tex-ref (:struct %imgui::im-texture-ref))
   (bounds-min (:struct im-plot-point))
   (bounds-max (:struct im-plot-point))
@@ -3302,77 +3302,77 @@
 
 (cffi:defcfun ("ImPlot_PlotInfLines_FloatPtr" plot-inf-lines-float-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (spec (:struct im-plot-spec)))
 
 (cffi:defcfun ("ImPlot_PlotInfLines_doublePtr" plot-inf-lines-double-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (spec (:struct im-plot-spec)))
 
 (cffi:defcfun ("ImPlot_PlotInfLines_S8Ptr" plot-inf-lines-s8-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (spec (:struct im-plot-spec)))
 
 (cffi:defcfun ("ImPlot_PlotInfLines_U8Ptr" plot-inf-lines-u8-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (spec (:struct im-plot-spec)))
 
 (cffi:defcfun ("ImPlot_PlotInfLines_S16Ptr" plot-inf-lines-s16-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (spec (:struct im-plot-spec)))
 
 (cffi:defcfun ("ImPlot_PlotInfLines_U16Ptr" plot-inf-lines-u16-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (spec (:struct im-plot-spec)))
 
 (cffi:defcfun ("ImPlot_PlotInfLines_S32Ptr" plot-inf-lines-s32-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (spec (:struct im-plot-spec)))
 
 (cffi:defcfun ("ImPlot_PlotInfLines_U32Ptr" plot-inf-lines-u32-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (spec (:struct im-plot-spec)))
 
 (cffi:defcfun ("ImPlot_PlotInfLines_S64Ptr" plot-inf-lines-s64-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (spec (:struct im-plot-spec)))
 
 (cffi:defcfun ("ImPlot_PlotInfLines_U64Ptr" plot-inf-lines-u64-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (spec (:struct im-plot-spec)))
 
 (cffi:defcfun ("ImPlot_PlotLine_FloatPtrInt" plot-line-float-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (xscale :double)
@@ -3381,7 +3381,7 @@
 
 (cffi:defcfun ("ImPlot_PlotLine_doublePtrInt" plot-line-double-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (xscale :double)
@@ -3390,7 +3390,7 @@
 
 (cffi:defcfun ("ImPlot_PlotLine_S8PtrInt" plot-line-s8-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (xscale :double)
@@ -3399,7 +3399,7 @@
 
 (cffi:defcfun ("ImPlot_PlotLine_U8PtrInt" plot-line-u8-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (xscale :double)
@@ -3408,7 +3408,7 @@
 
 (cffi:defcfun ("ImPlot_PlotLine_S16PtrInt" plot-line-s16-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (xscale :double)
@@ -3417,7 +3417,7 @@
 
 (cffi:defcfun ("ImPlot_PlotLine_U16PtrInt" plot-line-u16-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (xscale :double)
@@ -3426,7 +3426,7 @@
 
 (cffi:defcfun ("ImPlot_PlotLine_S32PtrInt" plot-line-s32-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (xscale :double)
@@ -3435,7 +3435,7 @@
 
 (cffi:defcfun ("ImPlot_PlotLine_U32PtrInt" plot-line-u32-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (xscale :double)
@@ -3444,7 +3444,7 @@
 
 (cffi:defcfun ("ImPlot_PlotLine_S64PtrInt" plot-line-s64-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (xscale :double)
@@ -3453,7 +3453,7 @@
 
 (cffi:defcfun ("ImPlot_PlotLine_U64PtrInt" plot-line-u64-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (xscale :double)
@@ -3462,7 +3462,7 @@
 
 (cffi:defcfun ("ImPlot_PlotLine_FloatPtrFloatPtr" plot-line-float-ptr-float-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -3470,7 +3470,7 @@
 
 (cffi:defcfun ("ImPlot_PlotLine_doublePtrdoublePtr" plot-line-double-ptrdouble-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -3478,7 +3478,7 @@
 
 (cffi:defcfun ("ImPlot_PlotLine_S8PtrS8Ptr" plot-line-s8-ptr-s8-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -3486,7 +3486,7 @@
 
 (cffi:defcfun ("ImPlot_PlotLine_U8PtrU8Ptr" plot-line-u8-ptr-u8-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -3494,7 +3494,7 @@
 
 (cffi:defcfun ("ImPlot_PlotLine_S16PtrS16Ptr" plot-line-s16-ptr-s16-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -3502,7 +3502,7 @@
 
 (cffi:defcfun ("ImPlot_PlotLine_U16PtrU16Ptr" plot-line-u16-ptr-u16-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -3510,7 +3510,7 @@
 
 (cffi:defcfun ("ImPlot_PlotLine_S32PtrS32Ptr" plot-line-s32-ptr-s32-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -3518,7 +3518,7 @@
 
 (cffi:defcfun ("ImPlot_PlotLine_U32PtrU32Ptr" plot-line-u32-ptr-u32-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -3526,7 +3526,7 @@
 
 (cffi:defcfun ("ImPlot_PlotLine_S64PtrS64Ptr" plot-line-s64-ptr-s64-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -3534,7 +3534,7 @@
 
 (cffi:defcfun ("ImPlot_PlotLine_U64PtrU64Ptr" plot-line-u64-ptr-u64-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -3542,7 +3542,7 @@
 
 (cffi:defcfun ("ImPlot_PlotLineG" plot-line-g)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (getter :pointer)
   (data :pointer)
   (count :int)
@@ -3687,7 +3687,7 @@
   (x :double)
   (y :double)
   (radius :double)
-  (label-fmt :string)
+  (label-fmt sc-imgui.bindings:optional-string)
   (angle0 :double)
   (spec (:struct im-plot-spec)))
 
@@ -3699,7 +3699,7 @@
   (x :double)
   (y :double)
   (radius :double)
-  (label-fmt :string)
+  (label-fmt sc-imgui.bindings:optional-string)
   (angle0 :double)
   (spec (:struct im-plot-spec)))
 
@@ -3711,7 +3711,7 @@
   (x :double)
   (y :double)
   (radius :double)
-  (label-fmt :string)
+  (label-fmt sc-imgui.bindings:optional-string)
   (angle0 :double)
   (spec (:struct im-plot-spec)))
 
@@ -3723,7 +3723,7 @@
   (x :double)
   (y :double)
   (radius :double)
-  (label-fmt :string)
+  (label-fmt sc-imgui.bindings:optional-string)
   (angle0 :double)
   (spec (:struct im-plot-spec)))
 
@@ -3735,7 +3735,7 @@
   (x :double)
   (y :double)
   (radius :double)
-  (label-fmt :string)
+  (label-fmt sc-imgui.bindings:optional-string)
   (angle0 :double)
   (spec (:struct im-plot-spec)))
 
@@ -3747,7 +3747,7 @@
   (x :double)
   (y :double)
   (radius :double)
-  (label-fmt :string)
+  (label-fmt sc-imgui.bindings:optional-string)
   (angle0 :double)
   (spec (:struct im-plot-spec)))
 
@@ -3759,7 +3759,7 @@
   (x :double)
   (y :double)
   (radius :double)
-  (label-fmt :string)
+  (label-fmt sc-imgui.bindings:optional-string)
   (angle0 :double)
   (spec (:struct im-plot-spec)))
 
@@ -3771,7 +3771,7 @@
   (x :double)
   (y :double)
   (radius :double)
-  (label-fmt :string)
+  (label-fmt sc-imgui.bindings:optional-string)
   (angle0 :double)
   (spec (:struct im-plot-spec)))
 
@@ -3783,7 +3783,7 @@
   (x :double)
   (y :double)
   (radius :double)
-  (label-fmt :string)
+  (label-fmt sc-imgui.bindings:optional-string)
   (angle0 :double)
   (spec (:struct im-plot-spec)))
 
@@ -3795,13 +3795,13 @@
   (x :double)
   (y :double)
   (radius :double)
-  (label-fmt :string)
+  (label-fmt sc-imgui.bindings:optional-string)
   (angle0 :double)
   (spec (:struct im-plot-spec)))
 
 (cffi:defcfun ("ImPlot_PlotPolygon_FloatPtr" plot-polygon-float-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -3809,7 +3809,7 @@
 
 (cffi:defcfun ("ImPlot_PlotPolygon_doublePtr" plot-polygon-double-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -3817,7 +3817,7 @@
 
 (cffi:defcfun ("ImPlot_PlotPolygon_S8Ptr" plot-polygon-s8-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -3825,7 +3825,7 @@
 
 (cffi:defcfun ("ImPlot_PlotPolygon_U8Ptr" plot-polygon-u8-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -3833,7 +3833,7 @@
 
 (cffi:defcfun ("ImPlot_PlotPolygon_S16Ptr" plot-polygon-s16-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -3841,7 +3841,7 @@
 
 (cffi:defcfun ("ImPlot_PlotPolygon_U16Ptr" plot-polygon-u16-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -3849,7 +3849,7 @@
 
 (cffi:defcfun ("ImPlot_PlotPolygon_S32Ptr" plot-polygon-s32-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -3857,7 +3857,7 @@
 
 (cffi:defcfun ("ImPlot_PlotPolygon_U32Ptr" plot-polygon-u32-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -3865,7 +3865,7 @@
 
 (cffi:defcfun ("ImPlot_PlotPolygon_S64Ptr" plot-polygon-s64-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -3873,7 +3873,7 @@
 
 (cffi:defcfun ("ImPlot_PlotPolygon_U64Ptr" plot-polygon-u64-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -3881,7 +3881,7 @@
 
 (cffi:defcfun ("ImPlot_PlotScatter_FloatPtrInt" plot-scatter-float-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (xscale :double)
@@ -3890,7 +3890,7 @@
 
 (cffi:defcfun ("ImPlot_PlotScatter_doublePtrInt" plot-scatter-double-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (xscale :double)
@@ -3899,7 +3899,7 @@
 
 (cffi:defcfun ("ImPlot_PlotScatter_S8PtrInt" plot-scatter-s8-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (xscale :double)
@@ -3908,7 +3908,7 @@
 
 (cffi:defcfun ("ImPlot_PlotScatter_U8PtrInt" plot-scatter-u8-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (xscale :double)
@@ -3917,7 +3917,7 @@
 
 (cffi:defcfun ("ImPlot_PlotScatter_S16PtrInt" plot-scatter-s16-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (xscale :double)
@@ -3926,7 +3926,7 @@
 
 (cffi:defcfun ("ImPlot_PlotScatter_U16PtrInt" plot-scatter-u16-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (xscale :double)
@@ -3935,7 +3935,7 @@
 
 (cffi:defcfun ("ImPlot_PlotScatter_S32PtrInt" plot-scatter-s32-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (xscale :double)
@@ -3944,7 +3944,7 @@
 
 (cffi:defcfun ("ImPlot_PlotScatter_U32PtrInt" plot-scatter-u32-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (xscale :double)
@@ -3953,7 +3953,7 @@
 
 (cffi:defcfun ("ImPlot_PlotScatter_S64PtrInt" plot-scatter-s64-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (xscale :double)
@@ -3962,7 +3962,7 @@
 
 (cffi:defcfun ("ImPlot_PlotScatter_U64PtrInt" plot-scatter-u64-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (xscale :double)
@@ -3971,7 +3971,7 @@
 
 (cffi:defcfun ("ImPlot_PlotScatter_FloatPtrFloatPtr" plot-scatter-float-ptr-float-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -3979,7 +3979,7 @@
 
 (cffi:defcfun ("ImPlot_PlotScatter_doublePtrdoublePtr" plot-scatter-double-ptrdouble-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -3987,7 +3987,7 @@
 
 (cffi:defcfun ("ImPlot_PlotScatter_S8PtrS8Ptr" plot-scatter-s8-ptr-s8-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -3995,7 +3995,7 @@
 
 (cffi:defcfun ("ImPlot_PlotScatter_U8PtrU8Ptr" plot-scatter-u8-ptr-u8-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -4003,7 +4003,7 @@
 
 (cffi:defcfun ("ImPlot_PlotScatter_S16PtrS16Ptr" plot-scatter-s16-ptr-s16-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -4011,7 +4011,7 @@
 
 (cffi:defcfun ("ImPlot_PlotScatter_U16PtrU16Ptr" plot-scatter-u16-ptr-u16-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -4019,7 +4019,7 @@
 
 (cffi:defcfun ("ImPlot_PlotScatter_S32PtrS32Ptr" plot-scatter-s32-ptr-s32-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -4027,7 +4027,7 @@
 
 (cffi:defcfun ("ImPlot_PlotScatter_U32PtrU32Ptr" plot-scatter-u32-ptr-u32-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -4035,7 +4035,7 @@
 
 (cffi:defcfun ("ImPlot_PlotScatter_S64PtrS64Ptr" plot-scatter-s64-ptr-s64-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -4043,7 +4043,7 @@
 
 (cffi:defcfun ("ImPlot_PlotScatter_U64PtrU64Ptr" plot-scatter-u64-ptr-u64-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -4051,7 +4051,7 @@
 
 (cffi:defcfun ("ImPlot_PlotScatterG" plot-scatter-g)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (getter :pointer)
   (data :pointer)
   (count :int)
@@ -4059,7 +4059,7 @@
 
 (cffi:defcfun ("ImPlot_PlotShaded_FloatPtrInt" plot-shaded-float-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (yref :double)
@@ -4069,7 +4069,7 @@
 
 (cffi:defcfun ("ImPlot_PlotShaded_doublePtrInt" plot-shaded-double-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (yref :double)
@@ -4079,7 +4079,7 @@
 
 (cffi:defcfun ("ImPlot_PlotShaded_S8PtrInt" plot-shaded-s8-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (yref :double)
@@ -4089,7 +4089,7 @@
 
 (cffi:defcfun ("ImPlot_PlotShaded_U8PtrInt" plot-shaded-u8-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (yref :double)
@@ -4099,7 +4099,7 @@
 
 (cffi:defcfun ("ImPlot_PlotShaded_S16PtrInt" plot-shaded-s16-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (yref :double)
@@ -4109,7 +4109,7 @@
 
 (cffi:defcfun ("ImPlot_PlotShaded_U16PtrInt" plot-shaded-u16-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (yref :double)
@@ -4119,7 +4119,7 @@
 
 (cffi:defcfun ("ImPlot_PlotShaded_S32PtrInt" plot-shaded-s32-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (yref :double)
@@ -4129,7 +4129,7 @@
 
 (cffi:defcfun ("ImPlot_PlotShaded_U32PtrInt" plot-shaded-u32-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (yref :double)
@@ -4139,7 +4139,7 @@
 
 (cffi:defcfun ("ImPlot_PlotShaded_S64PtrInt" plot-shaded-s64-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (yref :double)
@@ -4149,7 +4149,7 @@
 
 (cffi:defcfun ("ImPlot_PlotShaded_U64PtrInt" plot-shaded-u64-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (yref :double)
@@ -4159,7 +4159,7 @@
 
 (cffi:defcfun ("ImPlot_PlotShaded_FloatPtrFloatPtrInt" plot-shaded-float-ptr-float-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -4168,7 +4168,7 @@
 
 (cffi:defcfun ("ImPlot_PlotShaded_doublePtrdoublePtrInt" plot-shaded-double-ptrdouble-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -4177,7 +4177,7 @@
 
 (cffi:defcfun ("ImPlot_PlotShaded_S8PtrS8PtrInt" plot-shaded-s8-ptr-s8-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -4186,7 +4186,7 @@
 
 (cffi:defcfun ("ImPlot_PlotShaded_U8PtrU8PtrInt" plot-shaded-u8-ptr-u8-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -4195,7 +4195,7 @@
 
 (cffi:defcfun ("ImPlot_PlotShaded_S16PtrS16PtrInt" plot-shaded-s16-ptr-s16-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -4204,7 +4204,7 @@
 
 (cffi:defcfun ("ImPlot_PlotShaded_U16PtrU16PtrInt" plot-shaded-u16-ptr-u16-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -4213,7 +4213,7 @@
 
 (cffi:defcfun ("ImPlot_PlotShaded_S32PtrS32PtrInt" plot-shaded-s32-ptr-s32-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -4222,7 +4222,7 @@
 
 (cffi:defcfun ("ImPlot_PlotShaded_U32PtrU32PtrInt" plot-shaded-u32-ptr-u32-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -4231,7 +4231,7 @@
 
 (cffi:defcfun ("ImPlot_PlotShaded_S64PtrS64PtrInt" plot-shaded-s64-ptr-s64-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -4240,7 +4240,7 @@
 
 (cffi:defcfun ("ImPlot_PlotShaded_U64PtrU64PtrInt" plot-shaded-u64-ptr-u64-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -4250,7 +4250,7 @@
 (cffi:defcfun ("ImPlot_PlotShaded_FloatPtrFloatPtrFloatPtr"
                plot-shaded-float-ptr-float-ptr-float-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys1 :pointer)
   (ys2 :pointer)
@@ -4260,7 +4260,7 @@
 (cffi:defcfun ("ImPlot_PlotShaded_doublePtrdoublePtrdoublePtr"
                plot-shaded-double-ptrdouble-ptrdouble-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys1 :pointer)
   (ys2 :pointer)
@@ -4269,7 +4269,7 @@
 
 (cffi:defcfun ("ImPlot_PlotShaded_S8PtrS8PtrS8Ptr" plot-shaded-s8-ptr-s8-ptr-s8-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys1 :pointer)
   (ys2 :pointer)
@@ -4278,7 +4278,7 @@
 
 (cffi:defcfun ("ImPlot_PlotShaded_U8PtrU8PtrU8Ptr" plot-shaded-u8-ptr-u8-ptr-u8-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys1 :pointer)
   (ys2 :pointer)
@@ -4287,7 +4287,7 @@
 
 (cffi:defcfun ("ImPlot_PlotShaded_S16PtrS16PtrS16Ptr" plot-shaded-s16-ptr-s16-ptr-s16-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys1 :pointer)
   (ys2 :pointer)
@@ -4296,7 +4296,7 @@
 
 (cffi:defcfun ("ImPlot_PlotShaded_U16PtrU16PtrU16Ptr" plot-shaded-u16-ptr-u16-ptr-u16-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys1 :pointer)
   (ys2 :pointer)
@@ -4305,7 +4305,7 @@
 
 (cffi:defcfun ("ImPlot_PlotShaded_S32PtrS32PtrS32Ptr" plot-shaded-s32-ptr-s32-ptr-s32-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys1 :pointer)
   (ys2 :pointer)
@@ -4314,7 +4314,7 @@
 
 (cffi:defcfun ("ImPlot_PlotShaded_U32PtrU32PtrU32Ptr" plot-shaded-u32-ptr-u32-ptr-u32-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys1 :pointer)
   (ys2 :pointer)
@@ -4323,7 +4323,7 @@
 
 (cffi:defcfun ("ImPlot_PlotShaded_S64PtrS64PtrS64Ptr" plot-shaded-s64-ptr-s64-ptr-s64-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys1 :pointer)
   (ys2 :pointer)
@@ -4332,7 +4332,7 @@
 
 (cffi:defcfun ("ImPlot_PlotShaded_U64PtrU64PtrU64Ptr" plot-shaded-u64-ptr-u64-ptr-u64-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys1 :pointer)
   (ys2 :pointer)
@@ -4341,7 +4341,7 @@
 
 (cffi:defcfun ("ImPlot_PlotShadedG" plot-shaded-g)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (getter1 :pointer)
   (data1 :pointer)
   (getter2 :pointer)
@@ -4351,7 +4351,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStairs_FloatPtrInt" plot-stairs-float-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (xscale :double)
@@ -4360,7 +4360,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStairs_doublePtrInt" plot-stairs-double-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (xscale :double)
@@ -4369,7 +4369,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStairs_S8PtrInt" plot-stairs-s8-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (xscale :double)
@@ -4378,7 +4378,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStairs_U8PtrInt" plot-stairs-u8-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (xscale :double)
@@ -4387,7 +4387,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStairs_S16PtrInt" plot-stairs-s16-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (xscale :double)
@@ -4396,7 +4396,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStairs_U16PtrInt" plot-stairs-u16-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (xscale :double)
@@ -4405,7 +4405,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStairs_S32PtrInt" plot-stairs-s32-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (xscale :double)
@@ -4414,7 +4414,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStairs_U32PtrInt" plot-stairs-u32-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (xscale :double)
@@ -4423,7 +4423,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStairs_S64PtrInt" plot-stairs-s64-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (xscale :double)
@@ -4432,7 +4432,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStairs_U64PtrInt" plot-stairs-u64-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (xscale :double)
@@ -4441,7 +4441,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStairs_FloatPtrFloatPtr" plot-stairs-float-ptr-float-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -4449,7 +4449,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStairs_doublePtrdoublePtr" plot-stairs-double-ptrdouble-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -4457,7 +4457,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStairs_S8PtrS8Ptr" plot-stairs-s8-ptr-s8-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -4465,7 +4465,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStairs_U8PtrU8Ptr" plot-stairs-u8-ptr-u8-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -4473,7 +4473,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStairs_S16PtrS16Ptr" plot-stairs-s16-ptr-s16-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -4481,7 +4481,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStairs_U16PtrU16Ptr" plot-stairs-u16-ptr-u16-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -4489,7 +4489,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStairs_S32PtrS32Ptr" plot-stairs-s32-ptr-s32-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -4497,7 +4497,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStairs_U32PtrU32Ptr" plot-stairs-u32-ptr-u32-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -4505,7 +4505,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStairs_S64PtrS64Ptr" plot-stairs-s64-ptr-s64-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -4513,7 +4513,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStairs_U64PtrU64Ptr" plot-stairs-u64-ptr-u64-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -4521,7 +4521,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStairsG" plot-stairs-g)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (getter :pointer)
   (data :pointer)
   (count :int)
@@ -4529,7 +4529,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStems_FloatPtrInt" plot-stems-float-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (ref :double)
@@ -4539,7 +4539,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStems_doublePtrInt" plot-stems-double-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (ref :double)
@@ -4549,7 +4549,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStems_S8PtrInt" plot-stems-s8-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (ref :double)
@@ -4559,7 +4559,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStems_U8PtrInt" plot-stems-u8-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (ref :double)
@@ -4569,7 +4569,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStems_S16PtrInt" plot-stems-s16-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (ref :double)
@@ -4579,7 +4579,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStems_U16PtrInt" plot-stems-u16-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (ref :double)
@@ -4589,7 +4589,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStems_S32PtrInt" plot-stems-s32-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (ref :double)
@@ -4599,7 +4599,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStems_U32PtrInt" plot-stems-u32-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (ref :double)
@@ -4609,7 +4609,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStems_S64PtrInt" plot-stems-s64-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (ref :double)
@@ -4619,7 +4619,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStems_U64PtrInt" plot-stems-u64-ptr-int)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (values :pointer)
   (count :int)
   (ref :double)
@@ -4629,7 +4629,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStems_FloatPtrFloatPtr" plot-stems-float-ptr-float-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -4638,7 +4638,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStems_doublePtrdoublePtr" plot-stems-double-ptrdouble-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -4647,7 +4647,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStems_S8PtrS8Ptr" plot-stems-s8-ptr-s8-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -4656,7 +4656,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStems_U8PtrU8Ptr" plot-stems-u8-ptr-u8-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -4665,7 +4665,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStems_S16PtrS16Ptr" plot-stems-s16-ptr-s16-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -4674,7 +4674,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStems_U16PtrU16Ptr" plot-stems-u16-ptr-u16-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -4683,7 +4683,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStems_S32PtrS32Ptr" plot-stems-s32-ptr-s32-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -4692,7 +4692,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStems_U32PtrU32Ptr" plot-stems-u32-ptr-u32-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -4701,7 +4701,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStems_S64PtrS64Ptr" plot-stems-s64-ptr-s64-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -4710,7 +4710,7 @@
 
 (cffi:defcfun ("ImPlot_PlotStems_U64PtrU64Ptr" plot-stems-u64-ptr-u64-ptr)
     :void
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (xs :pointer)
   (ys :pointer)
   (count :int)
@@ -4719,7 +4719,7 @@
 
 (cffi:defcfun ("ImPlot_PlotText" plot-text)
     :void
-  (text :string)
+  (text sc-imgui.bindings:optional-string)
   (x :double)
   (y :double)
   (pix-offset (:struct %imgui::im-vec2))
@@ -4763,7 +4763,7 @@
 
 (cffi:defcfun ("ImPlot_PushColormap_Str" push-colormap-str)
     :void
-  (name :string))
+  (name sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("ImPlot_PushPlotClipRect" push-plot-clip-rect)
     :void
@@ -4803,7 +4803,7 @@
 
 (cffi:defcfun ("ImPlot_RegisterOrGetItem" register-or-get-item)
     :pointer
-  (label-id :string)
+  (label-id sc-imgui.bindings:optional-string)
   (flags :int)
   (just-created :pointer))
 
@@ -4896,8 +4896,8 @@
 
 (cffi:defcfun ("ImPlot_SetupAxes" setup-axes)
     :void
-  (x-label :string)
-  (y-label :string)
+  (x-label sc-imgui.bindings:optional-string)
+  (y-label sc-imgui.bindings:optional-string)
   (x-flags :int)
   (y-flags :int))
 
@@ -4912,13 +4912,13 @@
 (cffi:defcfun ("ImPlot_SetupAxis" setup-axis)
     :void
   (axis :int)
-  (label :string)
+  (label sc-imgui.bindings:optional-string)
   (flags :int))
 
 (cffi:defcfun ("ImPlot_SetupAxisFormat_Str" setup-axis-format-str)
     :void
   (axis :int)
-  (fmt :string))
+  (fmt sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("ImPlot_SetupAxisFormat_PlotFormatter" setup-axis-format-plot-formatter)
     :void
@@ -4998,7 +4998,7 @@
 
 (cffi:defcfun ("ImPlot_ShowAltLegend" show-alt-legend)
     :void
-  (title-id :string)
+  (title-id sc-imgui.bindings:optional-string)
   (vertical :bool)
   (size (:struct %imgui::im-vec2))
   (interactable :bool))
@@ -5011,14 +5011,14 @@
 
 (cffi:defcfun ("ImPlot_ShowColormapSelector" show-colormap-selector-raw)
     :uint8
-  (label :string))
+  (label sc-imgui.bindings:optional-string))
 
 (common-lisp:defun show-colormap-selector (label)
   (common-lisp:/= 0 (show-colormap-selector-raw label)))
 
 (cffi:defcfun ("ImPlot_ShowDatePicker" show-date-picker-raw)
     :uint8
-  (id :string)
+  (id sc-imgui.bindings:optional-string)
   (level :pointer)
   (t :pointer)
   (t1 :pointer)
@@ -5033,7 +5033,7 @@
 
 (cffi:defcfun ("ImPlot_ShowInputMapSelector" show-input-map-selector-raw)
     :uint8
-  (label :string))
+  (label sc-imgui.bindings:optional-string))
 
 (common-lisp:defun show-input-map-selector (label)
   (common-lisp:/= 0 (show-input-map-selector-raw label)))
@@ -5076,7 +5076,7 @@
 
 (cffi:defcfun ("ImPlot_ShowStyleSelector" show-style-selector-raw)
     :uint8
-  (label :string))
+  (label sc-imgui.bindings:optional-string))
 
 (common-lisp:defun show-style-selector (label) (common-lisp:/= 0 (show-style-selector-raw label)))
 
@@ -5086,7 +5086,7 @@
 
 (cffi:defcfun ("ImPlot_ShowTimePicker" show-time-picker-raw)
     :uint8
-  (id :string)
+  (id sc-imgui.bindings:optional-string)
   (t :pointer))
 
 (common-lisp:defun show-time-picker (id t) (common-lisp:/= 0 (show-time-picker-raw id t)))
@@ -5123,7 +5123,7 @@
     :void
   (x :double)
   (col (:struct %imgui::im-vec4))
-  (fmt :string))
+  (fmt sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("ImPlot_TagY_Bool" tag-y-bool)
     :void
@@ -5135,7 +5135,7 @@
     :void
   (y :double)
   (col (:struct %imgui::im-vec4))
-  (fmt :string))
+  (fmt sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("ImPlot_Today" today)
     (:struct im-plot-time))

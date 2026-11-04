@@ -3,7 +3,8 @@
 
 (defpackage #:sc-imgui.bindings
   (:use #:cl)
-  (:export #:*library-search-paths*
+  (:export #:optional-string
+           #:*library-search-paths*
            #:load-shim-library
            #:shim-library-not-found
            #:shim-library-not-found-paths))

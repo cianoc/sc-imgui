@@ -2,7 +2,9 @@
 (cl:in-package #:%shim)
 
 (cffi:defcfun ("shim_open_window" open-window) :int
-  (width :int) (height :int) (title :string) (ini-path :string))
+  (width :int) (height :int)
+  (title sc-imgui.bindings:optional-string)
+  (ini-path sc-imgui.bindings:optional-string)) ; NIL = no ini file
 (cffi:defcfun ("shim_should_close" should-close) :int)
 (cffi:defcfun ("shim_begin_frame" begin-frame) :void)
 (cffi:defcfun ("shim_end_frame" end-frame) :void)

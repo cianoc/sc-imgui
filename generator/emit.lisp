@@ -86,6 +86,17 @@ defcstruct forms, a struct used by value always after the structs it contains."
                     when (eq (gethash name state) :complete)
                       collect (cons name (struct-type-symbol name)))))))
 
+(defun optional-string-type ()
+  "The CFFI type for `const char*` arguments, defined in src/bindings/types.lisp:
+like :string but NIL passes NULL.  Returns keep :string."
+  (let* ((package (ensure-package "SC-IMGUI.BINDINGS"))
+         (symbol (intern "OPTIONAL-STRING" package)))
+    (export symbol package)               ; printed as sc-imgui.bindings:optional-string
+    symbol))
+
+(defun argument-type (cffi-type)
+  (if (eq cffi-type :string) (optional-string-type) cffi-type))
+
 (defun emit-function (f prefix package lookup typedefs)
   "Return a list of forms (defcfun, plus a wrapper defun for bool returns) for F,\nor (values nil reason) when it is skipped."
   (when (getf f :variadic-p)
@@ -115,7 +126,8 @@ defcstruct forms, a struct used by value always after the structs it contains."
                                       package))
                         (params (loop for (nil nil type) in args
                                       for n in names
-                                      collect `(,(intern (string-upcase n) package) ,type))))
+                                      collect `(,(intern (string-upcase n) package)
+                                                ,(argument-type type)))))
                    (if (eq ret :bool)
                        ;; Bool-return rule (uniform): C `bool` defines only the
                        ;; low byte of the result register, and cffi-libffi cannot
