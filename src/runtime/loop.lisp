@@ -68,8 +68,11 @@ the frame loop needs for itself."))
 (defun start (&key (width 1280) (height 800) (title "sc-imgui"))
   "Open the window and run the frame loop on SBCL's main thread.  Returns T at
 once, or NIL if the loop is already running.  Errors are reported to the
-caller's *STANDARD-OUTPUT*.  Must not be called on the main thread itself:
-that signals MAIN-THREAD-BUSY and changes nothing."
+caller's *STANDARD-OUTPUT*.  Otherwise it must not be called on the main
+thread itself: that signals MAIN-THREAD-BUSY and changes nothing.  (A panel
+calling START while the loop runs gets NIL, like any other caller.)"
+  (when (running-p)                     ; a read only; rechecked under the lock
+    (return-from start nil))
   (when (trivial-main-thread:main-thread-p)
     (error 'main-thread-busy))
   (let ((ini (%ini-namestring)))

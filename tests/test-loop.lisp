@@ -63,3 +63,26 @@ NIL) and the output it wrote."
              (is (search "already open" report))))
       (setf gui.runtime::*running* nil
             gui.runtime:*report-stream* saved))))
+
+(test start-from-panel-while-running-returns-nil
+  ;; A panel calling START while the loop runs (so on the main thread) does
+  ;; nothing: it returns NIL and signals nothing.  Headless stand-in for the
+  ;; running loop: *RUNNING* set and the registered panels drawn in a frame.
+  (when (trivial-main-thread:main-thread-p)
+    (let ((result :not-called) (signalled nil)
+          (out (make-string-output-stream)))
+      (unwind-protect
+           (with-frame-env
+             (let ((gui.runtime:*report-stream* out))
+               (setf gui.runtime::*running* t)
+               (gui:define-gui starter ()
+                 (setf result (handler-case (gui:start)
+                                (condition (c) (setf signalled c) :signalled))))
+               (frame)
+               (is (null result))
+               (is (null signalled))
+               (is (null (gui.runtime:gui-entry-failure (gui.runtime:find-gui 'starter))))
+               (is (string= "" (get-output-stream-string out)))))
+        (setf gui.runtime::*running* nil))))
+  (unless (trivial-main-thread:main-thread-p)
+    (skip "not on the main thread")))
