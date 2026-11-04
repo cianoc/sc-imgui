@@ -107,3 +107,34 @@
   (with-headless-imgui ()
     (is (/= 0 (%shim:open-window 10 10 "x" nil)))
     (is (search "already open" (%shim:last-error)))))
+
+;;; C `bool` arguments work on both call paths, including the cffi-libffi one
+;;; used by calls with by-value structs.
+
+(test bool-arguments-with-struct-by-value
+  (with-headless-imgui ()
+    (with-test-frame ()
+      (%imgui:begin "t" (cffi:null-pointer) 0)
+      (%imgui:selectable-bool "a" t 0 (vec2 0 0))
+      (%imgui:selectable-bool "b" nil 0 (vec2 0 0))
+      ;; The bool reaches C: hide_text_after_double_hash drops "##cd".
+      (let ((hidden (%imgui:calc-text-size "ab##cd" nil t -1.0))
+            (shown (%imgui:calc-text-size "ab##cd" nil nil -1.0))
+            (ab (%imgui:calc-text-size "ab" nil nil -1.0)))
+        (is (= (getf ab '%imgui::x) (getf hidden '%imgui::x)))
+        (is (< (getf hidden '%imgui::x) (getf shown '%imgui::x))))
+      (%imgui:end))
+    (is (= 0 (%shim:assert-count)))))
+
+(test bool-argument-plain-call
+  ;; No by-value struct: the plain CFFI path.
+  (with-headless-imgui ()
+    (with-test-frame ()
+      (%imgui:begin "t" (cffi:null-pointer) 0)
+      (%imgui:set-next-item-open t 0)
+      (is (%imgui:tree-node-str "open"))
+      (%imgui:tree-pop)
+      (%imgui:set-next-item-open nil 0)
+      (is (not (%imgui:tree-node-str "closed")))
+      (%imgui:end))
+    (is (= 0 (%shim:assert-count)))))

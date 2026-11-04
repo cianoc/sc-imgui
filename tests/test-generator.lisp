@@ -114,6 +114,46 @@
                 "ig" (ensure-package "%IMGUI") nil (make-hash-table :test 'equal))))
     (is (eq :string (third (first forms))))))
 
+;; Bool-argument rule: C `bool` arguments are :uint8 in a NAME-RAW defcfun and
+;; NAME is a wrapper passing T/NIL as 1/0, with or without by-value structs.
+(defun emit-one (c-name ret args)
+  (sc-imgui.generator::emit-function
+   (list :c-name c-name :ret ret :args args)
+   "ig" (ensure-package "%IMGUI") nil (make-hash-table :test 'equal)))
+
+(test bool-arguments-use-uint8-and-wrapper
+  ;; no by-value struct: void igSetNextItemOpen(bool is_open, ImGuiCond cond)
+  (destructuring-bind (raw wrapper)
+      (emit-one "igSetNextItemOpen" "void" '(("is_open" "bool") ("cond" "int")))
+    (is (equal "SET-NEXT-ITEM-OPEN-RAW" (symbol-name (second (second raw)))))
+    (is (eq :void (third raw)))
+    (is (eq :uint8 (second (fourth raw))))
+    (is (eq 'cl:defun (first wrapper)))
+    (is (equal "SET-NEXT-ITEM-OPEN" (symbol-name (second wrapper))))
+    (is (equal '("IS-OPEN" "COND") (mapcar #'symbol-name (third wrapper))))
+    ;; void return: the wrapper returns the raw call's value unchanged
+    (destructuring-bind (call-head a b) (fourth wrapper)
+      (is (eq (second (second raw)) call-head))
+      (is (equal '(cl:if t 1 0) (subst t (first (third wrapper)) a)))
+      (is (eq (second (third wrapper)) b))))
+  ;; by-value struct and bool return:
+  ;; bool igSelectable_Bool(const char* label, bool selected, flags, ImVec2 size)
+  (destructuring-bind (raw wrapper)
+      (emit-one "igSelectable_Bool" "bool"
+                '(("label" "const char*") ("selected" "bool") ("flags" "int")
+                  ("size" "const ImVec2")))
+    (is (eq :uint8 (third raw)))
+    (is (eq :uint8 (second (fifth raw))))
+    (is (equal "IM-VEC2" (symbol-name (second (second (seventh raw))))))
+    (let ((body (fourth wrapper)))
+      (is (eq 'cl:/= (first body)))
+      (is (eq (second (second raw)) (first (third body))))
+      (is (equal '(cl:if t 1 0) (subst t (second (third wrapper)) (third (third body)))))))
+  ;; no bool anywhere: a plain defcfun, no wrapper
+  (let ((forms (emit-one "igSetNextItemWidth" "void" '(("item_width" "float")))))
+    (is (= 1 (length forms)))
+    (is (eq 'cffi:defcfun (first (first forms))))))
+
 (test opaque-struct-warns
   (let (warned)
     (handler-bind ((opaque-struct-warning

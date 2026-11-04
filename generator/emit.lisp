@@ -128,17 +128,29 @@ like :string but NIL passes NULL.  Returns keep :string."
                                       for n in names
                                       collect `(,(intern (string-upcase n) package)
                                                 ,(argument-type type)))))
-                   (if (eq ret :bool)
-                       ;; Bool-return rule (uniform): C `bool` defines only the
-                       ;; low byte of the result register, and cffi-libffi cannot
-                       ;; translate a custom return type.  So the raw call returns
-                       ;; :uint8 (NAME-RAW) and NAME is a thin wrapper returning T/NIL.
+                   (if (or (eq ret :bool) (find :bool params :key #'second))
+                       ;; Bool rule (uniform, for returns and arguments): C `bool`
+                       ;; is one byte, but CFFI :bool is int-sized, and
+                       ;; cffi-libffi (by-value struct calls) can translate
+                       ;; neither a :bool argument nor a custom return type.  So
+                       ;; every function with a bool return or argument is a
+                       ;; NAME-RAW defcfun using :uint8 for each bool, and NAME is
+                       ;; a thin wrapper taking/returning T/NIL (generalized
+                       ;; boolean in, 1/0 to C; nonzero out is T).
                        (let ((raw (intern (string-upcase
                                            (format nil "~A-raw" (symbol-name name)))
-                                          package)))
-                         (list `(cffi:defcfun (,c-name ,raw) :uint8 ,@params)
-                               `(cl:defun ,name ,(mapcar #'first params)
-                                  (cl:/= 0 (,raw ,@(mapcar #'first params))))))
+                                          package))
+                             (vars (mapcar #'first params)))
+                         (let ((call `(,raw ,@(loop for (var type) in params
+                                                   collect (if (eq type :bool)
+                                                               `(cl:if ,var 1 0)
+                                                               var)))))
+                           (list `(cffi:defcfun (,c-name ,raw)
+                                      ,(if (eq ret :bool) :uint8 ret)
+                                    ,@(loop for (var type) in params
+                                            collect `(,var ,(if (eq type :bool) :uint8 type))))
+                                 `(cl:defun ,name ,vars
+                                    ,(if (eq ret :bool) `(cl:/= 0 ,call) call)))))
                        (list `(cffi:defcfun (,c-name ,name) ,ret ,@params))))))))))
 
 (defun starts-with-p (prefix string)

@@ -691,19 +691,31 @@
 
 (common-lisp:defconstant +time-unit-count+ 8)
 
-(cffi:defcfun ("ImPlot_AddColormap_Vec4Ptr" add-colormap-vec4-ptr)
+(cffi:defcfun ("ImPlot_AddColormap_Vec4Ptr" add-colormap-vec4-ptr-raw)
     :int
   (name sc-imgui.bindings:optional-string)
   (cols :pointer)
   (size :int)
-  (qual :bool))
+  (qual :uint8))
 
-(cffi:defcfun ("ImPlot_AddColormap_U32Ptr" add-colormap-u32-ptr)
+(common-lisp:defun add-colormap-vec4-ptr (name cols size qual)
+  (add-colormap-vec4-ptr-raw name cols size
+   (common-lisp:if qual
+                   1
+                   0)))
+
+(cffi:defcfun ("ImPlot_AddColormap_U32Ptr" add-colormap-u32-ptr-raw)
     :int
   (name sc-imgui.bindings:optional-string)
   (cols :pointer)
   (size :int)
-  (qual :bool))
+  (qual :uint8))
+
+(common-lisp:defun add-colormap-u32-ptr (name cols size qual)
+  (add-colormap-u32-ptr-raw name cols size
+   (common-lisp:if qual
+                   1
+                   0)))
 
 (cffi:defcfun ("ImPlot_AddLineH" add-line-h)
     :void
@@ -753,23 +765,39 @@
 (common-lisp:defun all-axes-input-locked (axes count)
   (common-lisp:/= 0 (all-axes-input-locked-raw axes count)))
 
-(cffi:defcfun ("ImPlot_Annotation_Bool" annotation-bool)
+(cffi:defcfun ("ImPlot_Annotation_Bool" annotation-bool-raw)
     :void
   (x :double)
   (y :double)
   (col (:struct %imgui::im-vec4))
   (pix-offset (:struct %imgui::im-vec2))
-  (clamp :bool)
-  (round :bool))
+  (clamp :uint8)
+  (round :uint8))
 
-(cffi:defcfun ("ImPlot_Annotation_Str0" annotation-str0)
+(common-lisp:defun annotation-bool (x y col pix-offset clamp round)
+  (annotation-bool-raw x y col pix-offset
+   (common-lisp:if clamp
+                   1
+                   0)
+   (common-lisp:if round
+                   1
+                   0)))
+
+(cffi:defcfun ("ImPlot_Annotation_Str0" annotation-str0-raw)
     :void
   (x :double)
   (y :double)
   (col (:struct %imgui::im-vec4))
   (pix-offset (:struct %imgui::im-vec2))
-  (clamp :bool)
+  (clamp :uint8)
   (fmt sc-imgui.bindings:optional-string))
+
+(common-lisp:defun annotation-str0 (x y col pix-offset clamp fmt)
+  (annotation-str0-raw x y col pix-offset
+   (common-lisp:if clamp
+                   1
+                   0)
+   fmt))
 
 (cffi:defcfun ("ImPlot_AnyAxesHeld" any-axes-held-raw)
     :uint8
@@ -797,10 +825,14 @@
 (cffi:defcfun ("ImPlot_BeginAlignedPlots" begin-aligned-plots-raw)
     :uint8
   (group-id sc-imgui.bindings:optional-string)
-  (vertical :bool))
+  (vertical :uint8))
 
 (common-lisp:defun begin-aligned-plots (group-id vertical)
-  (common-lisp:/= 0 (begin-aligned-plots-raw group-id vertical)))
+  (common-lisp:/= 0
+                  (begin-aligned-plots-raw group-id
+                   (common-lisp:if vertical
+                                   1
+                                   0))))
 
 (cffi:defcfun ("ImPlot_BeginDragDropSourceAxis" begin-drag-drop-source-axis-raw)
     :uint8
@@ -898,12 +930,18 @@
     :uint32
   (col :uint32))
 
-(cffi:defcfun ("ImPlot_CalcLegendSize" calc-legend-size)
+(cffi:defcfun ("ImPlot_CalcLegendSize" calc-legend-size-raw)
     (:struct %imgui::im-vec2)
   (items :pointer)
   (pad (:struct %imgui::im-vec2))
   (spacing (:struct %imgui::im-vec2))
-  (vertical :bool))
+  (vertical :uint8))
+
+(common-lisp:defun calc-legend-size (items pad spacing vertical)
+  (calc-legend-size-raw items pad spacing
+   (common-lisp:if vertical
+                   1
+                   0)))
 
 (cffi:defcfun ("ImPlot_CalcTextColor_Vec4" calc-text-color-vec4)
     :uint32
@@ -1159,13 +1197,19 @@
   (t (:struct im-plot-time))
   (unit :int))
 
-(cffi:defcfun ("ImPlot_FormatDate" format-date)
+(cffi:defcfun ("ImPlot_FormatDate" format-date-raw)
     :int
   (t (:struct im-plot-time))
   (buffer :pointer)
   (size :int)
   (fmt :int)
-  (use-iso-8601 :bool))
+  (use-iso-8601 :uint8))
+
+(common-lisp:defun format-date (t buffer size fmt use-iso-8601)
+  (format-date-raw t buffer size fmt
+   (common-lisp:if use-iso-8601
+                   1
+                   0)))
 
 (cffi:defcfun ("ImPlot_FormatDateTime" format-date-time)
     :int
@@ -1174,13 +1218,19 @@
   (size :int)
   (fmt (:struct im-plot-date-time-spec)))
 
-(cffi:defcfun ("ImPlot_FormatTime" format-time)
+(cffi:defcfun ("ImPlot_FormatTime" format-time-raw)
     :int
   (t (:struct im-plot-time))
   (buffer :pointer)
   (size :int)
   (fmt :int)
-  (use-24-hr-clk :bool))
+  (use-24-hr-clk :uint8))
+
+(common-lisp:defun format-time (t buffer size fmt use-24-hr-clk)
+  (format-time-raw t buffer size fmt
+   (common-lisp:if use-24-hr-clk
+                   1
+                   0)))
 
 (cffi:defcfun ("ImPlot_Formatter_Default" formatter-default)
     :int
@@ -1336,10 +1386,17 @@
     :int
   (t (:struct im-plot-time)))
 
-(cffi:defcfun ("ImPlot_HideNextItem" hide-next-item)
+(cffi:defcfun ("ImPlot_HideNextItem" hide-next-item-raw)
     :void
-  (hidden :bool)
+  (hidden :uint8)
   (cond :int))
+
+(common-lisp:defun hide-next-item (hidden cond)
+  (hide-next-item-raw
+   (common-lisp:if hidden
+                   1
+                   0)
+   cond))
 
 (cffi:defcfun ("ImPlot_ImAlmostEqual" im-almost-equal-raw)
     :uint8
@@ -2063,41 +2120,69 @@
     :void
   (col :uint32))
 
-(cffi:defcfun ("ImPlot_Locator_Default" locator-default)
+(cffi:defcfun ("ImPlot_Locator_Default" locator-default-raw)
     :void
   (ticker :pointer)
   (range (:struct im-plot-range))
   (pixels :float)
-  (vertical :bool)
+  (vertical :uint8)
   (formatter :pointer)
   (formatter-data :pointer))
 
-(cffi:defcfun ("ImPlot_Locator_Log10" locator-log10)
+(common-lisp:defun locator-default (ticker range pixels vertical formatter formatter-data)
+  (locator-default-raw ticker range pixels
+   (common-lisp:if vertical
+                   1
+                   0)
+   formatter formatter-data))
+
+(cffi:defcfun ("ImPlot_Locator_Log10" locator-log10-raw)
     :void
   (ticker :pointer)
   (range (:struct im-plot-range))
   (pixels :float)
-  (vertical :bool)
+  (vertical :uint8)
   (formatter :pointer)
   (formatter-data :pointer))
 
-(cffi:defcfun ("ImPlot_Locator_SymLog" locator-sym-log)
+(common-lisp:defun locator-log10 (ticker range pixels vertical formatter formatter-data)
+  (locator-log10-raw ticker range pixels
+   (common-lisp:if vertical
+                   1
+                   0)
+   formatter formatter-data))
+
+(cffi:defcfun ("ImPlot_Locator_SymLog" locator-sym-log-raw)
     :void
   (ticker :pointer)
   (range (:struct im-plot-range))
   (pixels :float)
-  (vertical :bool)
+  (vertical :uint8)
   (formatter :pointer)
   (formatter-data :pointer))
 
-(cffi:defcfun ("ImPlot_Locator_Time" locator-time)
+(common-lisp:defun locator-sym-log (ticker range pixels vertical formatter formatter-data)
+  (locator-sym-log-raw ticker range pixels
+   (common-lisp:if vertical
+                   1
+                   0)
+   formatter formatter-data))
+
+(cffi:defcfun ("ImPlot_Locator_Time" locator-time-raw)
     :void
   (ticker :pointer)
   (range (:struct im-plot-range))
   (pixels :float)
-  (vertical :bool)
+  (vertical :uint8)
   (formatter :pointer)
   (formatter-data :pointer))
+
+(common-lisp:defun locator-time (ticker range pixels vertical formatter formatter-data)
+  (locator-time-raw ticker range pixels
+   (common-lisp:if vertical
+                   1
+                   0)
+   formatter formatter-data))
 
 (cffi:defcfun ("ImPlot_MakeTime" make-time)
     (:struct im-plot-time)
@@ -2138,10 +2223,16 @@
 (cffi:defcfun ("ImPlot_NextMarker" next-marker)
     :int)
 
-(cffi:defcfun ("ImPlot_NiceNum" nice-num)
+(cffi:defcfun ("ImPlot_NiceNum" nice-num-raw)
     :double
   (x :double)
-  (round :bool))
+  (round :uint8))
+
+(common-lisp:defun nice-num (x round)
+  (nice-num-raw x
+   (common-lisp:if round
+                   1
+                   0)))
 
 (cffi:defcfun ("ImPlot_Now" now)
     (:struct im-plot-time))
@@ -4807,15 +4898,27 @@
   (flags :int)
   (just-created :pointer))
 
-(cffi:defcfun ("ImPlot_RenderColorBar" render-color-bar)
+(cffi:defcfun ("ImPlot_RenderColorBar" render-color-bar-raw)
     :void
   (colors :pointer)
   (size :int)
   (draw-list :pointer)
   (bounds (:struct %imgui::im-rect))
-  (vert :bool)
-  (reversed :bool)
-  (continuous :bool))
+  (vert :uint8)
+  (reversed :uint8)
+  (continuous :uint8))
+
+(common-lisp:defun render-color-bar (colors size draw-list bounds vert reversed continuous)
+  (render-color-bar-raw colors size draw-list bounds
+   (common-lisp:if vert
+                   1
+                   0)
+   (common-lisp:if reversed
+                   1
+                   0)
+   (common-lisp:if continuous
+                   1
+                   0)))
 
 (cffi:defcfun ("ImPlot_ResetCtxForNextAlignedPlots" reset-ctx-for-next-aligned-plots)
     :void
@@ -4957,22 +5060,34 @@
   (inverse :pointer)
   (data :pointer))
 
-(cffi:defcfun ("ImPlot_SetupAxisTicks_doublePtr" setup-axis-ticks-double-ptr)
+(cffi:defcfun ("ImPlot_SetupAxisTicks_doublePtr" setup-axis-ticks-double-ptr-raw)
     :void
   (axis :int)
   (values :pointer)
   (n-ticks :int)
   (labels :pointer)
-  (keep-default :bool))
+  (keep-default :uint8))
 
-(cffi:defcfun ("ImPlot_SetupAxisTicks_double" setup-axis-ticks-double)
+(common-lisp:defun setup-axis-ticks-double-ptr (axis values n-ticks labels keep-default)
+  (setup-axis-ticks-double-ptr-raw axis values n-ticks labels
+   (common-lisp:if keep-default
+                   1
+                   0)))
+
+(cffi:defcfun ("ImPlot_SetupAxisTicks_double" setup-axis-ticks-double-raw)
     :void
   (axis :int)
   (v-min :double)
   (v-max :double)
   (n-ticks :int)
   (labels :pointer)
-  (keep-default :bool))
+  (keep-default :uint8))
+
+(common-lisp:defun setup-axis-ticks-double (axis v-min v-max n-ticks labels keep-default)
+  (setup-axis-ticks-double-raw axis v-min v-max n-ticks labels
+   (common-lisp:if keep-default
+                   1
+                   0)))
 
 (cffi:defcfun ("ImPlot_SetupAxisZoomConstraints" setup-axis-zoom-constraints)
     :void
@@ -4996,18 +5111,34 @@
   (location :int)
   (flags :int))
 
-(cffi:defcfun ("ImPlot_ShowAltLegend" show-alt-legend)
+(cffi:defcfun ("ImPlot_ShowAltLegend" show-alt-legend-raw)
     :void
   (title-id sc-imgui.bindings:optional-string)
-  (vertical :bool)
+  (vertical :uint8)
   (size (:struct %imgui::im-vec2))
-  (interactable :bool))
+  (interactable :uint8))
 
-(cffi:defcfun ("ImPlot_ShowAxisContextMenu" show-axis-context-menu)
+(common-lisp:defun show-alt-legend (title-id vertical size interactable)
+  (show-alt-legend-raw title-id
+   (common-lisp:if vertical
+                   1
+                   0)
+   size
+   (common-lisp:if interactable
+                   1
+                   0)))
+
+(cffi:defcfun ("ImPlot_ShowAxisContextMenu" show-axis-context-menu-raw)
     :void
   (axis :pointer)
   (equal-axis :pointer)
-  (time-allowed :bool))
+  (time-allowed :uint8))
+
+(common-lisp:defun show-axis-context-menu (axis equal-axis time-allowed)
+  (show-axis-context-menu-raw axis equal-axis
+   (common-lisp:if time-allowed
+                   1
+                   0)))
 
 (cffi:defcfun ("ImPlot_ShowColormapSelector" show-colormap-selector-raw)
     :uint8
@@ -5041,25 +5172,36 @@
 (cffi:defcfun ("ImPlot_ShowLegendContextMenu" show-legend-context-menu-raw)
     :uint8
   (legend :pointer)
-  (visible :bool))
+  (visible :uint8))
 
 (common-lisp:defun show-legend-context-menu (legend visible)
-  (common-lisp:/= 0 (show-legend-context-menu-raw legend visible)))
+  (common-lisp:/= 0
+                  (show-legend-context-menu-raw legend
+                   (common-lisp:if visible
+                                   1
+                                   0))))
 
 (cffi:defcfun ("ImPlot_ShowLegendEntries" show-legend-entries-raw)
     :uint8
   (items :pointer)
   (legend-bb (:struct %imgui::im-rect))
-  (interactable :bool)
+  (interactable :uint8)
   (pad (:struct %imgui::im-vec2))
   (spacing (:struct %imgui::im-vec2))
-  (vertical :bool)
+  (vertical :uint8)
   (draw-list :pointer))
 
 (common-lisp:defun show-legend-entries
                    (items legend-bb interactable pad spacing vertical draw-list)
   (common-lisp:/= 0
-                  (show-legend-entries-raw items legend-bb interactable pad spacing vertical
+                  (show-legend-entries-raw items legend-bb
+                   (common-lisp:if interactable
+                                   1
+                                   0)
+                   pad spacing
+                   (common-lisp:if vertical
+                                   1
+                                   0)
                    draw-list)))
 
 (cffi:defcfun ("ImPlot_ShowMetricsWindow" show-metrics-window)
@@ -5113,11 +5255,17 @@
 (cffi:defcfun ("ImPlot_SubplotNextCell" subplot-next-cell)
     :void)
 
-(cffi:defcfun ("ImPlot_TagX_Bool" tag-x-bool)
+(cffi:defcfun ("ImPlot_TagX_Bool" tag-x-bool-raw)
     :void
   (x :double)
   (col (:struct %imgui::im-vec4))
-  (round :bool))
+  (round :uint8))
+
+(common-lisp:defun tag-x-bool (x col round)
+  (tag-x-bool-raw x col
+   (common-lisp:if round
+                   1
+                   0)))
 
 (cffi:defcfun ("ImPlot_TagX_Str0" tag-x-str0)
     :void
@@ -5125,11 +5273,17 @@
   (col (:struct %imgui::im-vec4))
   (fmt sc-imgui.bindings:optional-string))
 
-(cffi:defcfun ("ImPlot_TagY_Bool" tag-y-bool)
+(cffi:defcfun ("ImPlot_TagY_Bool" tag-y-bool-raw)
     :void
   (y :double)
   (col (:struct %imgui::im-vec4))
-  (round :bool))
+  (round :uint8))
+
+(common-lisp:defun tag-y-bool (y col round)
+  (tag-y-bool-raw y col
+   (common-lisp:if round
+                   1
+                   0)))
 
 (cffi:defcfun ("ImPlot_TagY_Str0" tag-y-str0)
     :void

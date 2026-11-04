@@ -4448,22 +4448,35 @@
   (uv (:struct im-vec2))
   (col :uint32))
 
-(cffi:defcfun ("ImDrawList_PushClipRect" im-draw-list-push-clip-rect)
+(cffi:defcfun ("ImDrawList_PushClipRect" im-draw-list-push-clip-rect-raw)
     :void
   (self :pointer)
   (clip-rect-min (:struct im-vec2))
   (clip-rect-max (:struct im-vec2))
-  (intersect-with-current-clip-rect :bool))
+  (intersect-with-current-clip-rect :uint8))
+
+(common-lisp:defun im-draw-list-push-clip-rect
+                   (self clip-rect-min clip-rect-max intersect-with-current-clip-rect)
+  (im-draw-list-push-clip-rect-raw self clip-rect-min clip-rect-max
+   (common-lisp:if intersect-with-current-clip-rect
+                   1
+                   0)))
 
 (cffi:defcfun ("ImDrawList_PushClipRectFullScreen" im-draw-list-push-clip-rect-full-screen)
     :void
   (self :pointer))
 
-(cffi:defcfun ("ImDrawList_PushDrawFlag" im-draw-list-push-draw-flag)
+(cffi:defcfun ("ImDrawList_PushDrawFlag" im-draw-list-push-draw-flag-raw)
     :void
   (self :pointer)
   (flags :int)
-  (enabled :bool))
+  (enabled :uint8))
+
+(common-lisp:defun im-draw-list-push-draw-flag (self flags enabled)
+  (im-draw-list-push-draw-flag-raw self flags
+   (common-lisp:if enabled
+                   1
+                   0)))
 
 (cffi:defcfun ("ImDrawList_PushTexture" im-draw-list-push-texture)
     :void
@@ -5107,10 +5120,16 @@
     :void
   (self :pointer))
 
-(cffi:defcfun ("ImGuiIO_AddFocusEvent" im-gui-io-add-focus-event)
+(cffi:defcfun ("ImGuiIO_AddFocusEvent" im-gui-io-add-focus-event-raw)
     :void
   (self :pointer)
-  (focused :bool))
+  (focused :uint8))
+
+(common-lisp:defun im-gui-io-add-focus-event (self focused)
+  (im-gui-io-add-focus-event-raw self
+   (common-lisp:if focused
+                   1
+                   0)))
 
 (cffi:defcfun ("ImGuiIO_AddInputCharacter" im-gui-io-add-input-character)
     :void
@@ -5127,24 +5146,43 @@
   (self :pointer)
   (str sc-imgui.bindings:optional-string))
 
-(cffi:defcfun ("ImGuiIO_AddKeyAnalogEvent" im-gui-io-add-key-analog-event)
+(cffi:defcfun ("ImGuiIO_AddKeyAnalogEvent" im-gui-io-add-key-analog-event-raw)
     :void
   (self :pointer)
   (key :int)
-  (down :bool)
+  (down :uint8)
   (v :float))
 
-(cffi:defcfun ("ImGuiIO_AddKeyEvent" im-gui-io-add-key-event)
+(common-lisp:defun im-gui-io-add-key-analog-event (self key down v)
+  (im-gui-io-add-key-analog-event-raw self key
+   (common-lisp:if down
+                   1
+                   0)
+   v))
+
+(cffi:defcfun ("ImGuiIO_AddKeyEvent" im-gui-io-add-key-event-raw)
     :void
   (self :pointer)
   (key :int)
-  (down :bool))
+  (down :uint8))
 
-(cffi:defcfun ("ImGuiIO_AddMouseButtonEvent" im-gui-io-add-mouse-button-event)
+(common-lisp:defun im-gui-io-add-key-event (self key down)
+  (im-gui-io-add-key-event-raw self key
+   (common-lisp:if down
+                   1
+                   0)))
+
+(cffi:defcfun ("ImGuiIO_AddMouseButtonEvent" im-gui-io-add-mouse-button-event-raw)
     :void
   (self :pointer)
   (button :int)
-  (down :bool))
+  (down :uint8))
+
+(common-lisp:defun im-gui-io-add-mouse-button-event (self button down)
+  (im-gui-io-add-mouse-button-event-raw self button
+   (common-lisp:if down
+                   1
+                   0)))
 
 (cffi:defcfun ("ImGuiIO_AddMousePosEvent" im-gui-io-add-mouse-pos-event)
     :void
@@ -5183,10 +5221,16 @@
 (cffi:defcfun ("ImGuiIO_ImGuiIO" im-gui-io-im-gui-io)
     :pointer)
 
-(cffi:defcfun ("ImGuiIO_SetAppAcceptingEvents" im-gui-io-set-app-accepting-events)
+(cffi:defcfun ("ImGuiIO_SetAppAcceptingEvents" im-gui-io-set-app-accepting-events-raw)
     :void
   (self :pointer)
-  (accepting-events :bool))
+  (accepting-events :uint8))
+
+(common-lisp:defun im-gui-io-set-app-accepting-events (self accepting-events)
+  (im-gui-io-set-app-accepting-events-raw self
+   (common-lisp:if accepting-events
+                   1
+                   0)))
 
 (cffi:defcfun ("ImGuiIO_SetKeyEventNativeData" im-gui-io-set-key-event-native-data)
     :void
@@ -5457,10 +5501,16 @@
     :void
   (self :pointer))
 
-(cffi:defcfun ("ImGuiMenuColumns_CalcNextTotalWidth" im-gui-menu-columns-calc-next-total-width)
+(cffi:defcfun ("ImGuiMenuColumns_CalcNextTotalWidth" im-gui-menu-columns-calc-next-total-width-raw)
     :void
   (self :pointer)
-  (update-offsets :bool))
+  (update-offsets :uint8))
+
+(common-lisp:defun im-gui-menu-columns-calc-next-total-width (self update-offsets)
+  (im-gui-menu-columns-calc-next-total-width-raw self
+   (common-lisp:if update-offsets
+                   1
+                   0)))
 
 (cffi:defcfun ("ImGuiMenuColumns_DeclColumns" im-gui-menu-columns-decl-columns)
     :float
@@ -5473,11 +5523,17 @@
 (cffi:defcfun ("ImGuiMenuColumns_ImGuiMenuColumns" im-gui-menu-columns-im-gui-menu-columns)
     :pointer)
 
-(cffi:defcfun ("ImGuiMenuColumns_Update" im-gui-menu-columns-update)
+(cffi:defcfun ("ImGuiMenuColumns_Update" im-gui-menu-columns-update-raw)
     :void
   (self :pointer)
   (spacing :float)
-  (window-reappearing :bool))
+  (window-reappearing :uint8))
+
+(common-lisp:defun im-gui-menu-columns-update (self spacing window-reappearing)
+  (im-gui-menu-columns-update-raw self spacing
+   (common-lisp:if window-reappearing
+                   1
+                   0)))
 
 (cffi:defcfun ("ImGuiMenuColumns_destroy" im-gui-menu-columns-destroy)
     :void
@@ -5715,11 +5771,17 @@
     :pointer)
 
 (cffi:defcfun ("ImGuiSelectionBasicStorage_SetItemSelected"
-               im-gui-selection-basic-storage-set-item-selected)
+               im-gui-selection-basic-storage-set-item-selected-raw)
     :void
   (self :pointer)
   (id :uint32)
-  (selected :bool))
+  (selected :uint8))
+
+(common-lisp:defun im-gui-selection-basic-storage-set-item-selected (self id selected)
+  (im-gui-selection-basic-storage-set-item-selected-raw self id
+   (common-lisp:if selected
+                   1
+                   0)))
 
 (cffi:defcfun ("ImGuiSelectionBasicStorage_Swap" im-gui-selection-basic-storage-swap)
     :void
@@ -5792,16 +5854,26 @@
     :uint8
   (self :pointer)
   (key :uint32)
-  (default-val :bool))
+  (default-val :uint8))
 
 (common-lisp:defun im-gui-storage-get-bool (self key default-val)
-  (common-lisp:/= 0 (im-gui-storage-get-bool-raw self key default-val)))
+  (common-lisp:/= 0
+                  (im-gui-storage-get-bool-raw self key
+                   (common-lisp:if default-val
+                                   1
+                                   0))))
 
-(cffi:defcfun ("ImGuiStorage_GetBoolRef" im-gui-storage-get-bool-ref)
+(cffi:defcfun ("ImGuiStorage_GetBoolRef" im-gui-storage-get-bool-ref-raw)
     :pointer
   (self :pointer)
   (key :uint32)
-  (default-val :bool))
+  (default-val :uint8))
+
+(common-lisp:defun im-gui-storage-get-bool-ref (self key default-val)
+  (im-gui-storage-get-bool-ref-raw self key
+   (common-lisp:if default-val
+                   1
+                   0)))
 
 (cffi:defcfun ("ImGuiStorage_GetFloat" im-gui-storage-get-float)
     :float
@@ -5843,11 +5915,17 @@
   (self :pointer)
   (val :int))
 
-(cffi:defcfun ("ImGuiStorage_SetBool" im-gui-storage-set-bool)
+(cffi:defcfun ("ImGuiStorage_SetBool" im-gui-storage-set-bool-raw)
     :void
   (self :pointer)
   (key :uint32)
-  (val :bool))
+  (val :uint8))
+
+(common-lisp:defun im-gui-storage-set-bool (self key val)
+  (im-gui-storage-set-bool-raw self key
+   (common-lisp:if val
+                   1
+                   0)))
 
 (cffi:defcfun ("ImGuiStorage_SetFloat" im-gui-storage-set-float)
     :void
@@ -6674,9 +6752,15 @@
 
 (common-lisp:defun begin-combo-preview () (common-lisp:/= 0 (begin-combo-preview-raw)))
 
-(cffi:defcfun ("igBeginDisabled" begin-disabled)
+(cffi:defcfun ("igBeginDisabled" begin-disabled-raw)
     :void
-  (disabled :bool))
+  (disabled :uint8))
+
+(common-lisp:defun begin-disabled (disabled)
+  (begin-disabled-raw
+   (common-lisp:if disabled
+                   1
+                   0)))
 
 (cffi:defcfun ("igBeginDisabledOverrideReenable" begin-disabled-override-reenable)
     :void)
@@ -6750,9 +6834,14 @@
 (cffi:defcfun ("igBeginMenu" begin-menu-raw)
     :uint8
   (label sc-imgui.bindings:optional-string)
-  (enabled :bool))
+  (enabled :uint8))
 
-(common-lisp:defun begin-menu (label enabled) (common-lisp:/= 0 (begin-menu-raw label enabled)))
+(common-lisp:defun begin-menu (label enabled)
+  (common-lisp:/= 0
+                  (begin-menu-raw label
+                   (common-lisp:if enabled
+                                   1
+                                   0))))
 
 (cffi:defcfun ("igBeginMenuBar" begin-menu-bar-raw)
     :uint8)
@@ -6763,10 +6852,14 @@
     :uint8
   (label sc-imgui.bindings:optional-string)
   (icon sc-imgui.bindings:optional-string)
-  (enabled :bool))
+  (enabled :uint8))
 
 (common-lisp:defun begin-menu-ex (label icon enabled)
-  (common-lisp:/= 0 (begin-menu-ex-raw label icon enabled)))
+  (common-lisp:/= 0
+                  (begin-menu-ex-raw label icon
+                   (common-lisp:if enabled
+                                   1
+                                   0))))
 
 (cffi:defcfun ("igBeginMultiSelect" begin-multi-select)
     :pointer
@@ -6982,12 +7075,19 @@
   (r-outer (:struct im-rect))
   (threshold :float))
 
-(cffi:defcfun ("igCalcTextSize" calc-text-size)
+(cffi:defcfun ("igCalcTextSize" calc-text-size-raw)
     (:struct im-vec2)
   (text sc-imgui.bindings:optional-string)
   (text-end sc-imgui.bindings:optional-string)
-  (hide-text-after-double-hash :bool)
+  (hide-text-after-double-hash :uint8)
   (wrap-width :float))
+
+(common-lisp:defun calc-text-size (text text-end hide-text-after-double-hash wrap-width)
+  (calc-text-size-raw text text-end
+   (common-lisp:if hide-text-after-double-hash
+                   1
+                   0)
+   wrap-width))
 
 (cffi:defcfun ("igCalcTypematicRepeatAmount" calc-typematic-repeat-amount)
     :int
@@ -7080,18 +7180,30 @@
 (cffi:defcfun ("igCloseCurrentPopup" close-current-popup)
     :void)
 
-(cffi:defcfun ("igClosePopupToLevel" close-popup-to-level)
+(cffi:defcfun ("igClosePopupToLevel" close-popup-to-level-raw)
     :void
   (remaining :int)
-  (restore-focus-to-window-under-popup :bool))
+  (restore-focus-to-window-under-popup :uint8))
+
+(common-lisp:defun close-popup-to-level (remaining restore-focus-to-window-under-popup)
+  (close-popup-to-level-raw remaining
+   (common-lisp:if restore-focus-to-window-under-popup
+                   1
+                   0)))
 
 (cffi:defcfun ("igClosePopupsExceptModals" close-popups-except-modals)
     :void)
 
-(cffi:defcfun ("igClosePopupsOverWindow" close-popups-over-window)
+(cffi:defcfun ("igClosePopupsOverWindow" close-popups-over-window-raw)
     :void
   (ref-window :pointer)
-  (restore-focus-to-window-under-popup :bool))
+  (restore-focus-to-window-under-popup :uint8))
+
+(common-lisp:defun close-popups-over-window (ref-window restore-focus-to-window-under-popup)
+  (close-popups-over-window-raw ref-window
+   (common-lisp:if restore-focus-to-window-under-popup
+                   1
+                   0)))
 
 (cffi:defcfun ("igCollapseButton" collapse-button-raw)
     :uint8
@@ -7208,11 +7320,17 @@
   (col :pointer)
   (flags :int))
 
-(cffi:defcfun ("igColumns" columns)
+(cffi:defcfun ("igColumns" columns-raw)
     :void
   (count :int)
   (id sc-imgui.bindings:optional-string)
-  (borders :bool))
+  (borders :uint8))
+
+(common-lisp:defun columns (count id borders)
+  (columns-raw count id
+   (common-lisp:if borders
+                   1
+                   0)))
 
 (cffi:defcfun ("igCombo_Str_arr" combo-str-arr-raw)
     :uint8
@@ -7337,10 +7455,17 @@
 (common-lisp:defun debug-break-button (label description-of-location)
   (common-lisp:/= 0 (debug-break-button-raw label description-of-location)))
 
-(cffi:defcfun ("igDebugBreakButtonTooltip" debug-break-button-tooltip)
+(cffi:defcfun ("igDebugBreakButtonTooltip" debug-break-button-tooltip-raw)
     :void
-  (keyboard-only :bool)
+  (keyboard-only :uint8)
   (description-of-location sc-imgui.bindings:optional-string))
+
+(common-lisp:defun debug-break-button-tooltip (keyboard-only description-of-location)
+  (debug-break-button-tooltip-raw
+   (common-lisp:if keyboard-only
+                   1
+                   0)
+   description-of-location))
 
 (cffi:defcfun ("igDebugBreakClearData" debug-break-clear-data)
     :void)
@@ -7409,13 +7534,23 @@
   (label sc-imgui.bindings:optional-string))
 
 (cffi:defcfun ("igDebugNodeDrawCmdShowMeshAndBoundingBox"
-               debug-node-draw-cmd-show-mesh-and-bounding-box)
+               debug-node-draw-cmd-show-mesh-and-bounding-box-raw)
     :void
   (out-draw-list :pointer)
   (draw-list :pointer)
   (draw-cmd :pointer)
-  (show-mesh :bool)
-  (show-aabb :bool))
+  (show-mesh :uint8)
+  (show-aabb :uint8))
+
+(common-lisp:defun debug-node-draw-cmd-show-mesh-and-bounding-box
+                   (out-draw-list draw-list draw-cmd show-mesh show-aabb)
+  (debug-node-draw-cmd-show-mesh-and-bounding-box-raw out-draw-list draw-list draw-cmd
+   (common-lisp:if show-mesh
+                   1
+                   0)
+   (common-lisp:if show-aabb
+                   1
+                   0)))
 
 (cffi:defcfun ("igDebugNodeDrawList" debug-node-draw-list)
     :void
@@ -7597,10 +7732,16 @@
     :void
   (node-id :uint32))
 
-(cffi:defcfun ("igDockBuilderRemoveNodeDockedWindows" dock-builder-remove-node-docked-windows)
+(cffi:defcfun ("igDockBuilderRemoveNodeDockedWindows" dock-builder-remove-node-docked-windows-raw)
     :void
   (node-id :uint32)
-  (clear-settings-refs :bool))
+  (clear-settings-refs :uint8))
+
+(common-lisp:defun dock-builder-remove-node-docked-windows (node-id clear-settings-refs)
+  (dock-builder-remove-node-docked-windows-raw node-id
+   (common-lisp:if clear-settings-refs
+                   1
+                   0)))
 
 (cffi:defcfun ("igDockBuilderSetNodePos" dock-builder-set-node-pos)
     :void
@@ -7627,20 +7768,30 @@
   (payload-window :pointer)
   (payload-node :pointer)
   (split-dir :int)
-  (split-outer :bool)
+  (split-outer :uint8)
   (out-pos :pointer))
 
 (common-lisp:defun dock-context-calc-drop-pos-for-docking
                    (target target-node payload-window payload-node split-dir split-outer out-pos)
   (common-lisp:/= 0
                   (dock-context-calc-drop-pos-for-docking-raw target target-node payload-window
-                   payload-node split-dir split-outer out-pos)))
+                   payload-node split-dir
+                   (common-lisp:if split-outer
+                                   1
+                                   0)
+                   out-pos)))
 
-(cffi:defcfun ("igDockContextClearNodes" dock-context-clear-nodes)
+(cffi:defcfun ("igDockContextClearNodes" dock-context-clear-nodes-raw)
     :void
   (ctx :pointer)
   (root-id :uint32)
-  (clear-settings-refs :bool))
+  (clear-settings-refs :uint8))
+
+(common-lisp:defun dock-context-clear-nodes (ctx root-id clear-settings-refs)
+  (dock-context-clear-nodes-raw ctx root-id
+   (common-lisp:if clear-settings-refs
+                   1
+                   0)))
 
 (cffi:defcfun ("igDockContextEndFrame" dock-context-end-frame)
     :void
@@ -7672,13 +7823,19 @@
   (ctx :pointer)
   (node :pointer))
 
-(cffi:defcfun ("igDockContextProcessUndockWindow" dock-context-process-undock-window)
+(cffi:defcfun ("igDockContextProcessUndockWindow" dock-context-process-undock-window-raw)
     :void
   (ctx :pointer)
   (window :pointer)
-  (clear-persistent-docking-ref :bool))
+  (clear-persistent-docking-ref :uint8))
 
-(cffi:defcfun ("igDockContextQueueDock" dock-context-queue-dock)
+(common-lisp:defun dock-context-process-undock-window (ctx window clear-persistent-docking-ref)
+  (dock-context-process-undock-window-raw ctx window
+   (common-lisp:if clear-persistent-docking-ref
+                   1
+                   0)))
+
+(cffi:defcfun ("igDockContextQueueDock" dock-context-queue-dock-raw)
     :void
   (ctx :pointer)
   (target :pointer)
@@ -7686,7 +7843,14 @@
   (payload :pointer)
   (split-dir :int)
   (split-ratio :float)
-  (split-outer :bool))
+  (split-outer :uint8))
+
+(common-lisp:defun dock-context-queue-dock
+                   (ctx target target-node payload split-dir split-ratio split-outer)
+  (dock-context-queue-dock-raw ctx target target-node payload split-dir split-ratio
+   (common-lisp:if split-outer
+                   1
+                   0)))
 
 (cffi:defcfun ("igDockContextQueueUndockNode" dock-context-queue-undock-node)
     :void
@@ -8081,12 +8245,21 @@
     :pointer
   (mouse-platform-pos (:struct im-vec2)))
 
-(cffi:defcfun ("igFindHoveredWindowEx" find-hovered-window-ex)
+(cffi:defcfun ("igFindHoveredWindowEx" find-hovered-window-ex-raw)
     :void
   (pos (:struct im-vec2))
-  (find-first-and-in-any-viewport :bool)
+  (find-first-and-in-any-viewport :uint8)
   (out-hovered-window :pointer)
   (out-hovered-window-under-moving-window :pointer))
+
+(common-lisp:defun find-hovered-window-ex
+                   (pos find-first-and-in-any-viewport out-hovered-window
+                    out-hovered-window-under-moving-window)
+  (find-hovered-window-ex-raw pos
+   (common-lisp:if find-first-and-in-any-viewport
+                   1
+                   0)
+   out-hovered-window out-hovered-window-under-moving-window))
 
 (cffi:defcfun ("igFindOrCreateColumns" find-or-create-columns)
     :pointer
@@ -9106,11 +9279,17 @@
   (old-tex (:struct im-texture-ref))
   (new-tex (:struct im-texture-ref)))
 
-(cffi:defcfun ("igImFontAtlasUpdateNewFrame" im-font-atlas-update-new-frame)
+(cffi:defcfun ("igImFontAtlasUpdateNewFrame" im-font-atlas-update-new-frame-raw)
     :void
   (atlas :pointer)
   (frame-count :int)
-  (renderer-has-textures :bool))
+  (renderer-has-textures :uint8))
+
+(common-lisp:defun im-font-atlas-update-new-frame (atlas frame-count renderer-has-textures)
+  (im-font-atlas-update-new-frame-raw atlas frame-count
+   (common-lisp:if renderer-has-textures
+                   1
+                   0)))
 
 (cffi:defcfun ("igImFontCalcTextSizeEx" im-font-calc-text-size-ex)
     (:struct im-vec2)
@@ -10029,10 +10208,14 @@
 (cffi:defcfun ("igIsKeyPressed_Bool" is-key-pressed-bool-raw)
     :uint8
   (key :int)
-  (repeat :bool))
+  (repeat :uint8))
 
 (common-lisp:defun is-key-pressed-bool (key repeat)
-  (common-lisp:/= 0 (is-key-pressed-bool-raw key repeat)))
+  (common-lisp:/= 0
+                  (is-key-pressed-bool-raw key
+                   (common-lisp:if repeat
+                                   1
+                                   0))))
 
 (cffi:defcfun ("igIsKeyPressed_InputFlags" is-key-pressed-input-flags-raw)
     :uint8
@@ -10078,10 +10261,14 @@
 (cffi:defcfun ("igIsMouseClicked_Bool" is-mouse-clicked-bool-raw)
     :uint8
   (button :int)
-  (repeat :bool))
+  (repeat :uint8))
 
 (common-lisp:defun is-mouse-clicked-bool (button repeat)
-  (common-lisp:/= 0 (is-mouse-clicked-bool-raw button repeat)))
+  (common-lisp:/= 0
+                  (is-mouse-clicked-bool-raw button
+                   (common-lisp:if repeat
+                                   1
+                                   0))))
 
 (cffi:defcfun ("igIsMouseClicked_InputFlags" is-mouse-clicked-input-flags-raw)
     :uint8
@@ -10141,10 +10328,14 @@
     :uint8
   (r-min (:struct im-vec2))
   (r-max (:struct im-vec2))
-  (clip :bool))
+  (clip :uint8))
 
 (common-lisp:defun is-mouse-hovering-rect (r-min r-max clip)
-  (common-lisp:/= 0 (is-mouse-hovering-rect-raw r-min r-max clip)))
+  (common-lisp:/= 0
+                  (is-mouse-hovering-rect-raw r-min r-max
+                   (common-lisp:if clip
+                                   1
+                                   0))))
 
 (cffi:defcfun ("igIsMouseKey" is-mouse-key-raw)
     :uint8
@@ -10256,12 +10447,18 @@
     :uint8
   (window :pointer)
   (potential-parent :pointer)
-  (popup-hierarchy :bool)
-  (dock-hierarchy :bool))
+  (popup-hierarchy :uint8)
+  (dock-hierarchy :uint8))
 
 (common-lisp:defun is-window-child-of (window potential-parent popup-hierarchy dock-hierarchy)
   (common-lisp:/= 0
-                  (is-window-child-of-raw window potential-parent popup-hierarchy dock-hierarchy)))
+                  (is-window-child-of-raw window potential-parent
+                   (common-lisp:if popup-hierarchy
+                                   1
+                                   0)
+                   (common-lisp:if dock-hierarchy
+                                   1
+                                   0))))
 
 (cffi:defcfun ("igIsWindowCollapsed" is-window-collapsed-raw)
     :uint8)
@@ -10463,49 +10660,80 @@
     :uint8
   (label sc-imgui.bindings:optional-string)
   (shortcut sc-imgui.bindings:optional-string)
-  (selected :bool)
-  (enabled :bool))
+  (selected :uint8)
+  (enabled :uint8))
 
 (common-lisp:defun menu-item-bool (label shortcut selected enabled)
-  (common-lisp:/= 0 (menu-item-bool-raw label shortcut selected enabled)))
+  (common-lisp:/= 0
+                  (menu-item-bool-raw label shortcut
+                   (common-lisp:if selected
+                                   1
+                                   0)
+                   (common-lisp:if enabled
+                                   1
+                                   0))))
 
 (cffi:defcfun ("igMenuItem_BoolPtr" menu-item-bool-ptr-raw)
     :uint8
   (label sc-imgui.bindings:optional-string)
   (shortcut sc-imgui.bindings:optional-string)
   (p-selected :pointer)
-  (enabled :bool))
+  (enabled :uint8))
 
 (common-lisp:defun menu-item-bool-ptr (label shortcut p-selected enabled)
-  (common-lisp:/= 0 (menu-item-bool-ptr-raw label shortcut p-selected enabled)))
+  (common-lisp:/= 0
+                  (menu-item-bool-ptr-raw label shortcut p-selected
+                   (common-lisp:if enabled
+                                   1
+                                   0))))
 
 (cffi:defcfun ("igMenuItemEx" menu-item-ex-raw)
     :uint8
   (label sc-imgui.bindings:optional-string)
   (icon sc-imgui.bindings:optional-string)
   (shortcut sc-imgui.bindings:optional-string)
-  (selected :bool)
-  (enabled :bool))
+  (selected :uint8)
+  (enabled :uint8))
 
 (common-lisp:defun menu-item-ex (label icon shortcut selected enabled)
-  (common-lisp:/= 0 (menu-item-ex-raw label icon shortcut selected enabled)))
+  (common-lisp:/= 0
+                  (menu-item-ex-raw label icon shortcut
+                   (common-lisp:if selected
+                                   1
+                                   0)
+                   (common-lisp:if enabled
+                                   1
+                                   0))))
 
 (cffi:defcfun ("igMouseButtonToKey" mouse-button-to-key)
     :int
   (button :int))
 
-(cffi:defcfun ("igMultiSelectAddSetAll" multi-select-add-set-all)
+(cffi:defcfun ("igMultiSelectAddSetAll" multi-select-add-set-all-raw)
     :void
   (ms :pointer)
-  (selected :bool))
+  (selected :uint8))
 
-(cffi:defcfun ("igMultiSelectAddSetRange" multi-select-add-set-range)
+(common-lisp:defun multi-select-add-set-all (ms selected)
+  (multi-select-add-set-all-raw ms
+   (common-lisp:if selected
+                   1
+                   0)))
+
+(cffi:defcfun ("igMultiSelectAddSetRange" multi-select-add-set-range-raw)
     :void
   (ms :pointer)
-  (selected :bool)
+  (selected :uint8)
   (range-dir :int)
   (first-item :int64)
   (last-item :int64))
+
+(common-lisp:defun multi-select-add-set-range (ms selected range-dir first-item last-item)
+  (multi-select-add-set-range-raw ms
+   (common-lisp:if selected
+                   1
+                   0)
+   range-dir first-item last-item))
 
 (cffi:defcfun ("igMultiSelectItemFooter" multi-select-item-footer)
     :void
@@ -10531,10 +10759,16 @@
 (cffi:defcfun ("igNavInitRequestApplyResult" nav-init-request-apply-result)
     :void)
 
-(cffi:defcfun ("igNavInitWindow" nav-init-window)
+(cffi:defcfun ("igNavInitWindow" nav-init-window-raw)
     :void
   (window :pointer)
-  (force-reinit :bool))
+  (force-reinit :uint8))
+
+(common-lisp:defun nav-init-window (window force-reinit)
+  (nav-init-window-raw window
+   (common-lisp:if force-reinit
+                   1
+                   0)))
 
 (cffi:defcfun ("igNavMoveRequestApplyResult" nav-move-request-apply-result)
     :void)
@@ -10724,11 +10958,17 @@
   (size-arg (:struct im-vec2))
   (overlay sc-imgui.bindings:optional-string))
 
-(cffi:defcfun ("igPushClipRect" push-clip-rect)
+(cffi:defcfun ("igPushClipRect" push-clip-rect-raw)
     :void
   (clip-rect-min (:struct im-vec2))
   (clip-rect-max (:struct im-vec2))
-  (intersect-with-current-clip-rect :bool))
+  (intersect-with-current-clip-rect :uint8))
+
+(common-lisp:defun push-clip-rect (clip-rect-min clip-rect-max intersect-with-current-clip-rect)
+  (push-clip-rect-raw clip-rect-min clip-rect-max
+   (common-lisp:if intersect-with-current-clip-rect
+                   1
+                   0)))
 
 (cffi:defcfun ("igPushColumnClipRect" push-column-clip-rect)
     :void
@@ -10763,10 +11003,16 @@
     :void
   (int-id :int))
 
-(cffi:defcfun ("igPushItemFlag" push-item-flag)
+(cffi:defcfun ("igPushItemFlag" push-item-flag-raw)
     :void
   (option :int)
-  (enabled :bool))
+  (enabled :uint8))
+
+(common-lisp:defun push-item-flag (option enabled)
+  (push-item-flag-raw option
+   (common-lisp:if enabled
+                   1
+                   0)))
 
 (cffi:defcfun ("igPushItemWidth" push-item-width)
     :void
@@ -10821,10 +11067,14 @@
 (cffi:defcfun ("igRadioButton_Bool" radio-button-bool-raw)
     :uint8
   (label sc-imgui.bindings:optional-string)
-  (active :bool))
+  (active :uint8))
 
 (common-lisp:defun radio-button-bool (label active)
-  (common-lisp:/= 0 (radio-button-bool-raw label active)))
+  (common-lisp:/= 0
+                  (radio-button-bool-raw label
+                   (common-lisp:if active
+                                   1
+                                   0))))
 
 (cffi:defcfun ("igRadioButton_IntPtr" radio-button-int-ptr-raw)
     :uint8
@@ -10924,13 +11174,20 @@
   (viewport-id :uint32)
   (bb (:struct im-rect)))
 
-(cffi:defcfun ("igRenderFrame" render-frame)
+(cffi:defcfun ("igRenderFrame" render-frame-raw)
     :void
   (p-min (:struct im-vec2))
   (p-max (:struct im-vec2))
   (fill-col :uint32)
-  (borders :bool)
+  (borders :uint8)
   (rounding :float))
+
+(common-lisp:defun render-frame (p-min p-max fill-col borders rounding)
+  (render-frame-raw p-min p-max fill-col
+   (common-lisp:if borders
+                   1
+                   0)
+   rounding))
 
 (cffi:defcfun ("igRenderFrameBorder" render-frame-border)
     :void
@@ -10976,12 +11233,18 @@
   (col :uint32)
   (rounding :float))
 
-(cffi:defcfun ("igRenderText" render-text)
+(cffi:defcfun ("igRenderText" render-text-raw)
     :void
   (pos (:struct im-vec2))
   (text sc-imgui.bindings:optional-string)
   (text-end sc-imgui.bindings:optional-string)
-  (hide-text-after-hash :bool))
+  (hide-text-after-hash :uint8))
+
+(common-lisp:defun render-text (pos text text-end hide-text-after-hash)
+  (render-text-raw pos text text-end
+   (common-lisp:if hide-text-after-hash
+                   1
+                   0)))
 
 (cffi:defcfun ("igRenderTextClipped" render-text-clipped)
     :void
@@ -11085,12 +11348,17 @@
 (cffi:defcfun ("igSelectable_Bool" selectable-bool-raw)
     :uint8
   (label sc-imgui.bindings:optional-string)
-  (selected :bool)
+  (selected :uint8)
   (flags :int)
   (size (:struct im-vec2)))
 
 (common-lisp:defun selectable-bool (label selected flags size)
-  (common-lisp:/= 0 (selectable-bool-raw label selected flags size)))
+  (common-lisp:/= 0
+                  (selectable-bool-raw label
+                   (common-lisp:if selected
+                                   1
+                                   0)
+                   flags size)))
 
 (cffi:defcfun ("igSelectable_BoolPtr" selectable-bool-ptr-raw)
     :uint8
@@ -11252,9 +11520,15 @@
     :void
   (cursor-type :int))
 
-(cffi:defcfun ("igSetNavCursorVisible" set-nav-cursor-visible)
+(cffi:defcfun ("igSetNavCursorVisible" set-nav-cursor-visible-raw)
     :void
-  (visible :bool))
+  (visible :uint8))
+
+(common-lisp:defun set-nav-cursor-visible (visible)
+  (set-nav-cursor-visible-raw
+   (common-lisp:if visible
+                   1
+                   0)))
 
 (cffi:defcfun ("igSetNavCursorVisibleAfterMove" set-nav-cursor-visible-after-move)
     :void)
@@ -11274,13 +11548,25 @@
     :void
   (window :pointer))
 
-(cffi:defcfun ("igSetNextFrameWantCaptureKeyboard" set-next-frame-want-capture-keyboard)
+(cffi:defcfun ("igSetNextFrameWantCaptureKeyboard" set-next-frame-want-capture-keyboard-raw)
     :void
-  (want-capture-keyboard :bool))
+  (want-capture-keyboard :uint8))
 
-(cffi:defcfun ("igSetNextFrameWantCaptureMouse" set-next-frame-want-capture-mouse)
+(common-lisp:defun set-next-frame-want-capture-keyboard (want-capture-keyboard)
+  (set-next-frame-want-capture-keyboard-raw
+   (common-lisp:if want-capture-keyboard
+                   1
+                   0)))
+
+(cffi:defcfun ("igSetNextFrameWantCaptureMouse" set-next-frame-want-capture-mouse-raw)
     :void
-  (want-capture-mouse :bool))
+  (want-capture-mouse :uint8))
+
+(common-lisp:defun set-next-frame-want-capture-mouse (want-capture-mouse)
+  (set-next-frame-want-capture-mouse-raw
+   (common-lisp:if want-capture-mouse
+                   1
+                   0)))
 
 (cffi:defcfun ("igSetNextItemAllowOverlap" set-next-item-allow-overlap)
     :void)
@@ -11289,10 +11575,17 @@
     :void
   (col :uint32))
 
-(cffi:defcfun ("igSetNextItemOpen" set-next-item-open)
+(cffi:defcfun ("igSetNextItemOpen" set-next-item-open-raw)
     :void
-  (is-open :bool)
+  (is-open :uint8)
   (cond :int))
+
+(common-lisp:defun set-next-item-open (is-open cond)
+  (set-next-item-open-raw
+   (common-lisp:if is-open
+                   1
+                   0)
+   cond))
 
 (cffi:defcfun ("igSetNextItemRefVal" set-next-item-ref-val)
     :void
@@ -11320,19 +11613,32 @@
     :void
   (alpha :float))
 
-(cffi:defcfun ("igSetNextWindowChildFlags" set-next-window-child-flags)
+(cffi:defcfun ("igSetNextWindowChildFlags" set-next-window-child-flags-raw)
     :void
   (flags :int)
-  (enabled :bool))
+  (enabled :uint8))
+
+(common-lisp:defun set-next-window-child-flags (flags enabled)
+  (set-next-window-child-flags-raw flags
+   (common-lisp:if enabled
+                   1
+                   0)))
 
 (cffi:defcfun ("igSetNextWindowClass" set-next-window-class)
     :void
   (window-class :pointer))
 
-(cffi:defcfun ("igSetNextWindowCollapsed" set-next-window-collapsed)
+(cffi:defcfun ("igSetNextWindowCollapsed" set-next-window-collapsed-raw)
     :void
-  (collapsed :bool)
+  (collapsed :uint8)
   (cond :int))
+
+(common-lisp:defun set-next-window-collapsed (collapsed cond)
+  (set-next-window-collapsed-raw
+   (common-lisp:if collapsed
+                   1
+                   0)
+   cond))
 
 (cffi:defcfun ("igSetNextWindowContentSize" set-next-window-content-size)
     :void
@@ -11343,10 +11649,16 @@
   (dock-id :uint32)
   (cond :int))
 
-(cffi:defcfun ("igSetNextWindowFlags" set-next-window-flags)
+(cffi:defcfun ("igSetNextWindowFlags" set-next-window-flags-raw)
     :void
   (flags :int)
-  (enabled :bool))
+  (enabled :uint8))
+
+(common-lisp:defun set-next-window-flags (flags enabled)
+  (set-next-window-flags-raw flags
+   (common-lisp:if enabled
+                   1
+                   0)))
 
 (cffi:defcfun ("igSetNextWindowFocus" set-next-window-focus)
     :void)
@@ -11459,22 +11771,43 @@
   (window :pointer)
   (clip-rect (:struct im-rect)))
 
-(cffi:defcfun ("igSetWindowCollapsed_Bool" set-window-collapsed-bool)
+(cffi:defcfun ("igSetWindowCollapsed_Bool" set-window-collapsed-bool-raw)
     :void
-  (collapsed :bool)
+  (collapsed :uint8)
   (cond :int))
 
-(cffi:defcfun ("igSetWindowCollapsed_Str" set-window-collapsed-str)
+(common-lisp:defun set-window-collapsed-bool (collapsed cond)
+  (set-window-collapsed-bool-raw
+   (common-lisp:if collapsed
+                   1
+                   0)
+   cond))
+
+(cffi:defcfun ("igSetWindowCollapsed_Str" set-window-collapsed-str-raw)
     :void
   (name sc-imgui.bindings:optional-string)
-  (collapsed :bool)
+  (collapsed :uint8)
   (cond :int))
 
-(cffi:defcfun ("igSetWindowCollapsed_WindowPtr" set-window-collapsed-window-ptr)
+(common-lisp:defun set-window-collapsed-str (name collapsed cond)
+  (set-window-collapsed-str-raw name
+   (common-lisp:if collapsed
+                   1
+                   0)
+   cond))
+
+(cffi:defcfun ("igSetWindowCollapsed_WindowPtr" set-window-collapsed-window-ptr-raw)
     :void
   (window :pointer)
-  (collapsed :bool)
+  (collapsed :uint8)
   (cond :int))
+
+(common-lisp:defun set-window-collapsed-window-ptr (window collapsed cond)
+  (set-window-collapsed-window-ptr-raw window
+   (common-lisp:if collapsed
+                   1
+                   0)
+   cond))
 
 (cffi:defcfun ("igSetWindowDock" set-window-dock)
     :void
@@ -11555,7 +11888,7 @@
   (col0 :uint32)
   (col1 :uint32))
 
-(cffi:defcfun ("igShadeVertsLinearUV" shade-verts-linear-uv)
+(cffi:defcfun ("igShadeVertsLinearUV" shade-verts-linear-uv-raw)
     :void
   (draw-list :pointer)
   (vert-start-idx :int)
@@ -11564,7 +11897,14 @@
   (b (:struct im-vec2))
   (uv-a (:struct im-vec2))
   (uv-b (:struct im-vec2))
-  (clamp :bool))
+  (clamp :uint8))
+
+(common-lisp:defun shade-verts-linear-uv
+                   (draw-list vert-start-idx vert-end-idx a b uv-a uv-b clamp)
+  (shade-verts-linear-uv-raw draw-list vert-start-idx vert-end-idx a b uv-a uv-b
+   (common-lisp:if clamp
+                   1
+                   0)))
 
 (cffi:defcfun ("igShadeVertsTransformPos" shade-verts-transform-pos)
     :void
@@ -11828,11 +12168,17 @@
     :void
   (window :pointer))
 
-(cffi:defcfun ("igStartMouseMovingWindowOrNode" start-mouse-moving-window-or-node)
+(cffi:defcfun ("igStartMouseMovingWindowOrNode" start-mouse-moving-window-or-node-raw)
     :void
   (window :pointer)
   (node :pointer)
-  (undock :bool))
+  (undock :uint8))
+
+(common-lisp:defun start-mouse-moving-window-or-node (window node undock)
+  (start-mouse-moving-window-or-node-raw window node
+   (common-lisp:if undock
+                   1
+                   0)))
 
 (cffi:defcfun ("igStopMouseMovingWindow" stop-mouse-moving-window)
     :void)
@@ -11951,10 +12297,16 @@
 (common-lisp:defun tab-item-button (label flags)
   (common-lisp:/= 0 (tab-item-button-raw label flags)))
 
-(cffi:defcfun ("igTabItemCalcSize_Str" tab-item-calc-size-str)
+(cffi:defcfun ("igTabItemCalcSize_Str" tab-item-calc-size-str-raw)
     (:struct im-vec2)
   (label sc-imgui.bindings:optional-string)
-  (has-close-button-or-unsaved-marker :bool))
+  (has-close-button-or-unsaved-marker :uint8))
+
+(common-lisp:defun tab-item-calc-size-str (label has-close-button-or-unsaved-marker)
+  (tab-item-calc-size-str-raw label
+   (common-lisp:if has-close-button-or-unsaved-marker
+                   1
+                   0)))
 
 (cffi:defcfun ("igTabItemCalcSize_WindowPtr" tab-item-calc-size-window-ptr)
     (:struct im-vec2)
@@ -11971,7 +12323,7 @@
 (common-lisp:defun tab-item-ex (tab-bar label p-open flags docked-window)
   (common-lisp:/= 0 (tab-item-ex-raw tab-bar label p-open flags docked-window)))
 
-(cffi:defcfun ("igTabItemLabelAndCloseButton" tab-item-label-and-close-button)
+(cffi:defcfun ("igTabItemLabelAndCloseButton" tab-item-label-and-close-button-raw)
     :void
   (draw-list :pointer)
   (bb (:struct im-rect))
@@ -11980,9 +12332,19 @@
   (label sc-imgui.bindings:optional-string)
   (tab-id :uint32)
   (close-button-id :uint32)
-  (is-contents-visible :bool)
+  (is-contents-visible :uint8)
   (out-just-closed :pointer)
   (out-text-clipped :pointer))
+
+(common-lisp:defun tab-item-label-and-close-button
+                   (draw-list bb flags frame-padding label tab-id close-button-id
+                    is-contents-visible out-just-closed out-text-clipped)
+  (tab-item-label-and-close-button-raw draw-list bb flags frame-padding label tab-id
+   close-button-id
+   (common-lisp:if is-contents-visible
+                   1
+                   0)
+   out-just-closed out-text-clipped))
 
 (cffi:defcfun ("igTabItemSpacing" tab-item-spacing)
     :void
@@ -12242,10 +12604,16 @@
   (column-n :int)
   (dst-order :int))
 
-(cffi:defcfun ("igTableSetColumnEnabled" table-set-column-enabled)
+(cffi:defcfun ("igTableSetColumnEnabled" table-set-column-enabled-raw)
     :void
   (column-n :int)
-  (v :bool))
+  (v :uint8))
+
+(common-lisp:defun table-set-column-enabled (column-n v)
+  (table-set-column-enabled-raw column-n
+   (common-lisp:if v
+                   1
+                   0)))
 
 (cffi:defcfun ("igTableSetColumnIndex" table-set-column-index-raw)
     :uint8
@@ -12254,11 +12622,17 @@
 (common-lisp:defun table-set-column-index (column-n)
   (common-lisp:/= 0 (table-set-column-index-raw column-n)))
 
-(cffi:defcfun ("igTableSetColumnSortDirection" table-set-column-sort-direction)
+(cffi:defcfun ("igTableSetColumnSortDirection" table-set-column-sort-direction-raw)
     :void
   (column-n :int)
   (sort-direction :uint8)
-  (append-to-sort-specs :bool))
+  (append-to-sort-specs :uint8))
+
+(common-lisp:defun table-set-column-sort-direction (column-n sort-direction append-to-sort-specs)
+  (table-set-column-sort-direction-raw column-n sort-direction
+   (common-lisp:if append-to-sort-specs
+                   1
+                   0)))
 
 (cffi:defcfun ("igTableSetColumnWidth" table-set-column-width)
     :void
@@ -12506,10 +12880,16 @@
 (common-lisp:defun tree-node-get-open (storage-id)
   (common-lisp:/= 0 (tree-node-get-open-raw storage-id)))
 
-(cffi:defcfun ("igTreeNodeSetOpen" tree-node-set-open)
+(cffi:defcfun ("igTreeNodeSetOpen" tree-node-set-open-raw)
     :void
   (storage-id :uint32)
-  (open :bool))
+  (open :uint8))
+
+(common-lisp:defun tree-node-set-open (storage-id open)
+  (tree-node-set-open-raw storage-id
+   (common-lisp:if open
+                   1
+                   0)))
 
 (cffi:defcfun ("igTreeNodeUpdateNextOpen" tree-node-update-next-open-raw)
     :uint8
@@ -12577,9 +12957,15 @@
     :void
   (mouse-pos (:struct im-vec2)))
 
-(cffi:defcfun ("igUpdateInputEvents" update-input-events)
+(cffi:defcfun ("igUpdateInputEvents" update-input-events-raw)
     :void
-  (trickle-fast-inputs :bool))
+  (trickle-fast-inputs :uint8))
+
+(common-lisp:defun update-input-events (trickle-fast-inputs)
+  (update-input-events-raw
+   (common-lisp:if trickle-fast-inputs
+                   1
+                   0)))
 
 (cffi:defcfun ("igUpdateMouseMovingWindowEndFrame" update-mouse-moving-window-end-frame)
     :void)
@@ -12640,10 +13026,16 @@
 (common-lisp:defun v-slider-scalar (label size data-type p-data p-min p-max format flags)
   (common-lisp:/= 0 (v-slider-scalar-raw label size data-type p-data p-min p-max format flags)))
 
-(cffi:defcfun ("igValue_Bool" value-bool)
+(cffi:defcfun ("igValue_Bool" value-bool-raw)
     :void
   (prefix sc-imgui.bindings:optional-string)
-  (b :bool))
+  (b :uint8))
+
+(common-lisp:defun value-bool (prefix b)
+  (value-bool-raw prefix
+   (common-lisp:if b
+                   1
+                   0)))
 
 (cffi:defcfun ("igValue_Int" value-int)
     :void
