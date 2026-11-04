@@ -78,6 +78,19 @@
 (defun redefine (form)
   (handler-bind ((warning #'muffle-warning)) (eval form)))
 
+;;; On macOS the window must leave the screen once the loop has shut down,
+;;; though the main thread then idles and processes no more Cocoa events.
+;;; %SHIM:ONSCREEN-WINDOW-COUNT is -1 where it is unavailable (Linux CI).
+(defun check-window-count (when expected)
+  (let ((count (%shim:onscreen-window-count)))
+    (if (minusp count)
+        (note "skip on-screen window count ~A (unavailable here)" when)
+        (check (funcall expected count) "~D on-screen window(s) ~A" count when))))
+
+(defun check-window-gone (when)
+  (sleep 0.5)
+  (check-window-count when #'zerop))
+
 (defvar *ini* (merge-pathnames "sc-imgui-smoke.ini" (uiop:temporary-directory)))
 
 (defun run-checks ()
@@ -102,6 +115,7 @@
       (wait-until (lambda () (or (plusp *count-b*) (> (- *frames* f0) 60))))
       (check (plusp *count-b*) "redefined panel ran within ~D frames"
              (- *frames* f0)))
+    (check-window-count "while running" #'plusp)
     ;; 4. A failing panel neither stops the loop nor goes unreported.
     (redefine '(gui:define-gui smoke-boom () (error "smoke-boom")))
     (wait-until (lambda () (gui.runtime:gui-entry-failure (gui.runtime:find-gui 'smoke-boom))))
@@ -117,7 +131,8 @@
       (check (eq stopped t) "(gui:stop) returned ~S" stopped)
       (wait-until (lambda () (not (gui:running-p))))
       (check t "running-p false after stop")
-      (check (probe-file *ini*) "ImGui saved its layout to gui:*ini-path* (~A)" *ini*))
+      (check (probe-file *ini*) "ImGui saved its layout to gui:*ini-path* (~A)" *ini*)
+      (check-window-gone "0.5 s after stop"))
     (let ((again (gui:start :title "sc-imgui smoke (restart)")))
       (check (eq again t) "restart (gui:start) returned ~S" again))
     (let ((f0 *frames*))
@@ -125,7 +140,8 @@
       (check t "restarted loop ran ~D frames" (- *frames* f0)))
     (let ((stopped (gui:stop)))
       (check (eq stopped t) "final (gui:stop) returned ~S" stopped)
-      (check (not (gui:running-p)) "running-p false after final stop"))))
+      (check (not (gui:running-p)) "running-p false after final stop")
+      (check-window-gone "0.5 s after final stop"))))
 
 (bt2:make-thread (lambda ()
                    (sleep +timeout+)

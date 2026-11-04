@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.15)
 project(sc_imgui_shim C CXX)
+if(APPLE)
+  enable_language(OBJC OBJCXX)
+endif()
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -37,6 +40,10 @@ add_library(sc_imgui_shim SHARED
   ${TP}/cimplot/cimplot.cpp
   shim.cpp)
 
+if(APPLE)
+  target_sources(sc_imgui_shim PRIVATE shim_macos.mm)
+endif()
+
 target_include_directories(sc_imgui_shim PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${TP}/cimgui
@@ -61,7 +68,7 @@ if(NOT APPLE)
   find_package(OpenGL REQUIRED)
   target_link_libraries(sc_imgui_shim PRIVATE OpenGL::GL)
 else()
-  target_link_libraries(sc_imgui_shim PRIVATE "-framework OpenGL")
+  target_link_libraries(sc_imgui_shim PRIVATE "-framework OpenGL" "-framework Cocoa" "-framework CoreGraphics")
 endif()
 
 enable_testing()

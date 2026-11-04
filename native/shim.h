@@ -17,6 +17,7 @@ void        shim_headless_destroy(void);
 int         shim_assert_count(void);
 const char *shim_last_assert(void);           /* "expr @ file:line" */
 void        shim_clear_asserts(void);
+int         shim_onscreen_window_count(void);  /* on-screen windows owned by this process; -1 where unavailable (non-macOS) */
 
 #ifdef __cplusplus
 }

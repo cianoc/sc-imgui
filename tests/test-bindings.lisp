@@ -71,3 +71,7 @@
              (prog1 (%imgui:button "B" (vec2 80 40))
                (%imgui:end))))
       (is (equal '(nil nil nil nil) (frames-with-click 700 500 #'draw :warmup 2))))))
+
+(test onscreen-window-count-without-a-window
+  ;; -1 where the count is unavailable (non-macOS); otherwise no window is open.
+  (is (<= -1 (%shim:onscreen-window-count) 0)))

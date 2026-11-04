@@ -14,3 +14,4 @@
 (cffi:defcfun ("shim_assert_count" assert-count) :int)
 (cffi:defcfun ("shim_last_assert" last-assert) :string)
 (cffi:defcfun ("shim_clear_asserts" clear-asserts) :void)
+(cffi:defcfun ("shim_onscreen_window_count" onscreen-window-count) :int)

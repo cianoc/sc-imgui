@@ -13,6 +13,10 @@
 #include <GLFW/glfw3.h>
 #include "imgui_impl_opengl3_loader.h"  // GL function pointers shared with the backend
 
+#ifdef __APPLE__
+#include "shim_macos.h"
+#endif
+
 static int g_assert_count = 0;
 static std::string g_last_assert;
 static std::string g_last_error;
@@ -26,6 +30,18 @@ extern "C" void sc_imgui_assert_failed(const char *expr, const char *file, int l
   std::snprintf(buf, sizeof buf, ":%d", line);
   g_last_assert = std::string(expr) + " @ " + file + buf;
   g_assert_count++;
+}
+
+// Destroy the window and end GLFW.  macOS needs extra steps for the window to
+// leave the screen (see shim_macos.mm).
+static void close_window() {
+#ifdef __APPLE__
+  shim_macos_close_window(g_window);
+#else
+  glfwDestroyWindow(g_window);
+  glfwTerminate();
+#endif
+  g_window = nullptr;
 }
 
 static void configure_io() {
@@ -94,9 +110,7 @@ int shim_open_window(int width, int height, const char *title, const char *ini_p
   if (!glfw_ok || !ImGui_ImplOpenGL3_Init(glsl_version)) {
     if (glfw_ok) ImGui_ImplGlfw_Shutdown();
     destroy_contexts();
-    glfwDestroyWindow(g_window);
-    g_window = nullptr;
-    glfwTerminate();
+    close_window();
     return fail("ImGui backend initialisation failed");
   }
   g_backends = true;
@@ -135,11 +149,7 @@ void shim_shutdown(void) {
     g_backends = false;
   }
   destroy_contexts();
-  if (g_window) {
-    glfwDestroyWindow(g_window);
-    g_window = nullptr;
-    glfwTerminate();
-  }
+  if (g_window) close_window();
   g_headless = false;
 }
 
@@ -173,4 +183,9 @@ void shim_clear_asserts(void) {
   g_last_assert.clear();
 }
 
+#ifndef __APPLE__
+int shim_onscreen_window_count(void) { return -1; }  // macOS version in shim_macos.mm
+#endif
+
 }  // extern "C"
+
