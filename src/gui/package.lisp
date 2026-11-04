@@ -13,4 +13,5 @@
            #:set-next-item-width
            #:widget-value-error
            #:slider #:slider-value #:drag #:drag-value #:checkbox #:checkbox-value
-           #:combo #:combo-value #:input-text #:input-text-value #:button #:text))
+           #:combo #:combo-value #:input-text #:input-text-value #:button #:text
+           #:with-plot #:plot-lines #:plot-bars #:plot-scatter))

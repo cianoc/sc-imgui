@@ -2,35 +2,37 @@
 
 ;;; Enum keyword resolution and stable object IDs for the scope macros.
 
-(defun enum-value (prefix keyword)
-  "Value of %imgui:+PREFIX-KEYWORD+, or an error naming both."
+(defun enum-value (prefix keyword &optional (package '#:%imgui))
+  "Value of PACKAGE:+PREFIX-KEYWORD+, or an error naming both."
   (let* ((name (format nil "+~A-~A+" prefix (symbol-name keyword)))
-         (symbol (find-symbol name '#:%imgui)))
+         (symbol (find-symbol name package)))
     (if (and symbol (boundp symbol))
         (symbol-value symbol)
-        (error "Unknown ~A keyword ~S (no constant %IMGUI:~A)" prefix keyword name))))
+        (error "Unknown ~A keyword ~S (no constant ~A:~A)" prefix keyword
+               (string-upcase package) name))))
 
-(defun enum-flags (prefix designator)
+(defun enum-flags (prefix designator &optional (package '#:%imgui))
   "Resolve DESIGNATOR (an integer, a keyword, or a list of keywords) to an
-integer, looking keywords up as %imgui:+PREFIX-KEYWORD+ constants."
+integer, looking keywords up as PACKAGE:+PREFIX-KEYWORD+ constants (default
+%imgui)."
   (etypecase designator
     (integer designator)
     (null 0)
-    (keyword (enum-value prefix designator))
+    (keyword (enum-value prefix designator package))
     (list (let ((flags 0))
             (dolist (k designator flags)
-              (setf flags (logior flags (enum-flags prefix k))))))))
+              (setf flags (logior flags (enum-flags prefix k package))))))))
 
 (defun %constant-designator-p (form)
   (or (integerp form) (keywordp form) (null form)
       (and (consp form) (eq (car form) 'quote)
            (let ((x (second form))) (or (keywordp x) (and (listp x) (every #'keywordp x)))))))
 
-(defun %flags-form (prefix form)
+(defun %flags-form (prefix form &optional (package '#:%imgui))
   "Form computing the flags for FORM; constant designators resolve at macroexpansion."
-  (cond ((not (%constant-designator-p form)) `(enum-flags ,prefix ,form))
-        ((and (consp form) (eq (car form) 'quote)) (enum-flags prefix (second form)))
-        (t (enum-flags prefix form))))
+  (cond ((not (%constant-designator-p form)) `(enum-flags ,prefix ,form ',package))
+        ((and (consp form) (eq (car form) 'quote)) (enum-flags prefix (second form) package))
+        (t (enum-flags prefix form package))))
 
 (defun vec2 (x y)
   (list '%imgui::x (float x 1.0f0) '%imgui::y (float y 1.0f0)))
