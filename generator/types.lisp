@@ -33,7 +33,7 @@
     (hash-table (values (gethash name structs)))))
 
 (defun struct-type-symbol (name)
-  (intern (string-upcase (c-name->lisp-name name "")) *package*))
+  (intern (string-upcase (binding-lisp-name name "")) *package*))
 
 (defun c-type->cffi (type typedefs &key structs (depth 0))
   "Map the C type string TYPE to a CFFI type, or NIL when unmappable.

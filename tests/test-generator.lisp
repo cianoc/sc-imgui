@@ -214,3 +214,224 @@
     ;; ImVec2 comes from %imgui, not redefined
     (is (equal "%IMGUI" (package-name (symbol-package
                                        (second (second (third (find-struct forms "IM-PLOT-THING"))))))))))
+
+;;; Binding-name collisions: two C names mapping to one Lisp symbol are an
+;;; error, never a silent skip or a silent first-wins.
+
+(defun model-of (&key functions structs enums)
+  (list :functions functions :structs structs :enums enums
+        :typedefs (make-hash-table :test 'equal)))
+
+(defun c-function (c-name &optional (ret "void"))
+  (list :c-name c-name :ret ret :args nil))
+
+(defun collisions-in (model &rest args)
+  "The (kind lisp-name c-names) of each collision EMIT-FORMS signals for MODEL,
+or :NONE when it returns normally."
+  (handler-case
+      (handler-bind ((opaque-struct-warning #'muffle-warning))
+        (apply #'emit-forms model :package "%IMGUI" args)
+        :none)
+    (binding-name-collision (c)
+      (loop for x in (binding-name-collisions c)
+            collect (list (collision-kind x)
+                          (symbol-name (collision-lisp-name x))
+                          (collision-c-names x))))))
+
+(test functions-with-the-same-lisp-name-collide
+  (is (equal '((:function "FOO-IO" ("igFooIO" "igFoo_IO")))
+             (collisions-in (model-of :functions (list (c-function "igFooIO")
+                                                       (c-function "igFoo_IO")))))))
+
+(test function-named-like-a-raw-wrapper-collides
+  (is (equal '((:function "FOO-RAW" ("igFoo" "igFooRaw")))
+             (collisions-in (model-of :functions (list (c-function "igFoo" "bool")
+                                                       (c-function "igFooRaw")))))))
+
+(test enum-constants-with-the-same-lisp-name-collide
+  (dolist (values '((1 2) (1 1)))           ; differing, then equal values
+    (is (equal '((:constant "+FLAGS-NO-TITLE+" ("ImGuiFlags_NoTitle" "ImGuiFlags_No_Title")))
+               (collisions-in
+                (model-of :enums (list (list :name "ImGuiFlags_"
+                                             :values (list (cons "ImGuiFlags_NoTitle" (first values))
+                                                           (cons "ImGuiFlags_No_Title" (second values)))))))))))
+
+(test structs-with-the-same-lisp-name-collide
+  (is (equal '((:struct "IM-FOO-IO" ("ImFooIO" "ImFoo_IO")))
+             (collisions-in
+              (model-of :structs (list (list :name "ImFooIO"
+                                             :fields (list (list :name "a" :type "int")))
+                                       (list :name "ImFoo_IO"
+                                             :fields (list (list :name "b" :type "int")))))))))
+
+(test every-collision-is-listed
+  (let ((found (collisions-in
+                (model-of :functions (list (c-function "igFooIO") (c-function "igFoo_IO")
+                                           (c-function "igBar" "bool") (c-function "igBarRaw"))
+                          :enums (list (list :name "ImGuiFlags_"
+                                             :values '(("ImGuiFlags_NoTitle" . 1) ("ImGuiFlags_No_Title" . 2))))
+                          :structs (list (list :name "ImFooIO" :fields nil)
+                                         (list :name "ImFoo_IO" :fields nil))))))
+    (is (equal '((:struct "IM-FOO-IO") (:constant "+FLAGS-NO-TITLE+")
+                 (:function "FOO-IO") (:function "BAR-RAW"))
+               (mapcar (lambda (c) (subseq c 0 2)) found)))
+    ;; the report names every symbol and every C name
+    (let ((report (handler-case
+                      (handler-bind ((opaque-struct-warning #'muffle-warning))
+                        (emit-forms (model-of :functions (list (c-function "igFooIO")
+                                                               (c-function "igFoo_IO")
+                                                               (c-function "igBar" "bool")
+                                                               (c-function "igBarRaw")))
+                                    :package "%IMGUI"))
+                    (binding-name-collision (c) (princ-to-string c)))))
+      (dolist (s '("FOO-IO" "igFooIO" "igFoo_IO" "BAR-RAW" "igBar" "igBarRaw"))
+        (is (search s report) "report mentions ~A" s)))))
+
+(test no-duplicate-lisp-name-skip-reason
+  (let ((skipped (handler-case
+                     (nth-value 1 (emit-forms (model-of :functions (list (c-function "igFooIO")
+                                                                         (c-function "igFoo_IO")))
+                                              :package "%IMGUI"))
+                   (binding-name-collision () :signalled))))
+    (is (eq :signalled skipped))))
+
+(test fixture-output-unchanged
+  ;; tests/fixtures/expected-imgui.lisp is the output from before collisions
+  ;; became errors; a fixture without collisions must produce it exactly.
+  (let ((path (uiop:tmpize-pathname (merge-pathnames "sc-imgui-fixture.lisp"
+                                                     (uiop:temporary-directory)))))
+    (unwind-protect
+         (progn
+           (sc-imgui.generator::write-bindings-file path (fixture-forms) "%IMGUI"
+                                                    "fixture" "fixture")
+           (is (string= (uiop:read-file-string (fixture-path "expected-imgui.lisp"))
+                        (uiop:read-file-string path))))
+      (uiop:delete-file-if-exists path))))
+
+;;; generate-bindings writes nothing unless both libraries emit cleanly.
+
+(defun write-library-json (dir &key (definitions "{}") (enums "{}"))
+  (let ((out (merge-pathnames "generator/output/" dir)))
+    (ensure-directories-exist out)
+    (flet ((put (name text)
+             (with-open-file (s (merge-pathnames name out) :direction :output
+                                                           :if-exists :supersede)
+               (write-string text s))))
+      (put "definitions.json" definitions)
+      (put "structs_and_enums.json" (format nil "{\"enums\": ~A, \"structs\": {}}" enums))
+      (put "typedefs_dict.json" "{}"))))
+
+(test collision-in-cimplot-writes-no-files
+  (let ((root (merge-pathnames (format nil "sc-imgui-gen-~36R/" (random (expt 36 8)
+                                                                      (make-random-state t)))
+                               (uiop:temporary-directory))))
+    (unwind-protect
+         (let ((cimgui (merge-pathnames "cimgui/" root))
+               (cimplot (merge-pathnames "cimplot/" root))
+               (out (merge-pathnames "out/" root)))
+           (write-library-json cimgui)
+           (write-library-json cimplot :enums "{\"ImPlotFlags_\": [
+              {\"name\": \"ImPlotFlags_NoTitle\", \"calc_value\": 1},
+              {\"name\": \"ImPlotFlags_No_Title\", \"calc_value\": 1}]}")
+           (is (eq :signalled
+                   (handler-case (let ((*standard-output* (make-broadcast-stream)))
+                                   (generate-bindings :cimgui-dir cimgui :cimplot-dir cimplot
+                                                      :output-dir out))
+                     (binding-name-collision () :signalled))))
+           (is (null (probe-file (merge-pathnames "imgui.lisp" out))))
+           (is (null (probe-file (merge-pathnames "implot.lisp" out))))
+           ;; without the collision both files are written
+           (write-library-json cimplot)
+           (let ((*standard-output* (make-broadcast-stream)))
+             (generate-bindings :cimgui-dir cimgui :cimplot-dir cimplot :output-dir out))
+           (is (probe-file (merge-pathnames "imgui.lisp" out)))
+           (is (probe-file (merge-pathnames "implot.lisp" out))))
+      (uiop:delete-directory-tree root :validate t :if-does-not-exist :ignore))))
+
+;;; *lisp-name-overrides* resolves a collision by renaming one C name.
+
+(defun emitted-names (forms)
+  "Symbol names of every form, mapped from the form's C name when it has one."
+  (loop for f in forms
+        collect (symbol-name (if (eq (first f) 'cffi:defcfun) (second (second f)) (second f)))))
+
+(test override-resolves-a-function-collision
+  (let* ((*lisp-name-overrides* '(("igFoo_IO" . "foo-io-2")))
+         (forms (emit-forms (model-of :functions (list (c-function "igFooIO")
+                                                       (c-function "igFoo_IO")))
+                            :package "%IMGUI")))
+    (is (equal "FOO-IO" (symbol-name (second (second (find-defcfun forms "igFooIO"))))))
+    (is (equal "FOO-IO-2" (symbol-name (second (second (find-defcfun forms "igFoo_IO"))))))))
+
+(test override-of-a-bool-function-renames-its-wrapper-and-raw
+  (let* ((*lisp-name-overrides* '(("igFoo" . "foo-checked")))
+         (forms (emit-forms (model-of :functions (list (c-function "igFoo" "bool")
+                                                       (c-function "igFooRaw")))
+                            :package "%IMGUI")))
+    (is (equal '("FOO-CHECKED-RAW" "FOO-CHECKED" "FOO-RAW") (emitted-names forms)))))
+
+(test override-resolves-a-constant-collision
+  (let* ((*lisp-name-overrides* '(("ImGuiFlags_No_Title" . "flags-no-title-legacy")))
+         (forms (emit-forms (model-of :enums (list (list :name "ImGuiFlags_"
+                                                         :values '(("ImGuiFlags_NoTitle" . 1)
+                                                                   ("ImGuiFlags_No_Title" . 2)))))
+                            :package "%IMGUI")))
+    (is (equal 1 (constant-value forms "+FLAGS-NO-TITLE+")))
+    (is (equal 2 (constant-value forms "+FLAGS-NO-TITLE-LEGACY+")))))
+
+(test override-renames-a-struct-everywhere-it-is-used
+  (let* ((*lisp-name-overrides* '(("ImFoo_IO" . "im-foo-io-2")))
+         (forms (emit-forms (model-of :structs (list (list :name "ImFooIO"
+                                                           :fields '((:name "a" :type "int")))
+                                                     (list :name "ImFoo_IO"
+                                                           :fields '((:name "b" :type "int")))
+                                                     (list :name "ImHolder"
+                                                           :fields '((:name "x" :type "ImFoo_IO"))))
+                                      :functions (list (list :c-name "igTake" :ret "void"
+                                                             :args '(("v" "ImFoo_IO")))))
+                            :package "%IMGUI")))
+    (is (find-struct forms "IM-FOO-IO"))
+    (is (find-struct forms "IM-FOO-IO-2"))
+    (flet ((struct-name (type) (symbol-name (second type))))
+      (is (equal "IM-FOO-IO-2" (struct-name (second (third (find-struct forms "IM-HOLDER"))))))
+      (is (equal "IM-FOO-IO-2" (struct-name (second (fourth (find-defcfun forms "igTake")))))))))
+
+(test overrides-are-empty-by-default
+  (is (null *lisp-name-overrides*)))
+
+;;; generate-bindings warns about overrides that match nothing in either library.
+
+(defun unused-override-warnings (overrides)
+  "C names of the UNUSED-NAME-OVERRIDE warnings generate-bindings signals with
+OVERRIDES, run on temporary cimgui JSON (igFoo) and cimplot JSON (one enum)."
+  (let ((root (merge-pathnames (format nil "sc-imgui-gen-~36R/" (random (expt 36 8)
+                                                                      (make-random-state t)))
+                               (uiop:temporary-directory)))
+        (warned '()))
+    (unwind-protect
+         (let ((cimgui (merge-pathnames "cimgui/" root))
+               (cimplot (merge-pathnames "cimplot/" root)))
+           (write-library-json cimgui :definitions "{\"igFoo\": [
+              {\"argsT\": [], \"ov_cimguiname\": \"igFoo\", \"ret\": \"void\"}]}")
+           (write-library-json cimplot :enums "{\"ImPlotFlags_\": [
+              {\"name\": \"ImPlotFlags_NoTitle\", \"calc_value\": 1}]}")
+           (handler-bind ((unused-name-override
+                            (lambda (w) (push (unused-override-c-name w) warned)
+                              (muffle-warning w))))
+             (let ((*lisp-name-overrides* overrides)
+                   (*standard-output* (make-broadcast-stream)))
+               (generate-bindings :cimgui-dir cimgui :cimplot-dir cimplot
+                                  :output-dir (merge-pathnames "out/" root)))))
+      (uiop:delete-directory-tree root :validate t :if-does-not-exist :ignore))
+    (nreverse warned)))
+
+(test unused-overrides-warn
+  (is (equal '("igGone" "ImPlotFlags_Gone")
+             (unused-override-warnings '(("igFoo" . "foo-2")
+                                         ("igGone" . "gone")
+                                         ("ImPlotFlags_NoTitle" . "flags-untitled")
+                                         ("ImPlotFlags_Gone" . "flags-gone"))))))
+
+(test used-overrides-do-not-warn
+  (is (null (unused-override-warnings '(("igFoo" . "foo-2")
+                                        ("ImPlotFlags_NoTitle" . "flags-untitled"))))))

@@ -26,3 +26,23 @@ by a lowercase letter."
                                (and (upper-case-p prev) next (lower-case-p next)))
                        (write-char #\- out))))
                  (write-char (char-downcase c) out))))))))
+
+(defparameter *lisp-name-overrides* '()
+  "Alist of (C-NAME . LISP-NAME) that replaces the naming rule for those C names.
+LISP-NAME has the form C-NAME->LISP-NAME returns: no prefix, no `+...+' for a
+constant, no `-raw' for a bool function (the generator adds those).  Applies to
+functions, enum constants and structs.  Use it to resolve a
+`binding-name-collision' deliberately: keep the established name and rename
+the other C name, with a test in tests/test-generator.lisp.")
+
+(defvar *used-overrides* nil
+  "When a hash table, BINDING-LISP-NAME records in it each C name whose
+override it applies.  GENERATE-BINDINGS binds it to find unused overrides.")
+
+(defun binding-lisp-name (c-name prefix)
+  "The Lisp name for C-NAME: its override, or C-NAME->LISP-NAME with PREFIX."
+  (let ((override (assoc c-name *lisp-name-overrides* :test #'string=)))
+    (cond (override
+           (when *used-overrides* (setf (gethash c-name *used-overrides*) t))
+           (cdr override))
+          (t (c-name->lisp-name c-name prefix)))))

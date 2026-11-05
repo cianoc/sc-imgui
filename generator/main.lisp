@@ -38,10 +38,24 @@ Ends with an export form for every generated function and constant."
       (write `(cl:export (cl:quote ,(forms-exports forms))) :stream out)
       (format out "~%"))))
 
-(defun generate-library (&key dir library path package prefix enum-prefix
-                              strict-prefix external-structs fallback-typedefs name-prefixes)
-  "Generate one bindings file.  FALLBACK-TYPEDEFS (a hash table) supplies
-typedefs the library's own table lacks.  Returns (values forms skipped opaque
+(define-condition unused-name-override (warning)
+  ((c-name :initarg :c-name :reader unused-override-c-name))
+  (:report (lambda (c stream)
+             (format stream "~S in *lisp-name-overrides* names no emitted function, ~
+constant or struct in cimgui or cimplot; remove it (its C name may have been ~
+renamed or dropped upstream, or be skipped)"
+                     (unused-override-c-name c)))))
+
+(defun warn-unused-overrides (used)
+  (loop for (c-name) in *lisp-name-overrides*
+        unless (gethash c-name used)
+          do (warn 'unused-name-override :c-name c-name)))
+
+(defun emit-library (&key dir library package prefix enum-prefix
+                           strict-prefix external-structs fallback-typedefs name-prefixes)
+  "Emit one library's forms without writing anything.  FALLBACK-TYPEDEFS (a
+hash table) supplies typedefs the library's own table lacks.  Signals
+`binding-name-collision' on a collision.  Returns (values forms skipped opaque
 complete-structs)."
   (let ((model (load-library-model dir)) (opaque '()))
     (when fallback-typedefs
@@ -58,31 +72,40 @@ complete-structs)."
           (emit-forms model :prefix prefix :package package :enum-prefix enum-prefix
                             :strict-prefix strict-prefix :name-prefixes name-prefixes
                             :external-structs external-structs))
-      (write-bindings-file path forms package library (git-head dir))
-      (format t "~&~A: ~D forms written to ~A (~D functions skipped, ~D opaque structs)~%"
-              library (length forms) path (length skipped) (length opaque))
       (values forms skipped (nreverse opaque) complete))))
+
+(defun write-library (path forms package library dir skipped opaque)
+  (write-bindings-file path forms package library (git-head dir))
+  (format t "~&~A: ~D forms written to ~A (~D functions skipped, ~D opaque structs)~%"
+          library (length forms) path (length skipped) (length opaque)))
 
 (defun generate-bindings (&key (cimgui-dir (source-path "native/third_party/cimgui/"))
                                (cimplot-dir (source-path "native/third_party/cimplot/"))
                                (output-dir (source-path "src/bindings/")))
   "Write imgui.lisp (package %imgui) and implot.lisp (package %implot) into
-OUTPUT-DIR from the JSON that cimgui and cimplot generated."
-  (let ((out (uiop:ensure-directory-pathname output-dir)))
-    (multiple-value-bind (forms skipped opaque complete)
-        (generate-library :dir cimgui-dir :library "cimgui"
-                          :path (merge-pathnames "imgui.lisp" out)
-                          :package "%IMGUI" :prefix "ig" :enum-prefix "ImGui")
-      (declare (ignore forms skipped opaque))
+OUTPUT-DIR from the JSON that cimgui and cimplot generated.  Both libraries are
+emitted before either file is written, so a `binding-name-collision' in either
+leaves OUTPUT-DIR untouched.  Warns with `unused-name-override' for each entry
+of *LISP-NAME-OVERRIDES* that neither library used (the files are still written)."
+  (let ((out (uiop:ensure-directory-pathname output-dir))
+        (*used-overrides* (make-hash-table :test 'equal)))
+    (multiple-value-bind (imgui-forms imgui-skipped imgui-opaque complete)
+        (emit-library :dir cimgui-dir :library "cimgui"
+                      :package "%IMGUI" :prefix "ig" :enum-prefix "ImGui")
       ;; ImPlot uses cimgui's types (ImVec2, ImRect, ImVector_*, ImGui enums);
       ;; the structs live in %imgui and its typedefs fill ImPlot's gaps.
-      (generate-library :dir cimplot-dir :library "cimplot"
-                        :path (merge-pathnames "implot.lisp" out)
+      (multiple-value-bind (implot-forms implot-skipped implot-opaque)
+          (emit-library :dir cimplot-dir :library "cimplot"
                         :package "%IMPLOT" :prefix "ImPlot_" :enum-prefix "ImPlot"
                         :strict-prefix t
                         ;; ImAxis_ is ImPlot's own axis enum (cimplot-defined).
                         :name-prefixes '("ImPlot" "ImAxis")
                         :external-structs complete
                         :fallback-typedefs
-                        (getf (load-library-model cimgui-dir) :typedefs)))
+                        (getf (load-library-model cimgui-dir) :typedefs))
+        (warn-unused-overrides *used-overrides*)
+        (write-library (merge-pathnames "imgui.lisp" out) imgui-forms "%IMGUI" "cimgui"
+                       cimgui-dir imgui-skipped imgui-opaque)
+        (write-library (merge-pathnames "implot.lisp" out) implot-forms "%IMPLOT" "cimplot"
+                       cimplot-dir implot-skipped implot-opaque)))
     t))

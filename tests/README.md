@@ -94,13 +94,15 @@ Shared helpers for tests that run ImGui without a window. Most tests are built f
 
 Hand-written miniature versions of cimgui's three JSON files: `definitions.json`, `structs_and_enums.json`, and `typedefs_dict.json`. They hold only the entries the generator tests need. Examples are `igButton` (a `bool` return plus an `ImVec2` by value), `igText` (variadic, so it must be skipped), and a struct with a bitfield, which must come out opaque. **They aren't copies of real cimgui output** and don't change when cimgui does. See [Maintenance](#maintenance-when-upgrading-submodules).
 
+`expected-imgui.lisp` is the bindings file the generator wrote from those fixtures before name collisions became errors. `fixture-output-unchanged` checks that the same fixtures still produce it byte for byte. If you change the generator's output on purpose, regenerate it and review the diff.
+
 ### The test system in `sc-imgui.asd`
 
 `sc-imgui/tests` lists the test files with `:serial t`, so they load in the order listed. `headless.lisp` must come before any file that uses its helpers. **A new test file must be added to this list**, or it's never loaded.
 
 ## Suite by suite
 
-### `test-generator.lisp` (suite `generator`, 10 tests)
+### `test-generator.lisp` (suite `generator`, 25 tests)
 
 Tests the binding generator against the fixtures, without loading ImGui:
 
@@ -111,6 +113,9 @@ Tests the binding generator against the fixtures, without loading ImGui:
 - **`const char*` arguments** accept `nil`, which is passed as NULL.
 - **By-value structs:** a struct is emitted after the structs it contains, and ImPlot reuses ImGui's `ImVec2` from `%imgui` rather than defining its own.
 - **Exports and prefixes:** the right names are exported, and ImPlot's output contains only ImPlot's structs and enums.
+- **Name collisions:** two C functions, enum constants or structs that map to one Lisp symbol signal `binding-name-collision`. A function named like another's `NAME-RAW` counts too. One error lists every collision. An entry in `*lisp-name-overrides*` resolves each kind of collision: a bool function's wrapper and `NAME-RAW` are renamed together, and a renamed struct is used under its new name in fields and arguments. Inputs are built inline, not from the fixtures.
+- **Unused overrides:** `generate-bindings` warns with `unused-name-override` for an override that matches nothing in either library, and doesn't warn for overrides that are used.
+- **All or nothing:** `generate-bindings` run on temporary JSON writes neither file when cimplot has a collision.
 
 ### `test-bindings.lisp` (suite `bindings`, 17 tests)
 

@@ -7,6 +7,44 @@
              (format stream "Emitting ~A as an opaque struct: ~A"
                      (opaque-struct-name c) (opaque-struct-reason c)))))
 
+(defstruct (name-collision (:conc-name collision-))
+  "C names that all map to the Lisp symbol LISP-NAME.  KIND is :function,
+:constant or :struct."
+  kind lisp-name c-names)
+
+(define-condition binding-name-collision (error)
+  ((collisions :initarg :collisions :reader binding-name-collisions))
+  (:documentation "Signalled by EMIT-FORMS when two C names map to one Lisp
+symbol.  BINDING-NAME-COLLISIONS lists every collision found, each with
+COLLISION-KIND, COLLISION-LISP-NAME and COLLISION-C-NAMES.")
+  (:report (lambda (c stream)
+             (let ((collisions (binding-name-collisions c)))
+               (format stream "~D binding name collision~:P:~%" (length collisions))
+               (dolist (x collisions)
+                 (format stream "  ~(~A~) ~A::~A <- ~{~A~^, ~}~%"
+                         (collision-kind x)
+                         (package-name (symbol-package (collision-lisp-name x)))
+                         (symbol-name (collision-lisp-name x))
+                         (collision-c-names x)))
+               (format stream "Resolve each one deliberately (usually a rename rule in ~
+the generator for the affected C name) so that no Lisp name silently points at ~
+a different C function or value.")))))
+
+(defun name-claims ()
+  "A table recording which C names claim each Lisp symbol, in claim order."
+  (make-hash-table :test 'eq))
+
+(defun claim-name (claims symbol c-name)
+  (unless (member c-name (gethash symbol claims) :test #'string=)
+    (setf (gethash symbol claims) (append (gethash symbol claims) (list c-name)))))
+
+(defun claim-collisions (claims kind order)
+  "Collisions in CLAIMS, as NAME-COLLISIONs of KIND, for the symbols in ORDER."
+  (loop for symbol in (remove-duplicates order :from-end t)
+        for c-names = (gethash symbol claims)
+        when (rest c-names)
+          collect (make-name-collision :kind kind :lisp-name symbol :c-names c-names)))
+
 (defun ensure-package (designator)
   (or (find-package designator)
       (make-package designator :use nil)))
@@ -122,7 +160,7 @@ like :string but NIL passes NULL.  Returns keep :string."
                                             n)))))
              (if (/= (length names) (length (remove-duplicates names :test #'string=)))
                  (values nil "duplicate argument names")
-                 (let* ((name (intern (string-upcase (c-name->lisp-name c-name prefix))
+                 (let* ((name (intern (string-upcase (binding-lisp-name c-name prefix))
                                       package))
                         (params (loop for (nil nil type) in args
                                       for n in names
@@ -166,7 +204,9 @@ NAME-PREFIXES, when non-nil, keeps only structs and enums whose C names start
 with one of the prefixes (others may still be referenced as EXTERNAL-STRUCTS).
 EXTERNAL-STRUCTS is an alist of (c-name . symbol) for by-value structs defined
 in another package.  Opaque structs are reported with
-`opaque-struct-warning'.  The second value lists (c-name reason) for each
+`opaque-struct-warning'.  When two C names (functions, including a bool
+function's NAME-RAW, enum constants or structs) map to the same Lisp symbol,
+signals one `binding-name-collision' listing every collision.  The second value lists (c-name reason) for each
 skipped function, and the third an alist (c-name . symbol) of the structs emitted with
 slots (usable as another package's EXTERNAL-STRUCTS)."
   (let* ((pkg (ensure-package package))
@@ -179,40 +219,51 @@ slots (usable as another package's EXTERNAL-STRUCTS)."
                        :enums (remove-if-not keep (getf model :enums))
                        model))
          (struct-forms '()) (constant-forms '()) (function-forms '())
-         (skipped '()) complete
+         (skipped '()) (collisions '()) complete
          lookup)
     (multiple-value-bind (lk forms opaque complete-structs)
         (build-structs (getf model :structs) typedefs pkg external-structs)
       (setf lookup lk struct-forms forms complete complete-structs)
       (loop for (name . reason) in opaque
             do (warn 'opaque-struct-warning :name name :reason reason)))
+    ;; structs
+    (let ((claims (name-claims)) (order '()))
+      (dolist (s (getf model :structs))
+        (let ((symbol (struct-type-symbol (getf s :name))))
+          (claim-name claims symbol (getf s :name))
+          (push symbol order)))
+      (setf collisions (claim-collisions claims :struct (nreverse order))))
     ;; constants
-    (let ((seen (make-hash-table :test 'equal)))
+    (let ((claims (name-claims)) (order '()))
       (dolist (enum (getf model :enums))
         (loop for (name . value) in (getf enum :values)
               do (let ((sym (intern (string-upcase
-                                     (format nil "+~A+" (c-name->lisp-name name enum-prefix)))
+                                     (format nil "+~A+" (binding-lisp-name name enum-prefix)))
                                     pkg)))
-                   (cond ((not (integerp value)))
-                         ((nth-value 1 (gethash sym seen))
-                          (unless (eql value (gethash sym seen))
-                            (warn "Constant ~A defined with differing values; keeping first" sym)))
-                         (t (setf (gethash sym seen) value)
-                            (push `(cl:defconstant ,sym ,value) constant-forms)))))))
-    ;; functions
-    (let ((seen (make-hash-table :test 'eq)))
+                   (when (integerp value)
+                     (unless (gethash sym claims)
+                       (push `(cl:defconstant ,sym ,value) constant-forms))
+                     (claim-name claims sym name)
+                     (push sym order)))))
+      (setf collisions (append collisions
+                               (claim-collisions claims :constant (nreverse order)))))
+    ;; functions (a bool function claims both NAME and NAME-RAW)
+    (let ((claims (name-claims)) (order '()))
       (dolist (f (getf model :functions))
         (unless (and strict-prefix (not (starts-with-p prefix (getf f :c-name))))
           (multiple-value-bind (fforms reason) (emit-function f prefix pkg lookup typedefs)
-            (let ((names (loop for form in fforms
-                               collect (if (eq (first form) 'cffi:defcfun)
-                                           (second (second form))
-                                           (second form)))))
-              (cond ((null fforms) (push (list (getf f :c-name) reason) skipped))
-                    ((some (lambda (n) (gethash n seen)) names)
-                     (push (list (getf f :c-name) "duplicate lisp name") skipped))
-                    (t (dolist (n names) (setf (gethash n seen) t))
-                       (dolist (form fforms) (push form function-forms)))))))))
+            (cond ((null fforms) (push (list (getf f :c-name) reason) skipped))
+                  (t (dolist (form fforms)
+                       (let ((name (if (eq (first form) 'cffi:defcfun)
+                                       (second (second form))
+                                       (second form))))
+                         (claim-name claims name (getf f :c-name))
+                         (push name order))
+                       (push form function-forms)))))))
+      (setf collisions (append collisions
+                               (claim-collisions claims :function (nreverse order)))))
+    (when collisions
+      (error 'binding-name-collision :collisions collisions))
     (values (append struct-forms (nreverse constant-forms) (nreverse function-forms))
             (nreverse skipped)
             complete)))

@@ -8,4 +8,12 @@
            #:generate-bindings
            #:opaque-struct-warning
            #:opaque-struct-name
-           #:opaque-struct-reason))
+           #:opaque-struct-reason
+           #:*lisp-name-overrides*
+           #:unused-name-override
+           #:unused-override-c-name
+           #:binding-name-collision
+           #:binding-name-collisions
+           #:collision-kind
+           #:collision-lisp-name
+           #:collision-c-names))

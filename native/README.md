@@ -212,7 +212,7 @@ The count must be greater than zero.
 
 ### The generated bindings must be regenerated when the pins move
 
-`src/bindings/imgui.lisp` and `implot.lisp` are committed, so loading the system never needs the generator. They're only correct for the pinned cimgui and cimplot. After changing those pins, run `make bindings` and commit the result together with the new pins.
+`src/bindings/imgui.lisp` and `implot.lisp` are committed, so loading the system never needs the generator. They're only correct for the pinned cimgui and cimplot. After changing those pins, run `make bindings` and commit the result together with the new pins. If it stops with `binding-name-collision`, see [generator/README.md](../generator/README.md#when-the-cimgui-or-cimplot-pins-move).
 
 ### Separate targets don't get `IMGUI_USER_CONFIG` automatically
 
