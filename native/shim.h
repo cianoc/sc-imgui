@@ -10,15 +10,19 @@ int         shim_open_window(int width, int height, const char *title, const cha
 int         shim_should_close(void);          /* 1 when the user closed the window */
 void        shim_begin_frame(void);           /* glfwPollEvents + backend NewFrame + igNewFrame */
 void        shim_end_frame(void);             /* igRender + GL draw + glfwSwapBuffers */
-void        shim_shutdown(void);              /* destroys backends, ImPlot and ImGui contexts, window */
+void        shim_shutdown(void);              /* hides the window and pumps events so it leaves the screen, then destroys backends, ImPlot and ImGui contexts, window */
+void        shim_show_window(const char *title); /* main thread; title NULL = keep the current one */
+void        shim_hide_window(void);           /* main thread; saves the ini file, hides the window, clears should-close */
+int         shim_wait_events(double timeout); /* main thread; wait up to timeout seconds for events; -1 = no window */
+void        shim_wake(void);                  /* any thread; wakes shim_wait_events; no-op without a window */
 const char *shim_last_error(void);            /* message for the last nonzero return, or "" */
 int         shim_headless_create(int width, int height); /* contexts, DisplaySize, DeltaTime 1/60, font atlas built; 0 = ok */
 void        shim_headless_destroy(void);
 int         shim_assert_count(void);
 const char *shim_last_assert(void);           /* "expr @ file:line" */
 void        shim_clear_asserts(void);
-int         shim_onscreen_window_count(void);  /* on-screen windows owned by this process; -1 where unavailable (non-macOS) */
-int         shim_test_perform_close(void);     /* tests: [NSWindow performClose:] on the window (main thread); 0 = sent, -1 = no window or not macOS */
+int         shim_window_visible(void);        /* main thread; 1 visible, 0 hidden, -1 no window */
+int         shim_test_request_close(void);    /* tests, any thread: set the should-close flag as the close button does; 0 = set, -1 = no window */
 
 #ifdef __cplusplus
 }

@@ -1,7 +1,9 @@
 // sc-imgui native shim: window/frame lifecycle and recorded asserts.
 #include "shim.h"
 
+#include <algorithm>
 #include <cstdio>
+#include <mutex>
 #include <string>
 
 #include "imgui.h"
@@ -13,10 +15,6 @@
 #include <GLFW/glfw3.h>
 #include "imgui_impl_opengl3_loader.h"  // GL function pointers shared with the backend
 
-#ifdef __APPLE__
-#include "shim_macos.h"
-#endif
-
 static int g_assert_count = 0;
 static std::string g_last_assert;
 static std::string g_last_error;
@@ -24,6 +22,9 @@ static std::string g_ini_path;
 static GLFWwindow *g_window = nullptr;
 static bool g_backends = false;
 static bool g_headless = false;
+// Guards g_window against shim_wake, which other threads call: GLFW allows
+// glfwPostEmptyEvent from any thread, but not concurrently with glfwTerminate.
+static std::mutex g_wake_mutex;
 
 extern "C" void sc_imgui_assert_failed(const char *expr, const char *file, int line) {
   char buf[64];
@@ -32,16 +33,24 @@ extern "C" void sc_imgui_assert_failed(const char *expr, const char *file, int l
   g_assert_count++;
 }
 
-// Destroy the window and end GLFW.  macOS needs extra steps for the window to
-// leave the screen (see shim_macos.mm).
+// Destroy the window and end GLFW.
 static void close_window() {
-#ifdef __APPLE__
-  shim_macos_close_window(g_window);
-#else
-  glfwDestroyWindow(g_window);
+  {
+    std::lock_guard<std::mutex> lock(g_wake_mutex);
+    glfwDestroyWindow(g_window);
+    g_window = nullptr;
+  }
   glfwTerminate();
-#endif
-  g_window = nullptr;
+}
+
+// Seconds to keep the run loop going after hiding the window before it may
+// be destroyed (see shim_shutdown).
+static const double HIDE_SETTLE = 0.5;
+static double g_hidden_at = -1e9;  // glfwGetTime() of the last hide
+
+static void hide_window() {
+  glfwHideWindow(g_window);
+  g_hidden_at = glfwGetTime();
 }
 
 static void configure_io() {
@@ -89,12 +98,17 @@ int shim_open_window(int width, int height, const char *title, const char *ini_p
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 #endif
-  g_window = glfwCreateWindow(width, height, title ? title : "sc-imgui", nullptr, nullptr);
+  GLFWwindow *window = glfwCreateWindow(width, height, title ? title : "sc-imgui", nullptr, nullptr);
+  {
+    std::lock_guard<std::mutex> lock(g_wake_mutex);
+    g_window = window;
+  }
   if (!g_window) {
     std::string e = g_last_error.empty() ? "glfwCreateWindow failed" : g_last_error;
     glfwTerminate();
     return fail(e.c_str());
   }
+  g_hidden_at = -1e9;  // glfwGetTime restarts with each glfwInit
   glfwMakeContextCurrent(g_window);
   glfwSwapInterval(1);
 
@@ -143,6 +157,20 @@ void shim_end_frame(void) {
 }
 
 void shim_shutdown(void) {
+  if (g_window) {
+    // Take the window off screen before destroying it.  On macOS hiding
+    // animates for about 0.25 s, driven by the main run loop; a window
+    // destroyed before that ends stays on screen, and nothing runs the run
+    // loop after the frame loop exits.  So hide it (if shown) and pump events
+    // until HIDE_SETTLE seconds after it was hidden, here or by an earlier
+    // shim_hide_window.  The time is measured: 0.2 s was too short, 0.3 s
+    // enough.  A loop of fixed passes is no use: each returns at once while
+    // events are queued.
+    if (glfwGetWindowAttrib(g_window, GLFW_VISIBLE)) hide_window();
+    const double end = std::max(g_hidden_at + HIDE_SETTLE, glfwGetTime() + 0.02);
+    for (double now = glfwGetTime(); now < end; now = glfwGetTime())
+      glfwWaitEventsTimeout(end - now);
+  }
   if (g_backends) {
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
@@ -151,6 +179,44 @@ void shim_shutdown(void) {
   destroy_contexts();
   if (g_window) close_window();
   g_headless = false;
+}
+
+void shim_show_window(const char *title) {
+  if (!g_window) return;
+  if (title) glfwSetWindowTitle(g_window, title);
+  glfwShowWindow(g_window);
+}
+
+void shim_hide_window(void) {
+  if (!g_window) return;
+  ImGuiIO &io = ImGui::GetIO();
+  if (io.IniFilename) ImGui::SaveIniSettingsToDisk(io.IniFilename);
+  hide_window();
+  glfwSetWindowShouldClose(g_window, GLFW_FALSE);
+}
+
+int shim_wait_events(double timeout) {
+  if (!g_window) return -1;
+  glfwWaitEventsTimeout(timeout);
+  return 0;
+}
+
+void shim_wake(void) {
+  std::lock_guard<std::mutex> lock(g_wake_mutex);
+  if (g_window) glfwPostEmptyEvent();
+}
+
+int shim_window_visible(void) {
+  if (!g_window) return -1;
+  return glfwGetWindowAttrib(g_window, GLFW_VISIBLE) ? 1 : 0;
+}
+
+int shim_test_request_close(void) {
+  std::lock_guard<std::mutex> lock(g_wake_mutex);
+  if (!g_window) return -1;
+  glfwSetWindowShouldClose(g_window, GLFW_TRUE);
+  glfwPostEmptyEvent();
+  return 0;
 }
 
 const char *shim_last_error(void) { return g_last_error.c_str(); }
@@ -185,13 +251,6 @@ void shim_clear_asserts(void) {
   g_assert_count = 0;
   g_last_assert.clear();
 }
-
-#ifndef __APPLE__
-int shim_onscreen_window_count(void) { return -1; }  // macOS version in shim_macos.mm
-int shim_test_perform_close(void) { return -1; }     // macOS version in shim_macos.mm
-#else
-int shim_test_perform_close(void) { return shim_macos_perform_close(g_window); }
-#endif
 
 }  // extern "C"
 

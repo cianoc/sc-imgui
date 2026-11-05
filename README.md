@@ -51,8 +51,9 @@ definition on the next frame. Each window the panel opens with `gui:with-window`
 then refits its size to its new contents once, so added widgets are not cut
 off. After that you can resize it by hand as usual, and the size is saved as
 usual. Windows of other panels, and windows opened with a bare `%imgui:begin`
-as above, keep their size. `(gui:stop)` closes the window, as does the
-window's close button; `(gui:start)` opens it again with the same panels.
+as above, keep their size. `(gui:stop)` hides the window, as does the
+window's close button; `(gui:start)` shows it again with the same panels.
+`(gui:shutdown)` destroys the window and ends the loop.
 
 The frame loop runs on SBCL's main thread (macOS requires it for Cocoa), handed
 over with `trivial-main-thread`, so `start` returns immediately and the REPL
@@ -81,12 +82,25 @@ A plain `sbcl` terminal REPL also evaluates on the main thread. Scripts should
 call `start` from another thread and leave the main thread idle, as
 `tests/smoke.lisp` does.
 
-- `(gui:start &key width height title)` returns `NIL` if already running;
-  signals `gui:main-thread-busy` on the main thread.
-- `(gui:stop &key (wait t))` returns `T` if the loop was running; with `wait` it
-  waits up to 5 s for the window to close (never when called from the main
-  thread, e.g. from a panel).
-- `(gui:running-p)`.
+Once started, the loop keeps the main thread until `(gui:shutdown)`. While
+the window is hidden the loop waits for events (near-zero CPU) and still runs
+`call-in-gui-thread` tasks. Never leaving the main thread idle is what lets a
+hidden or destroyed window actually leave the screen on macOS.
+
+- `(gui:start &key width height title)` shows the window: it creates the window
+  and loop the first time (and after `shutdown`), or shows the hidden window
+  again. Returns `NIL` if already showing. `width` and `height` apply only when
+  the window is created; `title` applies each time it is shown. Creating the
+  loop from the main thread signals `gui:main-thread-busy`.
+- `(gui:stop &key (wait t))` saves the layout to `*ini-path*`, hides the window
+  and stops drawing panels; the loop keeps running. The window's close button
+  does the same. Returns `T` if the window was showing; with `wait` it waits up
+  to 5 s for the window to hide (never when called from the main thread, e.g.
+  from a panel).
+- `(gui:shutdown &key (wait t))` hides and destroys the window, ends the loop
+  and releases the main thread. Returns `T` if there was a loop; with `wait` it
+  waits up to 5 s for the loop to end.
+- `(gui:running-p)` is true while the window is showing and panels are drawn.
 - `gui:*ini-path*` (default `"sc-imgui.ini"`, merged with
   `*default-pathname-defaults*` at `start`; `NIL` disables) is where ImGui saves
   window layout.

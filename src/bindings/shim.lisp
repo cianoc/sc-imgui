@@ -16,5 +16,10 @@
 (cffi:defcfun ("shim_assert_count" assert-count) :int)
 (cffi:defcfun ("shim_last_assert" last-assert) :string)
 (cffi:defcfun ("shim_clear_asserts" clear-asserts) :void)
-(cffi:defcfun ("shim_onscreen_window_count" onscreen-window-count) :int)
-(cffi:defcfun ("shim_test_perform_close" test-perform-close) :int) ; tests only; main thread
+(cffi:defcfun ("shim_show_window" show-window) :void
+  (title sc-imgui.bindings:optional-string))     ; main thread; NIL = keep the title
+(cffi:defcfun ("shim_hide_window" hide-window) :void) ; main thread; saves the ini file
+(cffi:defcfun ("shim_wait_events" wait-events) :int (timeout :double)) ; main thread
+(cffi:defcfun ("shim_wake" wake) :void)                        ; any thread
+(cffi:defcfun ("shim_window_visible" window-visible) :int)     ; main thread
+(cffi:defcfun ("shim_test_request_close" test-request-close) :int) ; tests only

@@ -11,4 +11,6 @@
 (defun show (name) (gui.runtime:set-gui-visible name t) name)
 (defun hide (name) (gui.runtime:set-gui-visible name nil) name)
 (defun remove (name) (gui.runtime:unregister-gui name))
-(defun call-in-gui-thread (thunk) (gui.runtime:enqueue-task thunk))
+(defun call-in-gui-thread (thunk)
+  (prog1 (gui.runtime:enqueue-task thunk)
+    (gui.runtime:wake-loop)))

@@ -14,7 +14,8 @@
   (:export #:open-window #:should-close #:begin-frame #:end-frame #:shutdown
            #:last-error #:headless-create #:headless-destroy
            #:assert-count #:last-assert #:clear-asserts
-           #:onscreen-window-count #:test-perform-close))
+           #:show-window #:hide-window #:wait-events #:wake
+           #:window-visible #:test-request-close))
 
 (defpackage #:%imgui (:use))
 

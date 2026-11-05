@@ -61,10 +61,12 @@ The frame loop runs on SBCL's main thread, and the REPL stays free on its Swank 
 
 **Starting and stopping**
 
-- `(gui:start)` returns immediately. It uses `trivial-main-thread` to run the loop on the main thread, which SLIME and Sly leave free.
-- `(gui:stop)` sets a flag. The loop finishes its current frame, closes the window, and exits.
+- `(gui:start)` returns immediately. The first time, it uses `trivial-main-thread` to run the loop on the main thread, which SLIME and Sly leave free. Calling `start` while the window is showing does nothing and returns `NIL`.
+- `(gui:stop)` saves the layout, hides the window and stops drawing panels. The loop keeps running: it waits for events (near-zero CPU) and still runs tasks queued with `call-in-gui-thread`. `start` shows the window again.
 - Closing the window behaves the same as `(gui:stop)`.
-- `start` can be called again after a stop. Calling `start` while the loop is running does nothing and returns.
+- `(gui:shutdown)` hides the window, keeps processing events until it has left the screen, then destroys it, ends the loop and releases the main thread. `start` after a shutdown creates a new window and loop.
+- So the main thread stays with the GUI from the first `start` until `shutdown`. It is never left idle with a window open, because on macOS the window server only removes a hidden or destroyed window while the main run loop runs. That is why the shim needs no Objective-C code.
+- `start`, `stop`, `shutdown` and `call-in-gui-thread` wake a waiting loop with `glfwPostEmptyEvent`.
 - On Linux and Windows the same code runs; the main thread isn't strictly required there.
 
 **Each frame**
@@ -76,14 +78,14 @@ The frame loop runs on SBCL's main thread, and the REPL stays free on its Swank 
 
 The whole frame runs inside `sb-int:with-float-traps-masked`, so GL drivers and Cocoa can't trip SBCL's floating-point traps.
 
-**Pacing.** The loop redraws continuously, synced to the display refresh (`glfwSwapInterval 1`, typically 60 fps). It doesn't wait for input, because scopes and meters change on their own.
+**Pacing.** The loop redraws continuously, synced to the display refresh (`glfwSwapInterval 1`, typically 60 fps). It doesn't wait for input, because scopes and meters change on their own. Only while the window is hidden does the loop wait for events instead of drawing.
 
 **Registry.** The registry is the loop's list of what to draw, keyed by name.
 
 - `define-gui` expands into a function definition plus a registry entry. Redefining replaces the existing entry and never duplicates it.
 - The loop looks up each function by name every frame, so a redefinition takes effect on the next frame.
 - `gui:hide` and `gui:show` stop and resume drawing a panel without deleting it. `gui:remove` deletes the entry.
-- The registry lives in Lisp, so panels survive `stop` and `start`.
+- The registry lives in Lisp, so panels survive `stop`, `shutdown` and `start`.
 - Registering, hiding, showing, and removing are safe from any thread. The registry is protected by a lock, and the loop iterates over a snapshot.
 - Part 5's `defpanel` registers through this same mechanism.
 
@@ -198,7 +200,7 @@ Most tests run headless, so they need no window or display and run in CI.
 | --- | --- | --- |
 | Binding generator | Given small cimgui JSON fixtures, the generator emits the expected CFFI forms | anywhere |
 | Headless ImGui | Widgets write back to their places, using simulated mouse input. Scope macros stay balanced when the body signals an error. Registry define, redefine, show, hide, and remove. Failed-panel marking and recovery. | anywhere, including CI; ImGui runs with a context and display size but no backend |
-| Backend smoke test | Open a window, run several hundred frames, close it, restart it | locally on macOS; on Linux CI under a virtual display (Xvfb) |
+| Backend smoke test | Open a window, run several hundred frames, hide it, show it again, close it, shut it down, start a new one | locally on macOS; on Linux CI under a virtual display (Xvfb) |
 
 **Platforms.** macOS is primary and tested locally. Linux is tested in CI. Windows is expected to work but isn't tested in v1.
 

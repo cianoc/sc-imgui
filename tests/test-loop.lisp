@@ -11,6 +11,45 @@
 (test not-running-by-default
   (is (not (gui:running-p))))
 
+(test shutdown-without-a-loop
+  (is (null (gui:shutdown))))
+
+;;; State transitions without a real loop: set the loop's state by hand.  START
+;;; and STOP on an existing loop only change the requested state and wake it.
+(defmacro with-loop-state ((state) &body body)
+  `(unwind-protect
+        (progn (setf gui.runtime::*state* ,state
+                     gui.runtime::*shown* (eq ,state :showing))
+               ,@body)
+     (setf gui.runtime::*state* nil
+           gui.runtime::*shown* nil)))
+
+(test stop-hides-a-showing-window
+  (with-loop-state (:showing)
+    (is (gui:running-p))
+    (is (eq t (gui:stop :wait nil)))
+    (is (eq :hidden gui.runtime::*state*))
+    (is (not (gui:running-p)))
+    (is (null (gui:stop :wait nil)) "stop when hidden")))
+
+(test start-shows-a-hidden-window-even-on-the-main-thread
+  ;; Showing again needs no new loop, so the main-thread check does not apply.
+  (with-loop-state (:hidden)
+    (is (eq t (gui:start :title "again")))
+    (is (eq :showing gui.runtime::*state*))
+    (is (string= "again" gui.runtime::*title*))
+    (is (gui:running-p))
+    (is (null (gui:start)) "start when showing")))
+
+(test shutdown-ends-a-hidden-or-showing-loop
+  (dolist (state '(:hidden :showing))
+    (with-loop-state (state)
+      (is (eq t (gui:shutdown :wait nil)))
+      (is (eq :shutting-down gui.runtime::*state*))
+      (is (not (gui:running-p)))
+      (is (null (gui:shutdown :wait nil)) "shutdown while shutting down")
+      (is (null (gui:stop :wait nil)) "stop while shutting down"))))
+
 ;;; START from SBCL's main thread would run the loop inside the caller (a
 ;;; SLIME REPL using the main thread, or a plain terminal REPL) and freeze it, so
 ;;; it refuses.  `make test` runs on the main thread; elsewhere hand the call to
@@ -53,7 +92,7 @@ NIL) and the output it wrote."
     (unwind-protect
          (with-headless-imgui ()
            (setf gui.runtime:*report-stream* out
-                 gui.runtime::*running* t)
+                 gui.runtime::*state* :showing)
            (gui.runtime::%frame-loop 100 100 "x" "unused.ini")
            (is (not (gui:running-p)))
            ;; The failed open must not tear down the headless context.
@@ -61,20 +100,20 @@ NIL) and the output it wrote."
            (let ((report (get-output-stream-string out)))
              (is (search "LOOP failed" report))
              (is (search "already open" report))))
-      (setf gui.runtime::*running* nil
+      (setf gui.runtime::*state* nil
             gui.runtime:*report-stream* saved))))
 
 (test start-from-panel-while-running-returns-nil
   ;; A panel calling START while the loop runs (so on the main thread) does
   ;; nothing: it returns NIL and signals nothing.  Headless stand-in for the
-  ;; running loop: *RUNNING* set and the registered panels drawn in a frame.
+  ;; running loop: *STATE* :SHOWING and the registered panels drawn in a frame.
   (when (trivial-main-thread:main-thread-p)
     (let ((result :not-called) (signalled nil)
           (out (make-string-output-stream)))
       (unwind-protect
            (with-frame-env
              (let ((gui.runtime:*report-stream* out))
-               (setf gui.runtime::*running* t)
+               (setf gui.runtime::*state* :showing)
                (gui:define-gui starter ()
                  (setf result (handler-case (gui:start)
                                 (condition (c) (setf signalled c) :signalled))))
@@ -83,6 +122,6 @@ NIL) and the output it wrote."
                (is (null signalled))
                (is (null (gui.runtime:gui-entry-failure (gui.runtime:find-gui 'starter))))
                (is (string= "" (get-output-stream-string out)))))
-        (setf gui.runtime::*running* nil))))
+        (setf gui.runtime::*state* nil))))
   (unless (trivial-main-thread:main-thread-p)
     (skip "not on the main thread")))

@@ -72,13 +72,19 @@
                (%imgui:end))))
       (is (equal '(nil nil nil nil) (frames-with-click 700 500 #'draw :warmup 2))))))
 
-(test onscreen-window-count-without-a-window
-  ;; -1 where the count is unavailable (non-macOS); otherwise no window is open.
-  (is (<= -1 (%shim:onscreen-window-count) 0)))
+(test window-visible-without-a-window
+  ;; -1 when there is no window.
+  (is (= -1 (%shim:window-visible))))
 
-(test test-perform-close-without-a-window
+(test test-request-close-without-a-window
   ;; The close-button hook has nothing to close in a test run.
-  (is (= -1 (%shim:test-perform-close))))
+  (is (= -1 (%shim:test-request-close))))
+
+(test wake-and-wait-without-a-window-are-harmless
+  ;; Neither touches GLFW (or reports an error) before a window exists.
+  (%shim:wake)
+  (is (= -1 (%shim:wait-events 0.01d0)))
+  (is (string= "" (%shim:last-error))))
 
 ;;; `const char*` arguments accept NIL (passed as NULL) as well as strings.
 

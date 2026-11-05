@@ -1,22 +1,43 @@
-(in-package #:gui.runtime)
-
 ;;; The frame loop.  It runs on SBCL's main thread (via trivial-main-thread),
 ;;; so START returns at once and the REPL stays free.  That needs the REPL to
 ;;; evaluate in some other thread: START called on the main thread signals
-;;; MAIN-THREAD-BUSY instead of running the loop.  STOP may be called from any
-;;; thread.
+;;; MAIN-THREAD-BUSY instead of creating the loop.
+;;;
+;;; Once created, the loop keeps the main thread until SHUTDOWN.  STOP (or the
+;;; window's close button) only hides the window: the loop then waits for
+;;; events, still running CALL-IN-GUI-THREAD tasks, and START shows the window
+;;; again.  Never letting the main thread go idle means the platform's event
+;;; loop always runs, so a hidden or closed window really leaves the screen
+;;; (on macOS an idle main thread left it there).  STOP, START and SHUTDOWN
+;;; only change the requested *STATE* and wake the loop, which does the GLFW
+;;; work on the main thread.
+
+(in-package #:gui.runtime)
 
 (defvar *ini-path* #p"sc-imgui.ini"
   "Where ImGui saves window layout, merged with *DEFAULT-PATHNAME-DEFAULTS* at
-START.  NIL disables saving.  Changes take effect at the next START.")
+START.  NIL disables saving.  Changes take effect when the window is next created.")
 
 (defvar *loop-lock* (bt2:make-lock :name "gui loop"))
-(defvar *running* nil "True from START until the loop has shut down.")
-(defvar *stop-requested* nil "Set by STOP (and START clears it); the loop polls it.")
+(defvar *state* nil
+  "Requested loop state: NIL (no loop), :SHOWING, :HIDDEN or :SHUTTING-DOWN.
+Changed under *LOOP-LOCK*; the loop acts on it and sets it to NIL on exit.")
+(defvar *shown* nil "True while the window is on screen.  Written only by the loop.")
+(defvar *title* "sc-imgui" "Title to give the window when the loop next shows it.")
+
+(defconstant +hidden-wait+ 0.5d0
+  "Longest wait for events while hidden, in seconds.  Requests wake the loop at
+once; this only bounds the delay should a wake-up be missed.")
 
 (defun running-p ()
-  "True while the frame loop is running (or START has queued it)."
-  (and *running* t))
+  "True while the window is showing and panels are drawn (or START has asked
+for that)."
+  (eq *state* :showing))
+
+(defun wake-loop ()
+  "Wake the loop if it is waiting for events.  Safe from any thread, and a
+no-op without a window."
+  (ignore-errors (%shim:wake)))
 
 (define-condition main-thread-busy (error)
   ()
@@ -39,7 +60,8 @@ the frame loop needs for itself."))
        (uiop:native-namestring (merge-pathnames *ini-path* *default-pathname-defaults*))))
 
 (defun %frame-loop (width height title ini)
-  "Open the window and draw frames until STOP or the window is closed."
+  "Open the window and run the loop until SHUTDOWN: draw frames while :SHOWING,
+wait for events while :HIDDEN."
   (let ((opened nil))
     (unwind-protect
          (sb-int:with-float-traps-masked (:invalid :divide-by-zero :overflow :inexact)
@@ -54,12 +76,28 @@ the frame loop needs for itself."))
                (unless (zerop (%shim:open-window width height title ini))
                  (report-error :loop (%shim:last-error))
                  (return-from frames nil))
-               (setf opened t)
-               (loop until (or *stop-requested* (= 1 (%shim:should-close)))
-                     do (run-queued-tasks)
-                        (%shim:begin-frame)
-                        (draw-registered-guis)
-                        (%shim:end-frame)))
+               (setf opened t
+                     *shown* t)
+               (loop
+                 (run-queued-tasks)
+                 (ecase *state*
+                   (:shutting-down (return-from frames nil))
+                   (:showing
+                    (unless *shown*
+                      (%shim:show-window *title*)
+                      (setf *shown* t))
+                    (if (= 1 (%shim:should-close))
+                        ;; The close button: the same as STOP.
+                        (bt2:with-lock-held (*loop-lock*)
+                          (when (eq *state* :showing) (setf *state* :hidden)))
+                        (progn (%shim:begin-frame)
+                               (draw-registered-guis)
+                               (%shim:end-frame))))
+                   (:hidden
+                    (when *shown*
+                      (%shim:hide-window)
+                      (setf *shown* nil))
+                    (%shim:wait-events +hidden-wait+)))))
                ;; Stack or heap exhaustion outside a panel: report and shut
                ;; down cleanly rather than leave a frozen window.
                (storage-condition (c) (report-error :loop c)))))
@@ -67,43 +105,75 @@ the frame loop needs for itself."))
         (sb-int:with-float-traps-masked (:invalid :divide-by-zero :overflow :inexact)
           (ignore-errors (%shim:shutdown))))
       (bt2:with-lock-held (*loop-lock*)
-        (setf *running* nil)))))
+        (setf *state* nil
+              *shown* nil)))))
+
+(defun %wait-while (predicate)
+  "Unless on the main thread (where the loop would never get to run), poll
+PREDICATE for up to 5 s while it is true."
+  (unless (trivial-main-thread:main-thread-p)
+    (loop repeat 500
+          while (funcall predicate)
+          do (sleep 0.01))))
 
 (defun start (&key (width 1280) (height 800) (title "sc-imgui"))
-  "Open the window and run the frame loop on SBCL's main thread.  Returns T at
-once, or NIL if the loop is already running.  Errors are reported to the
-caller's *STANDARD-OUTPUT*.  Otherwise it must not be called on the main
-thread itself: that signals MAIN-THREAD-BUSY and changes nothing.  (A panel
-calling START while the loop runs gets NIL, like any other caller.)"
-  (when (running-p)                     ; a read only; rechecked under the lock
-    (return-from start nil))
-  (when (trivial-main-thread:main-thread-p)
-    (error 'main-thread-busy))
-  (let ((ini (%ini-namestring)))
+  "Show the GUI window.  Returns T at once, or NIL if it is already showing.
+
+With no loop (the first time, or after SHUTDOWN) this opens a WIDTH x HEIGHT
+window and runs the frame loop on SBCL's main thread; that must not be
+requested from the main thread itself, which signals MAIN-THREAD-BUSY and
+changes nothing.  After STOP it shows the hidden window again, titled TITLE,
+and resumes drawing panels.  Errors are reported to the caller's
+*STANDARD-OUTPUT*."
+  (when (eq *state* :shutting-down)
+    (%wait-while (lambda () (eq *state* :shutting-down))))
+  (let ((ini (%ini-namestring)) (create nil))
     (bt2:with-lock-held (*loop-lock*)
-      (when *running*
-        (return-from start nil))
-      (setf *running* t
-            *stop-requested* nil
-            *report-stream* *standard-output*))
-    (handler-bind ((error (lambda (c)
-                            (declare (ignore c))
-                            ;; Could not hand the loop to the main thread.
-                            (bt2:with-lock-held (*loop-lock*) (setf *running* nil)))))
-      (trivial-main-thread:call-in-main-thread
-       (lambda () (%frame-loop width height title ini))
-       :blocking nil))
+      (case *state*
+        ((:showing :shutting-down) (return-from start nil))
+        (:hidden (setf *state* :showing *title* title))
+        ((nil)
+         (when (trivial-main-thread:main-thread-p)
+           (error 'main-thread-busy))
+         (setf *state* :showing
+               *title* title
+               create t)))
+      (setf *report-stream* *standard-output*))
+    (if create
+        (handler-bind ((error (lambda (c)
+                                (declare (ignore c))
+                                ;; Could not hand the loop to the main thread.
+                                (bt2:with-lock-held (*loop-lock*) (setf *state* nil)))))
+          (trivial-main-thread:call-in-main-thread
+           (lambda () (%frame-loop width height title ini))
+           :blocking nil))
+        (wake-loop))
     t))
 
 (defun stop (&key (wait t))
-  "Ask the loop to finish its frame, close the window and exit.  Returns T if it
-was running, else NIL.  With WAIT (and not on the main thread, where waiting
-would deadlock) wait up to 5 s for it to finish."
+  "Hide the window and stop drawing panels, saving the layout to *INI-PATH*.
+The loop keeps the main thread, waiting for events and still running
+CALL-IN-GUI-THREAD tasks; START shows the window again and SHUTDOWN ends the
+loop.  Returns T if the window was showing, else NIL.  With WAIT (and not on
+the main thread, where waiting would deadlock) wait up to 5 s for the window
+to be hidden."
   (unless (bt2:with-lock-held (*loop-lock*)
-            (when *running* (setf *stop-requested* t)))
+            (when (eq *state* :showing) (setf *state* :hidden)))
     (return-from stop nil))
-  (when (and wait (not (trivial-main-thread:main-thread-p)))
-    (loop repeat 500
-          while (running-p)
-          do (sleep 0.01)))
+  (wake-loop)
+  (when wait
+    (%wait-while (lambda () (and *shown* (eq *state* :hidden)))))
+  t)
+
+(defun shutdown (&key (wait t))
+  "Hide the window, destroy it, end the loop and release the main thread.
+Returns T if there was a loop, else NIL.  With WAIT (and not on the main
+thread) wait up to 5 s for the loop to finish."
+  (unless (bt2:with-lock-held (*loop-lock*)
+            (when (member *state* '(:showing :hidden))
+              (setf *state* :shutting-down)))
+    (return-from shutdown nil))
+  (wake-loop)
+  (when wait
+    (%wait-while (lambda () *state*)))
   t)

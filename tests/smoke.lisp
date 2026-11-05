@@ -78,27 +78,36 @@
 (defun redefine (form)
   (handler-bind ((warning #'muffle-warning)) (eval form)))
 
-;;; On macOS the window must leave the screen once the loop has shut down,
-;;; though the main thread then idles and processes no more Cocoa events.
-;;; %SHIM:ONSCREEN-WINDOW-COUNT is -1 where it is unavailable (Linux CI).
-(defun check-window-count (when expected)
-  (let ((count (%shim:onscreen-window-count)))
-    (if (minusp count)
-        (note "skip on-screen window count ~A (unavailable here)" when)
-        (check (funcall expected count) "~D on-screen window(s) ~A" count when))))
+;;; GLFW's window attributes may only be read on the main thread, so ask the
+;;; loop (which runs tasks whether the window is showing or hidden).
+(defun window-visible ()
+  "1 visible, 0 hidden, -1 no window, read on the GUI thread."
+  (let ((result :pending))
+    (gui:call-in-gui-thread (lambda () (setf result (%shim:window-visible))))
+    (wait-until (lambda () (not (eq result :pending))))
+    result))
 
-(defun check-window-gone-within (seconds when)
-  "Poll until no window of ours is on screen, failing after SECONDS."
-  (let ((deadline (+ (get-internal-real-time)
-                     (round (* seconds internal-time-units-per-second)))))
-    (loop for count = (%shim:onscreen-window-count)
-          until (or (<= count 0) (> (get-internal-real-time) deadline))
-          do (sleep 0.02))
-    (check-window-count (format nil "within ~,1F s ~A" seconds when) #'zerop)))
+(defun cpu-seconds-over (seconds)
+  "Process CPU time used while sleeping SECONDS."
+  (let ((t0 (get-internal-run-time)))
+    (sleep seconds)
+    (/ (- (get-internal-run-time) t0) internal-time-units-per-second)))
 
-(defun check-window-gone (when)
-  (sleep 0.5)
-  (check-window-count when #'zerop))
+(defun check-hidden (when)
+  (check (not (gui:running-p)) "running-p false ~A" when)
+  (check (eql 0 (window-visible)) "window hidden ~A (tasks still run)" when)
+  (let ((f0 *frames*))
+    (sleep 0.3)
+    (check (= f0 *frames*) "no frames drawn while hidden ~A" when)))
+
+(defun check-showing-again (title)
+  (let ((again (gui:start :title title)))
+    (check (eq again t) "(gui:start :title ~S) returned ~S" title again))
+  (check (gui:running-p) "running-p true after start")
+  (let ((f0 *frames*))
+    (wait-frames 60)
+    (check t "panels drawn again (~D frames)" (- *frames* f0)))
+  (check (eql 1 (window-visible)) "window visible again"))
 
 (defvar *ini* (merge-pathnames "sc-imgui-smoke.ini" (uiop:temporary-directory)))
 
@@ -106,7 +115,7 @@
   (when (probe-file *ini*) (delete-file *ini*))
   (setf gui:*ini-path* *ini*)
   (let ((out (make-string-output-stream)))
-    ;; 1. start returns T, then NIL while running.
+    ;; 1. start returns T, then NIL while showing.
     (let ((first (let ((*standard-output* out)) (gui:start :title "sc-imgui smoke")))
           (second (let ((*standard-output* out)) (gui:start))))
       (check (eq first t) "first (gui:start) returned ~S" first)
@@ -116,6 +125,7 @@
       (wait-until (lambda () (>= *count-a* 300)))
       (check t "counter panel reached 300 frames in ~,2F s"
              (/ (- (get-internal-real-time) t0) internal-time-units-per-second)))
+    (check (eql 1 (window-visible)) "window visible while running")
     ;; 3. Redefinition takes effect within 60 frames.
     (let ((f0 *frames*))
       (redefine '(gui:define-gui smoke-counter ()
@@ -124,7 +134,6 @@
       (wait-until (lambda () (or (plusp *count-b*) (> (- *frames* f0) 60))))
       (check (plusp *count-b*) "redefined panel ran within ~D frames"
              (- *frames* f0)))
-    (check-window-count "while running" #'plusp)
     ;; 4. A failing panel neither stops the loop nor goes unreported.
     (redefine '(gui:define-gui smoke-boom () (error "smoke-boom")))
     (wait-until (lambda () (gui.runtime:gui-entry-failure (gui.runtime:find-gui 'smoke-boom))))
@@ -135,39 +144,35 @@
     (let ((report (get-output-stream-string out)))
       (check (search "smoke-boom" report) "smoke-boom reported to start's *standard-output*"))
     (gui:remove 'smoke-boom)
-    ;; 5. stop, then start again with the registry intact, then stop.
+    ;; 5. stop hides the window; the loop idles but still runs tasks.
     (let ((stopped (gui:stop)))
       (check (eq stopped t) "(gui:stop) returned ~S" stopped)
-      (wait-until (lambda () (not (gui:running-p))))
-      (check t "running-p false after stop")
+      (check (null (gui:stop)) "second (gui:stop) returned NIL")
       (check (probe-file *ini*) "ImGui saved its layout to gui:*ini-path* (~A)" *ini*)
-      (check-window-gone "0.5 s after stop"))
-    (let ((again (gui:start :title "sc-imgui smoke (restart)")))
-      (check (eq again t) "restart (gui:start) returned ~S" again))
-    (let ((f0 *frames*))
-      (wait-frames 60)
-      (check t "restarted loop ran ~D frames" (- *frames* f0)))
-    ;; 6. The title-bar close button (AppKit's performClose:, on the main
-    ;; thread) ends the loop and the window leaves the screen.
-    (let ((sent :pending))
-      (gui:call-in-gui-thread (lambda () (setf sent (%shim:test-perform-close))))
-      (wait-until (lambda () (not (eq sent :pending))))
-      (if (minusp sent)
-          (note "skip close-button check (unavailable here)")
-          (progn
-            (wait-until (lambda () (not (gui:running-p))))
-            (check t "running-p false after the close button")
-            (check-window-gone-within 1.0 "after the close button"))))
-    (unless (gui:running-p)
-      (let ((again (gui:start :title "sc-imgui smoke (after close)")))
-        (check (eq again t) "start after close (gui:start) returned ~S" again))
-      (let ((f0 *frames*))
-        (wait-frames 60)
-        (check t "loop after close ran ~D frames" (- *frames* f0))))
-    (let ((stopped (gui:stop)))
-      (check (eq stopped t) "final (gui:stop) returned ~S" stopped)
-      (check (not (gui:running-p)) "running-p false after final stop")
-      (check-window-gone "0.5 s after final stop"))))
+      (check-hidden "after stop")
+      (let ((cpu (cpu-seconds-over 1.0)))
+        (check (< cpu 0.2) "~,3F s CPU over 1 s while hidden" cpu)))
+    ;; 6. start shows the same window again.
+    (check-showing-again "sc-imgui smoke (shown again)")
+    ;; 7. The close button (GLFW's should-close flag) behaves like stop.
+    (check (zerop (%shim:test-request-close)) "close requested")
+    (wait-until (lambda () (not (gui:running-p))))
+    (check-hidden "after the close button")
+    (check-showing-again "sc-imgui smoke (after close)")
+    ;; 8. shutdown ends the loop and releases the main thread.
+    (let ((done (gui:shutdown)))
+      (check (eq done t) "(gui:shutdown) returned ~S" done)
+      (check (null gui.runtime::*state*) "loop ended after shutdown")
+      (check (= -1 (%shim:window-visible)) "window destroyed after shutdown")
+      (check (null (gui:shutdown)) "second (gui:shutdown) returned NIL")
+      (check (null (gui:stop)) "(gui:stop) after shutdown returned NIL")
+      (check (eq :free (trivial-main-thread:call-in-main-thread (lambda () :free) :blocking t))
+             "main thread runs other work after shutdown"))
+    ;; 9. start after shutdown creates a new window and loop.
+    (check-showing-again "sc-imgui smoke (new loop)")
+    (check (eq t (gui:stop)) "stop before final shutdown")
+    (check (eq t (gui:shutdown)) "shutdown from hidden")
+    (check (null gui.runtime::*state*) "loop ended after final shutdown")))
 
 (bt2:make-thread (lambda ()
                    (sleep +timeout+)
