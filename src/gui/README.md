@@ -1,0 +1,496 @@
+# src/gui/: the `gui` package
+
+Contents:
+
+1. [Overview](#overview)
+2. [Quick reference](#quick-reference)
+3. [Core ideas](#core-ideas)
+4. [Package reference](#package-reference)
+5. [File by file](#file-by-file)
+6. [Building a custom widget](#building-a-custom-widget)
+7. [Recipes](#recipes)
+8. [Extending the API](#extending-the-api)
+9. [Not yet wrapped](#not-yet-wrapped)
+10. [Gotchas](#gotchas)
+11. [Tests and examples](#tests-and-examples)
+
+## Overview
+
+`gui` is the API you write against. It's built on `gui.runtime` (the frame loop and panel registry, in `src/runtime/`) and the raw bindings `%imgui` and `%implot` (in `src/bindings/`). It re-exports the runtime's user-facing functions, so `gui:` is the only package you need. See `src/README.md` for how the directories fit together.
+
+A complete session:
+
+```lisp
+(ql:quickload :sc-imgui)
+(gui:start)
+
+(defvar *cutoff* 1000.0)
+(defvar *mute* nil)
+
+(gui:define-gui saw-panel ()
+  (gui:with-window ("Saw")
+    (gui:slider "Cutoff" *cutoff* :min 20 :max 20000 :scale :log)
+    (gui:checkbox "Mute" *mute*)
+    (when (gui:button "Reset")
+      (setf *cutoff* 1000.0))))
+```
+
+Re-evaluating the `define-gui` form changes the window on the next frame. `(gui:stop)` hides the window, `(gui:start)` shows it again, and `(gui:shutdown)` ends the GUI and releases SBCL's main thread.
+
+## Quick reference
+
+| Area | Export | Kind | One line |
+| --- | --- | --- | --- |
+| [Panels](#panels-and-lifecycle) | `define-gui` | macro | Define and register a panel |
+| | `show`, `hide`, `remove` | functions | Show, hide, or unregister a panel |
+| | `call-in-gui-thread` | function | Run a function on the GUI thread between frames |
+| | `start`, `stop`, `shutdown`, `running-p` | functions | Show, hide, or end the GUI; is it showing? |
+| | `*ini-path*`, `*debug-on-error*` | variables | Layout file; debugger instead of failed window |
+| | `main-thread-busy` | condition | `start` called on the main thread |
+| [Scopes](#scopes) | `with-window`, `with-group`, `with-child`, `with-section`, `with-id`, `with-disabled`, `with-style` | macros | Balanced ImGui begin/end and push/pop |
+| [Layout](#layout) | `with-row`, `with-grid` | macros | Items on one line; items in a table |
+| | `same-line`, `new-line`, `separator`, `spacing`, `indent`, `unindent`, `set-next-item-width` | functions | Fine layout control |
+| [Widgets](#widgets) | `slider`, `drag`, `checkbox`, `combo`, `input-text`, `selectable`, `list-box` | macros | Edit a place; true when changed |
+| | `slider-value`, `drag-value`, ... `list-box-value` | functions | Same, returning `(values new changed-p)` |
+| | `button`, `text` | functions | Clickable button; formatted text |
+| | `widget-value-error` | condition | A widget got a value of the wrong type |
+| [Plots](#plots) | `with-plot` | macro | An ImPlot plot area |
+| | `plot-lines`, `plot-bars`, `plot-scatter` | functions | Plot Lisp sequences |
+| [Drawing](#drawing) | `color` | function | Pack RGBA into ImGui's color format |
+| | `window-draw-list`, `draw-line`, `draw-rect`, `draw-circle`, `draw-arc`, `draw-polyline`, `draw-text` | functions | Draw shapes and text |
+| [Interaction](#interaction) | `invisible-button`, `item-hovered-p`, `item-active-p` | functions | Reserve space; query the mouse over it |
+| | `cursor-screen-pos`, `set-cursor-screen-pos`, `mouse-pos`, `mouse-drag-delta`, `reset-mouse-drag-delta`, `content-region-avail` | functions | Positions and drag distances |
+| [Flags](#flags) | `enum-flags` | function | Keywords to an ImGui flags integer |
+
+## Core ideas
+
+### Immediate mode
+
+A panel is a function the runtime calls **every frame**, about 60 times a second. Nothing on screen persists by itself: a widget exists in a frame only because your code called it in that frame. State lives in your own variables. Conditionals and loops work naturally:
+
+```lisp
+(gui:define-gui voices ()
+  (gui:with-window ("Voices")
+    (dolist (v *voices*)
+      (gui:with-id (v)
+        (gui:slider "Amp" (voice-amp v))))
+    (when (null *voices*)
+      (gui:text "No voices running"))))
+```
+
+### Place-based widgets
+
+The widget macros take a `setf`-able place: a variable, `(gethash k table)`, `(aref v i)`, `(slot-value obj 'x)`, an accessor. Each one reads the place, draws the widget, writes the new value back **only when the user changed it**, and returns true when it did. That return value is the hook for side effects:
+
+```lisp
+(when (gui:slider "Cutoff" *cutoff* :min 20 :max 20000 :scale :log)
+  (ctrl *saw* :cutoff *cutoff*))
+```
+
+Each macro has a function variant ending in `-value` that takes the current value instead of a place and returns `(values new-value changed-p)`, writing nothing. Use it when the value doesn't live in a place, or when you want to decide what happens to the new value.
+
+### Scopes always close
+
+ImGui works in begin/end and push/pop pairs. Every `with-` macro closes what it opened in `unwind-protect`, so an error in your code still leaves ImGui balanced. The runtime then marks only that panel as failed. Raw `%imgui` calls get none of this protection.
+
+### Labels and IDs
+
+ImGui identifies a widget by its label, within the current window and ID scope. Two widgets with the same label in the same scope behave as one. Ways to keep them apart:
+
+- `with-id` pushes an ID scope. Give it any Lisp object: a synth, a struct, an index, a string.
+- ImGui's label conventions: everything after `##` is part of the ID but not displayed (`"Gain##left"` and `"Gain##right"` both show "Gain"), and `###` makes only the text after it the ID, so the visible part can change (`"Level 0.5###level"`).
+
+`with-id` never uses an object's memory address, which changes when the garbage collector moves it. Objects get a stable number from a weak table instead.
+
+### Flags as keywords
+
+Where an ImGui function takes flags, the macros accept keywords: `(gui:with-window ("Meter" :flags '(:no-resize :no-collapse)) ...)`. Keywords are looked up as constants (`:no-resize` → `%imgui:+window-flags-no-resize+`), and several are combined with `logior`. A literal keyword or quoted list is resolved **when the macro expands**, so a misspelled flag is an error at compile time. A computed value is resolved at run time. An integer is used as is.
+
+## Package reference
+
+Arguments in `&key` lists show their defaults. "Place" means a `setf`-able form.
+
+### Panels and lifecycle
+
+**`(define-gui name () &body body)`** — macro. Defines `name` as a global function of no arguments, registers it as a panel, and returns `name`. Re-evaluating it replaces the panel in place, clears any failure mark, and refits the panel's windows to their contents once. A non-empty lambda list is an error.
+
+**`(show name)`**, **`(hide name)`** — Make a panel visible or hidden. A hidden panel stays registered and defined. Both return `name`, even if no such panel exists.
+
+**`(remove name)`** — Unregisters a panel. Returns true if it existed. The function stays defined. (Shadows `cl:remove`; see [Gotchas](#gotchas).)
+
+**`(call-in-gui-thread thunk)`** — Queues `thunk` to run on the GUI thread **between frames**, and wakes the loop. For work that must happen on the main thread but outside drawing, such as changing ImGui's global style through `%imgui`. Not for drawing widgets; see [Gotchas](#gotchas). An error in a task is reported and the loop continues.
+
+**`(start &key (width 1280) (height 800) (title "sc-imgui"))`** — Shows the GUI window, creating it and starting the loop on SBCL's main thread the first time (or after `shutdown`). Returns `t`, or `nil` if already showing. `width` and `height` apply only when the window is created. Signals `main-thread-busy` if called on the main thread itself.
+
+**`(stop &key (wait t))`** — Saves the layout, hides the window, and stops drawing panels. The loop keeps running. Returns `t`, or `nil` if not showing.
+
+**`(shutdown &key (wait t))`** — Destroys the window, ends the loop, and gives the main thread back. Returns `t`, or `nil` if there was no loop. Panels stay registered.
+
+**`(running-p)`** — True while the window is showing and panels are drawn.
+
+**`*ini-path*`** — Where ImGui saves window positions and sizes. Default `#p"sc-imgui.ini"`, merged with `*default-pathname-defaults*` at `start`. `nil` disables saving. Takes effect when the window is next created.
+
+**`*debug-on-error*`** — Default `nil`. When true, a panel error enters the debugger, with restarts `retry-panel` and `disable-panel`, instead of being shown in a failed window. Useful for hard bugs, but the window freezes while the debugger is open.
+
+**`main-thread-busy`** — Condition signalled by `start` on the main thread. Its report explains the SLIME setting needed (`swank::*main-thread-used*`).
+
+### Scopes
+
+**`(with-window (title &key flags) &body body)`** — An ImGui window. `body` runs only when the window is visible (not collapsed or clipped). `End` always runs. Flags use the `WINDOW-FLAGS` prefix, such as `:no-title-bar`, `:no-resize`, `:no-move`, `:always-auto-resize`. On the first frame after its panel is redefined, the window refits to its contents.
+
+**`(with-group () &body body)`** — Treats the body's widgets as one item, so the group can sit in a row beside other items, for example a column of widgets inside a `with-row`.
+
+**`(with-child (id &key (width 0) (height 0) border) &body body)`** — A scrolling sub-area. A size of 0 fills the available space on that axis. `border` draws a frame. `body` runs only when the child is visible.
+
+**`(with-section (label &key default-open) &body body)`** — A collapsing header. `body` runs only while it's expanded. `default-open` starts it expanded the first time.
+
+**`(with-id (object) &body body)`** — Pushes an ID scope for `object`. Integers that fit in 32 bits and strings are used directly; any other object gets a stable number.
+
+**`(with-disabled (&optional (disabled t)) &body body)`** — Greys out the body's widgets and ignores input to them while `disabled` is true. `disabled` is evaluated each frame.
+
+**`(with-style (&rest specs) &body body)`** — Temporarily changes style colors and variables for the body. Each spec is one of:
+
+- `(:color name r g b [a])`: a style color, with `name` from the `COL` prefix (`:button`, `:button-hovered`, `:text`, `:frame-bg`, ...) and components from 0 to 1.
+- `(:var name value)`: a single-number style variable from the `STYLE-VAR` prefix (`:frame-rounding`, `:alpha`, ...).
+- `(:var name x y)`: a two-number style variable (`:frame-padding`, `:item-spacing`, ...).
+
+Everything pushed is popped afterwards, even after an error.
+
+### Layout
+
+ImGui places each widget below the previous one. These change that.
+
+**`(with-row () &body body)`** — Puts each top-level form of the body on the same line, by inserting `same-line` between them. To put a multi-widget column in a row, wrap it in `with-group`.
+
+**`(with-grid (&key (columns 2) id flags) &body body)`** — A table. Each top-level form of the body goes in the next cell, filling rows left to right. `columns` is evaluated. Flags use the `TABLE-FLAGS` prefix, such as `:borders` or `:sizing-stretch-same`. The default `id` is computed from the body's text, so it stays the same across redefinitions; give an explicit `:id` when two grids with identical bodies are in the same window. The body runs only when the table is visible.
+
+**`(same-line &optional (offset 0.0) (spacing -1.0))`** — Puts the next item on the same line as the previous one. `offset` is from the window's left edge; a negative `spacing` uses the style's default.
+
+**`(new-line)`**, **`(separator)`**, **`(spacing)`** — End the current line; draw a horizontal line; add vertical space.
+
+**`(indent &optional (width 0.0))`**, **`(unindent &optional (width 0.0))`** — Indent following items; 0 uses the style's default indent. Pair them yourself.
+
+**`(set-next-item-width width)`** — Width of the next widget in pixels. Negative values are measured from the right edge (`-1` fills the remaining width).
+
+### Widgets
+
+Each place-taking macro has the form `(widget label place &rest args)`, where `args` are the keyword arguments of its `-value` function. It returns true when the value changed.
+
+**`slider`**, **`(slider-value label value &key (min 0) (max 1) (scale :linear) format)`** — A slider. An integer value gives an integer slider (`min` and `max` rounded); any other real gives a float slider and keeps its type (`double-float` stays `double-float`; rationals come back as `single-float`). `:scale :log` gives a logarithmic slider, for frequencies. `format` is a C printf format with one numeric conversion; the default is `"%d"` or `"%.3f"`.
+
+**`drag`**, **`(drag-value label value &key (speed 0.01) (min 0) (max 0) format)`** — A number field changed by dragging horizontally, `speed` units per pixel. `min` equal to `max` means unclamped. Types as for `slider`.
+
+**`checkbox`**, **`(checkbox-value label value)`** — A checkbox. Any non-`nil` value counts as checked; the new value is `t` or `nil`.
+
+**`combo`**, **`(combo-value label index items)`** — A drop-down list. `items` is a list of strings, and the place holds the selected item's index. An out-of-range index shows an empty preview.
+
+**`input-text`**, **`(input-text-value label value &key (max-length 256))`** — A text field. The place holds a string. `max-length` is in UTF-8 bytes; longer text is cut at a character boundary.
+
+**`selectable`**, **`(selectable-value label selected &key (width 0) (height 0))`** — A row that highlights when `selected`. A click toggles the value.
+
+**`list-box`**, **`(list-box-value label index items &key (width 0) (height 0))`** — A scrolling list of string `items`. The place holds the selected index, or `nil` for none. A height of 0 shows about seven rows.
+
+**`(button label &key (width 0) (height 0))`** — A button. Returns true on the frame it's clicked. A size of 0 fits the label.
+
+**`(text control-string &rest args)`** — Displays text. With `args`, formats with Lisp's `format`; without, displays `control-string` literally, so `~` is safe in plain text.
+
+**`widget-value-error`** — A subclass of `type-error`, signalled before any foreign call when a widget gets a value or argument of the wrong type, such as a `nil` slider value. Its report names the widget's label; `widget-value-error-label` reads it. Inside a panel, the runtime treats it like any panel error.
+
+### Plots
+
+**`(with-plot (title &key (width -1) (height 0) flags) &body body)`** — An ImPlot plot area. A width of -1 fills the available width; a height of 0 uses ImPlot's default. Flags use `%implot`'s `FLAGS` prefix, such as `:no-title` or `:no-legend`. The body, which calls the plot functions, runs only when the plot is visible.
+
+**`(plot-lines label ys &key xs)`** — A line through `ys`, against `xs` or against 0, 1, 2, ... when `xs` is `nil`.
+
+**`(plot-bars label ys &key (bar-size 0.67))`** — Bars at x = 0, 1, 2, ..., each `bar-size` wide.
+
+**`(plot-scatter label xs ys)`** — Circle markers at each `(xs[i], ys[i])`.
+
+Data may be any sequence of reals. A `(simple-array single-float (*))` or `(simple-array double-float (*))` is passed to ImPlot directly, with no copy; anything else is copied into a new `single-float` vector every frame. `xs` and `ys` must be the same length; if their element types differ, both are copied as `single-float`. Empty data draws nothing. A wrong length or a non-real element signals an error naming the label.
+
+### Drawing
+
+For custom widgets. Coordinates are in **screen space**, in pixels from the top-left of the OS window; use `cursor-screen-pos` to find where the next item would go. Every draw function takes `&key (draw-list (window-draw-list))` and returns no values.
+
+**`(color r g b &optional (a 1.0))`** — Packs components from 0 to 1 (clamped) into ImGui's 32-bit color format.
+
+**`(window-draw-list)`** — The current window's draw list.
+
+**`(draw-line x1 y1 x2 y2 color &key (thickness 1.0))`**
+
+**`(draw-rect x1 y1 x2 y2 color &key filled (rounding 0.0) (thickness 1.0))`** — From corner `(x1, y1)` to corner `(x2, y2)`.
+
+**`(draw-circle cx cy radius color &key filled (segments 0) (thickness 1.0))`** — 0 segments lets ImGui choose.
+
+**`(draw-arc cx cy radius a-min a-max color &key (thickness 1.0) (segments 0))`** — Angles in radians, measured clockwise from the positive x axis (screen y points down).
+
+**`(draw-polyline points color &key closed (thickness 1.0))`** — `points` is a flat list or vector `x0 y0 x1 y1 ...`. Fewer than two points draws nothing; an odd number of coordinates is an error.
+
+**`(draw-text x y color string)`**
+
+### Interaction
+
+**`(invisible-button id width height)`** — Reserves a `width` × `height` area as an item that responds to the mouse, without drawing anything. Returns true on click. Then `item-hovered-p` and `item-active-p` describe it. `width` and `height` must be greater than 0.
+
+**`(item-hovered-p)`**, **`(item-active-p)`** — Whether the mouse is over the last item, and whether it's being held (pressed or dragged).
+
+**`(cursor-screen-pos)`**, **`(set-cursor-screen-pos x y)`** — Where the next item will be placed, as `(values x y)` in screen space; move it.
+
+**`(mouse-pos)`** — The mouse position, `(values x y)`.
+
+**`(mouse-drag-delta &optional (button 0))`**, **`(reset-mouse-drag-delta &optional (button 0))`** — Distance dragged since the button was pressed (or since the last reset), `(values dx dy)`; reset it. Button 0 is left, 1 right, 2 middle.
+
+**`(content-region-avail)`** — Space left in the current window or child, `(values width height)`.
+
+### Flags
+
+**`(enum-flags prefix designator &optional (package '#:%imgui))`** — Converts `designator` to an integer. An integer is returned as is, `nil` is 0, a keyword is looked up as the constant `+PREFIX-KEYWORD+` in `package`, and a list of keywords is combined with `logior`. An unknown keyword signals an error naming the constant it looked for.
+
+```lisp
+(gui:enum-flags "WINDOW-FLAGS" '(:no-title-bar :no-resize))   ; window flags
+(gui:enum-flags "IM-DRAW-FLAGS" :round-top)                   ; drawing flags keep "IM-"
+(gui:enum-flags "FLAGS" :no-legend '#:%implot)                ; ImPlot plot flags
+```
+
+Most ImGui prefixes lose their `ImGui` part (`WINDOW-FLAGS`, `TABLE-FLAGS`, `COL`, `STYLE-VAR`), but a few enums keep `IM-` (`IM-DRAW-FLAGS`, `IM-FONT-FLAGS`, ...). See "Enum constant prefixes aren't uniform" in `generator/README.md`.
+
+## File by file
+
+The `sc-imgui` system loads these in this order (`sc-imgui.asd`); each may use the ones before it.
+
+| File | Contents |
+| --- | --- |
+| `package.lisp` | The `gui` package: its exports, the re-exports from `gui.runtime`, and the shadowing of `cl:remove`. |
+| `define-gui.lisp` | `define-gui`, `show`, `hide`, `remove`, `call-in-gui-thread`: thin wrappers over the runtime registry and task queue. |
+| `foreign.lisp` | Shared helpers: `enum-flags` and the compile-time flag resolution used by the macros; `vec2` (internal), which builds the plist form of a by-value `ImVec2`; stable object IDs for `with-id`, from a weak, synchronized hash table; and the 64-byte scratch buffer that widgets use for out-values, allocated on first use and reallocated after an image is saved. |
+| `scopes.lisp` | `with-window`, `with-group`, `with-child`, `with-section`, `with-id`, `with-disabled`, `with-style`. |
+| `layout.lisp` | The layout functions, `with-row`, and `with-grid`. |
+| `widgets.lisp` | `widget-value-error`; the `-value` functions; `define-place-widget`, which generates each place macro from its `-value` function using `get-setf-expansion`; `button` and `text`. |
+| `plots.lisp` | `with-plot` and the plot functions. `plot-data` decides whether to copy; `plot-pair` matches `xs` and `ys`; `plot-spec` builds ImPlot's `ImPlotSpec` argument with ImPlot's defaults; vectors are pinned with `cffi:with-pointer-to-vector-data` during each call. |
+| `draw.lisp` | `color`, the draw functions, and the interaction helpers. |
+
+## Building a custom widget
+
+`examples/custom-knob.lisp` builds a knob from the pieces above. It's the pattern part 3's audio widgets will follow:
+
+```lisp
+(defun example-knob (label value min max &key (size 48))
+  (multiple-value-bind (x y) (gui:cursor-screen-pos)   ; 1. where the widget starts
+    (gui:invisible-button label size size)             ; 2. reserve space, get mouse input
+    (let ((active (gui:item-active-p))
+          (r (/ size 2.0)))
+      (when active                                     ; 3. update the value from the drag
+        (multiple-value-bind (dx dy) (gui:mouse-drag-delta)
+          (declare (ignore dx))
+          (setf value (max min (min max (- value (* dy (/ (- max min) 200.0))))))
+          (gui:reset-mouse-drag-delta)))
+      (let* ((cx (+ x r)) (cy (+ y r))                 ; 4. draw it from the current value
+             (start (* pi 0.75))
+             (end (+ start (* (/ (- value min) (- max min)) pi 1.5))))
+        (gui:draw-circle cx cy (- r 2) (gui:color 0.2 0.2 0.25) :filled t)
+        (gui:draw-arc cx cy (- r 3) start end
+                      (if active (gui:color 1 0.7 0.2) (gui:color 0.3 0.7 1))
+                      :thickness 3)))
+    (gui:text "~A ~,2F" label value)
+    value))                                            ; 5. return the new value
+```
+
+The steps:
+
+1. **Record the position** with `cursor-screen-pos` before adding any item.
+2. **Reserve the area** with `invisible-button`. It makes the area an item, so the layout moves past it, and gives it mouse input. Its label is its ID, so repeated widgets need distinct labels or `with-id`.
+3. **Read the interaction** with `item-active-p` and `mouse-drag-delta`. Resetting the drag delta after each use makes it a per-frame change, so the value never drifts.
+4. **Draw** with the primitives, in screen coordinates relative to the recorded position.
+5. **Return the new value.** This makes it a `-value`-style function. To give it a place form too, see [Extending the API](#extending-the-api).
+
+The knob draws on top of the area it reserved. Wrapping each knob in `with-group` lets several sit in a row with their labels.
+
+## Recipes
+
+### One set of controls per synth
+
+```lisp
+(gui:define-gui mixer ()
+  (gui:with-window ("Mixer")
+    (dolist (s *synths*)
+      (gui:with-id (s)                                 ; same labels, separate widgets
+        (gui:with-row ()
+          (gui:text "~A" (synth-name s))
+          (when (gui:slider "Amp" (synth-amp s) :min 0.0 :max 1.0)
+            (ctrl s :amp (synth-amp s))))))))
+```
+
+### A live scope with no copying
+
+Keep one specialized vector and update it in place. It's passed to ImPlot by pointer each frame.
+
+```lisp
+(defvar *scope* (make-array 512 :element-type 'single-float :initial-element 0.0))
+
+(gui:define-gui scope ()
+  (let ((phase (/ (get-internal-real-time) internal-time-units-per-second 1.0)))
+    (dotimes (i (length *scope*))                      ; stand-in for real audio data
+      (setf (aref *scope* i) (sin (+ phase (* i 0.05))))))
+  (gui:with-window ("Scope")
+    (gui:with-plot ("##scope" :height 200 :flags '(:no-legend))
+      (gui:plot-lines "signal" *scope*))))
+```
+
+### A styled button
+
+```lisp
+(gui:with-style ((:color :button 0.7 0.15 0.15)
+                 (:color :button-hovered 0.85 0.2 0.2)
+                 (:var :frame-rounding 6.0))
+  (when (gui:button "PANIC" :width 120 :height 40)
+    (stop-all-synths)))
+```
+
+### A fixed window
+
+Window size isn't wrapped yet, so set it with `%imgui` before the window. `gui::vec2` is internal.
+
+```lisp
+(gui:define-gui meter ()
+  (%imgui:set-next-window-size (gui::vec2 220 300) %imgui:+cond-first-use-ever+)
+  (gui:with-window ("Meter" :flags '(:no-resize :no-collapse))
+    (gui:text "Level")))
+```
+
+## Extending the API
+
+Add new wrappers here rather than calling `%imgui` throughout your own code, so the protections apply everywhere.
+
+**A new place widget.** Write a `-value` function that checks its arguments with `%check` before any foreign call, passes out-values through `(scratch)`, and returns `(values new changed-p)`, returning the original value unchanged when nothing changed. Then generate the macro:
+
+```lisp
+(defun knob-value (label value &key (min 0.0) (max 1.0))
+  (%check label value 'real)
+  ...)
+(define-place-widget knob knob-value)
+```
+
+**A new scope macro.** Wrap the begin call and the body in `unwind-protect` with the end call. Check ImGui's rule for each pair:
+
+- Some end calls must always run (`End`, `EndChild`, `EndGroup`, the pops). Call them unconditionally.
+- Others are valid only when the begin returned true (`EndTable`, `EndCombo`, `EndListBox`, `EndPlot`, `EndTabBar`, `EndMenu`, `EndTooltip`). Put the whole `unwind-protect` inside `(when open ...)`.
+
+Use gensyms for any variable the expansion binds; a test checks that the macros don't capture a user variable named `open`. Resolve flags with `%flags-form` so literal keywords are checked at compile time.
+
+**Then:** export the new names in `package.lisp`, add the file to `sc-imgui.asd` if it's a new file, and add tests to the matching suite (`widgets`, `scopes`, `plots`, or `draw`). Test widgets through simulated input with `click-item`, and scope macros with the error-balance pattern in `tests/test-scopes.lisp`. See `tests/README.md`.
+
+## Not yet wrapped
+
+These common ImGui features exist in `%imgui` but have no `gui` wrapper yet. Calling them from a panel works, but you must balance their begin/end pairs yourself, and an error between them isn't protected.
+
+| Feature | `%imgui` functions | Notes |
+| --- | --- | --- |
+| Tabs | `begin-tab-bar`, `begin-tab-item`, `end-tab-item`, `end-tab-bar` | End only when the begin returned true |
+| Menus | `begin-menu-bar`, `begin-main-menu-bar`, `begin-menu`, `menu-item-bool`, and their ends | The window needs the `:menu-bar` flag for `begin-menu-bar` |
+| Tooltips | `begin-tooltip`, `end-tooltip` | `set-tooltip` isn't bound (it's variadic); use `begin-tooltip` and `gui:text` |
+| Popups and modals | `open-popup-str`, `begin-popup`, `begin-popup-modal`, `end-popup` | |
+| Colour pickers | `color-edit3`, `color-edit4`, `color-picker4` | Take a pointer to 3 or 4 floats |
+| Vertical sliders | `v-slider-float`, `v-slider-int` | Useful for faders |
+| Multi-value sliders | `slider-float2`, `slider-float3`, ... | Take a pointer to an array |
+| Radio buttons | `radio-button-bool` | |
+| Numeric inputs | `input-float`, `input-int` | Typed entry with +/- buttons |
+| Trees | `tree-node-str`, `tree-pop` | |
+| Progress bars | `progress-bar` | |
+| Window size and position | `set-next-window-size`, `set-next-window-pos` | Call before `with-window` |
+| Docking | `dock-space-over-viewport`, `set-next-window-dock-id` | Docking is enabled; windows can already be docked by dragging |
+| Images | `image` | Needs a texture, which nothing creates yet |
+| Keyboard | `is-key-pressed-bool`, `is-key-down-nil` | Key constants use the `KEY` prefix |
+| The demo | `show-demo-window` | Shows every ImGui feature, with a pointer or `(cffi:null-pointer)` |
+
+A tab bar from raw calls, for example:
+
+```lisp
+(when (%imgui:begin-tab-bar "tabs" 0)
+  (unwind-protect
+       (progn
+         (when (%imgui:begin-tab-item "Synth" (cffi:null-pointer) 0)
+           (unwind-protect (gui:text "synth controls") (%imgui:end-tab-item)))
+         (when (%imgui:begin-tab-item "FX" (cffi:null-pointer) 0)
+           (unwind-protect (gui:text "fx controls") (%imgui:end-tab-item))))
+    (%imgui:end-tab-bar)))
+```
+
+Anything you use often belongs in `gui` as a proper wrapper.
+
+## Gotchas
+
+### Draw only from panels
+
+Every widget, layout, plot, drawing, and interaction function calls into ImGui, and must run inside a frame on the GUI thread, which means inside a panel body. Calling one from the REPL thread, or from a `call-in-gui-thread` task, is ImGui misuse. Tasks run **between** frames, before `NewFrame`, so even on the right thread there's no frame to draw into. Use tasks only for between-frame work, such as style changes.
+
+### Some bodies don't run every frame
+
+`with-window` skips its body while the window is collapsed or clipped, `with-section` while collapsed, `with-child` and `with-grid` when not visible, and `with-plot` when the plot isn't visible. Don't put work there that must happen every frame, like updating a scope buffer or sending values to synths. Do it before the scope.
+
+### Not every widget checks its value
+
+`slider`, `drag`, `combo`, `input-text`, and `list-box` check their values and signal `widget-value-error` for a wrong type, such as a `nil` from a `defvar` with no value. `checkbox` and `selectable` accept anything, treating it as true or false, and write back `t` or `nil`.
+
+### `format` strings go to C
+
+The `:format` argument of `slider` and `drag` is a C printf format passed straight to ImGui, not a Lisp `format` string. Use exactly one numeric conversion matching the widget (`%d` for integers, `%f`, `%.2f`, or `%g` for floats), and write `%%` for a literal percent sign. Any other conversion, such as `%s`, is undefined behavior in C and can crash.
+
+### `text` and `~`
+
+`text` uses Lisp's `format` only when given arguments. `(gui:text "100%~")` displays literally, but `(gui:text "~A ~" x)` is a `format` error. To show a value next to a literal `~`, escape it as `~~`.
+
+### Panel names are global functions
+
+`define-gui` defines a global function with the panel's name in the current package. Don't reuse the name of a function you need, and don't call the panel function directly: it draws, so it must only run inside a frame.
+
+### `show`, `hide`, and `remove` don't complain
+
+`show` and `hide` return the name whether or not the panel exists, so a typo silently does nothing. `remove` returns `nil` for an unknown name. Check with `(gui.runtime:find-gui 'name)` when unsure.
+
+### `gui:remove` shadows `cl:remove`
+
+The `gui` package shadows `cl:remove`. If your package `:use`s `gui`, `remove` refers to `gui:remove`, and using `cl:remove` requires writing `cl:remove` or shadowing it yourself. Using `gui:` prefixes, as the examples do, avoids this.
+
+### Repeated labels collide
+
+Two widgets with the same label in the same window and ID scope share an ID: clicking one affects both, or ImGui records an assertion. Loops over objects need `with-id`, and repeated grids need distinct `:id`s. Custom widgets built with `invisible-button` need unique button IDs.
+
+### `invisible-button` needs a real size
+
+A width or height of 0 is an ImGui error for `invisible-button`, unlike `button`, where 0 means "fit the label".
+
+### Plot data is copied unless it's specialized
+
+Lists and general vectors are copied into a new vector every frame. For large or fast-changing data, keep a `(simple-array single-float (*))` or `double-float` vector and update it in place. Mixed element types between `xs` and `ys` also cause a copy.
+
+### `input-text` limits bytes, not characters
+
+`max-length` counts UTF-8 bytes. Text with accented or non-Latin characters fits fewer characters than `max-length` suggests.
+
+### A redefined panel's windows refit once
+
+After `define-gui` is re-evaluated, its windows resize to fit their contents on the next frame, discarding a manual resize. That's deliberate, so new widgets aren't hidden. A size set afterwards sticks.
+
+### Raw calls aren't protected
+
+`%imgui` and `%implot` calls bypass everything here: no type checks, no balanced scopes, `bool` and string details left to you. An unbalanced raw begin/end usually shows up as a recorded ImGui assertion rather than a Lisp error; check `(%shim:assert-count)` and `(%shim:last-assert)` if a panel misbehaves.
+
+## Tests and examples
+
+| Suite | Covers |
+| --- | --- |
+| `scopes` | Every scope macro stays balanced after an error; `with-row` and `with-grid` placement; `with-id` stability across garbage collection; `enum-flags`; no variable capture |
+| `widgets` | Every widget writing back through simulated input; number types preserved; `-value` variants; UTF-8 truncation; `widget-value-error`; places evaluated once |
+| `plots` | No copying for specialized vectors; coercion; length and type errors; every plot kind |
+| `draw` | `color` matches ImGui; every primitive adds vertices; polyline edge cases; invisible-button clicks and drags |
+| `examples` | Every file in `examples/` loads and draws without failures or assertions |
+
+Not directly tested (see "Known gaps" in `tests/README.md`): the `drag` macro, `with-section`, the layout functions, `item-hovered-p`, `mouse-pos`, `content-region-avail`, `set-cursor-screen-pos`, `reset-mouse-drag-delta`, and the visible effect of `with-style` and `with-disabled`. Some run indirectly through the examples.
+
+The examples, each loaded after `(gui:start)` with `(load "examples/<file>.lisp")`:
+
+- `hello.lisp`: text, a button, a slider, a checkbox.
+- `layout.lisp`: rows, a grid, a section, a scrolling child.
+- `plots.lisp`: a live line plot, bars, and a scatter plot.
+- `custom-knob.lisp`: the knob from [Building a custom widget](#building-a-custom-widget).
+- `error-recovery.lisp`: a deliberately failing panel and how to recover it.
