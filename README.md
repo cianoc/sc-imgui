@@ -1,6 +1,8 @@
 # sc-imgui
 
-Common Lisp (SBCL) binding to Dear ImGui and ImPlot.
+Common Lisp binding to Dear ImGui and ImPlot, intended for cl-collider. Currently this only works on SBCL. 
+
+Mostly vibe coded using Claude as an experiment.
 
 ## Native shim
 
