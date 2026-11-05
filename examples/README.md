@@ -21,7 +21,7 @@ several windows, and loading one again simply redefines it.
 | File | Shows |
 | --- | --- |
 | `hello.lisp` | `text`, a click-counting `button`, a `slider` and a `checkbox` on plain variables |
-| `layout.lisp` | `with-row`, a four-column `with-grid`, `with-section`, a scrolling `with-child` |
+| `layout.lisp` | `with-row`, a four-column `with-grid`, `with-section`, a scrolling `with-child` of `selectable` rows, a `list-box` |
 | `plots.lisp` | A live sine with `plot-lines`, plus `plot-bars` and `plot-scatter`, from float vectors |
 | `custom-knob.lisp` | `example-knob`, a draggable knob built from `invisible-button`, `mouse-drag-delta`, `draw-circle` and `draw-arc` |
 | `error-recovery.lisp` | A broken panel beside a healthy one; fix it with `(setf *example-break* nil)` and Retry, or by re-evaluating |

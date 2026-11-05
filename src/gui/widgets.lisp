@@ -102,6 +102,35 @@ changed value back to PLACE and returning the changed-p."
         (%imgui:end-combo)))
     (values new changed)))
 
+(defun selectable-value (label selected &key (width 0) (height 0))
+  "A clickable row, highlighted when SELECTED.  A click toggles it."
+  (%check label width 'real)
+  (%check label height 'real)
+  (if (%imgui:selectable-bool label selected 0 (vec2 width height))
+      (values (not selected) t)
+      (values selected nil)))
+
+(defun list-box-value (label index items &key (width 0) (height 0))
+  "A scrolling box of ITEMS (strings) with item INDEX highlighted; NIL or an
+out-of-range INDEX highlights nothing.  Clicking an item selects its index.
+WIDTH and HEIGHT are in pixels; 0 means ImGui's default (about 7 rows)."
+  (%check label index '(or null integer))
+  (%check label items 'list)
+  (dolist (item items) (%check label item 'string))
+  (%check label width 'real)
+  (%check label height 'real)
+  (let ((new index) (changed nil))
+    (when (%imgui:begin-list-box label (vec2 width height))
+      (unwind-protect
+           (loop for item in items
+                 for i from 0
+                 do (with-id (i)
+                      (when (and (%imgui:selectable-bool item (eql i index) 0 (vec2 0 0))
+                                 (not (eql i index)))
+                        (setf new i changed t))))
+        (%imgui:end-list-box)))
+    (values new changed)))
+
 (defun %utf8-truncated (string max-bytes)
   "UTF-8 octets of STRING, cut at a character boundary to at most MAX-BYTES."
   (let* ((octets (sb-ext:string-to-octets string :external-format :utf-8))
@@ -138,6 +167,8 @@ changed value back to PLACE and returning the changed-p."
 (define-place-widget checkbox checkbox-value)
 (define-place-widget combo combo-value)
 (define-place-widget input-text input-text-value)
+(define-place-widget selectable selectable-value)
+(define-place-widget list-box list-box-value)
 
 (defun button (label &key (width 0) (height 0))
   (%imgui:button label (vec2 width height)))

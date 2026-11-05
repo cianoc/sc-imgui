@@ -91,3 +91,31 @@
       (is (typep (make-condition 'gui:widget-value-error :label "x" :datum 1 :expected-type 'string)
                  'type-error))
       (is (= 0 (%shim:assert-count))))))
+
+(test selectable-toggles-place
+  (with-headless-imgui ()
+    (let ((on nil))
+      (let ((results (click-item (lambda () (in-window (gui:selectable "row" on))))))
+        (is (= 1 (count t results))))
+      (is (eq t on))
+      (click-item (lambda () (in-window (gui:selectable "row" on))))
+      (is (eq nil on)))))
+
+(test list-box-selects-clicked-item
+  (with-headless-imgui ()
+    ;; The default list box is about 7.25 lines tall, so its centre is item 3.
+    (let ((i nil) (items '("a" "b" "c" "d" "e" "f" "g")))
+      (%shim:clear-asserts)
+      (click-item (lambda () (in-window (gui:list-box "l" i items))))
+      (is (eql 3 i))
+      (is (= 0 (%shim:assert-count))))))
+
+(test list-box-tolerates-no-selection-and-duplicates
+  (with-headless-imgui ()
+    (%shim:clear-asserts)
+    (with-test-frame ()
+      (in-window
+        (is (equal '(nil nil) (multiple-value-list (gui:list-box-value "l" nil '("x" "x")))))
+        (is (equal '(9 nil) (multiple-value-list (gui:list-box-value "m" 9 '("x" "y")))))
+        (is (equal '(t nil) (multiple-value-list (gui:selectable-value "s" t))))))
+    (is (= 0 (%shim:assert-count)))))
