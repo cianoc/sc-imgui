@@ -91,6 +91,10 @@ call `start` from another thread and leave the main thread idle, as
 - Errors are reported to the `*standard-output*` of the thread that called
   `start` (the REPL), never to the main thread's own output.
 
+## Examples
+
+See [examples/README.md](examples/README.md) for runnable examples.
+
 ## Tests
 
 ```

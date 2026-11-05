@@ -70,4 +70,5 @@
                (:file "test-scopes")
                (:file "test-widgets")
                (:file "test-plots")
-               (:file "test-draw")))
+               (:file "test-draw")
+               (:file "test-examples")))
