@@ -96,3 +96,31 @@ covers the label, so the frame's edge is min-x plus the item width."
   "Queue STRING as typed characters and run two frames of DRAW-FN."
   (%imgui:im-gui-io-add-input-characters-utf8 (%imgui:get-io-nil) string)
   (dotimes (i 2) (with-test-frame () (funcall draw-fn))))
+
+(defun vtx-count (draw-list)
+  "Number of vertices in DRAW-LIST's VtxBuffer."
+  (cffi:foreign-slot-value
+   (cffi:foreign-slot-pointer draw-list '(:struct %imgui::im-draw-list) '%imgui::vtx-buffer)
+   '(:struct %imgui::im-vector-im-draw-vert) '%imgui::size))
+
+(defun frames-with-drag (x y dx dy draw-fn)
+  "Move to (X, Y), press, move by (DX, DY) while held, then release, calling
+DRAW-FN once per frame; returns the list of its values (one per frame)."
+  (let ((io (%imgui:get-io-nil)))
+    (loop for event in (list (lambda () (%imgui:im-gui-io-add-mouse-pos-event
+                                         io (float x 1.0f0) (float y 1.0f0)))
+                             (lambda () (%imgui:im-gui-io-add-mouse-button-event io 0 t))
+                             (lambda () (%imgui:im-gui-io-add-mouse-pos-event
+                                         io (float (+ x dx) 1.0f0) (float (+ y dy) 1.0f0)))
+                             (lambda () (%imgui:im-gui-io-add-mouse-button-event io 0 nil)))
+          collect (progn (funcall event)
+                         (with-test-frame () (funcall draw-fn))))))
+
+(defun prime-and-drag (dx dy draw-fn)
+  "Prime DRAW-FN (which must use IN-WINDOW) so its item has a rect, then drag
+from the item's center by (DX, DY).  Returns DRAW-FN's values per frame."
+  (setf *item-rect* nil)
+  (dotimes (i 2) (with-test-frame () (funcall draw-fn)))
+  (let ((r *item-rect*))
+    (frames-with-drag (/ (+ (first r) (third r)) 2) (/ (+ (second r) (fourth r)) 2)
+                      dx dy draw-fn)))

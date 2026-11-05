@@ -14,4 +14,9 @@
            #:widget-value-error
            #:slider #:slider-value #:drag #:drag-value #:checkbox #:checkbox-value
            #:combo #:combo-value #:input-text #:input-text-value #:button #:text
-           #:with-plot #:plot-lines #:plot-bars #:plot-scatter))
+           #:with-plot #:plot-lines #:plot-bars #:plot-scatter
+           #:color #:window-draw-list #:draw-line #:draw-rect #:draw-circle
+           #:draw-arc #:draw-polyline #:draw-text #:invisible-button
+           #:item-hovered-p #:item-active-p #:cursor-screen-pos #:mouse-pos
+           #:mouse-drag-delta #:content-region-avail #:set-cursor-screen-pos
+           #:reset-mouse-drag-delta))
