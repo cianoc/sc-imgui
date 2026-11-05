@@ -28,7 +28,7 @@
 
 (let ((ok (handler-case
               (funcall (intern "RUN-SUITES" '#:sc-imgui.tests)
-                       (sb-posix:getenv "SUITE"))
+                       (uiop:getenv "SUITE"))
             (error (e) (fail "Test run failed: ~A" e)))))
   (finish-output)
   (sb-ext:exit :code (if ok 0 1) :abort t))

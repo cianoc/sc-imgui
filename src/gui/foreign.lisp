@@ -59,5 +59,9 @@ a stable weak-table integer (never an address)."
 
 (defvar *scratch* nil)
 
+;;; The buffer's address is meaningless in a saved image; reallocate lazily.
+(defun %reset-scratch () (setf *scratch* nil))
+(pushnew '%reset-scratch sb-ext:*save-hooks*)
+
 (defun scratch ()
   (or *scratch* (setf *scratch* (cffi:foreign-alloc :uint8 :count 64 :initial-element 0))))

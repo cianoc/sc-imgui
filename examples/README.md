@@ -1,7 +1,7 @@
 # Examples
 
-Runnable examples for `sc-imgui`. Each file defines only state variables and
-`define-gui` panels (names start with `example-`), and none calls `gui:start`.
+Runnable examples for `sc-imgui`. Each file defines state variables, `define-gui`
+panels and `example-*` helper functions, and none calls `gui:start`.
 
 First set up your REPL so `gui:start` can work: see "Running from SLIME or Sly"
 in the [top-level README](../README.md) (SLIME needs

@@ -44,6 +44,7 @@ the frame loop needs for itself."))
     (unwind-protect
          (sb-int:with-float-traps-masked (:invalid :divide-by-zero :overflow :inexact)
            (block frames
+             (handler-case
              (handler-bind
                  ((error (lambda (c)
                            (report-error :loop c (ignore-errors (%backtrace-string)))
@@ -58,7 +59,10 @@ the frame loop needs for itself."))
                      do (run-queued-tasks)
                         (%shim:begin-frame)
                         (draw-registered-guis)
-                        (%shim:end-frame)))))
+                        (%shim:end-frame)))
+               ;; Stack or heap exhaustion outside a panel: report and shut
+               ;; down cleanly rather than leave a frozen window.
+               (storage-condition (c) (report-error :loop c)))))
       (when opened
         (sb-int:with-float-traps-masked (:invalid :divide-by-zero :overflow :inexact)
           (ignore-errors (%shim:shutdown))))

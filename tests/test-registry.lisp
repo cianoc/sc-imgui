@@ -46,6 +46,18 @@
       (is (search "boom" (get-output-stream-string gui.runtime:*report-stream*)))
       (is (= 0 (gui.runtime:run-queued-tasks))))))
 
+(define-condition unprintable-task-condition (error) ()
+  (:report (lambda (c s) (declare (ignore c s)) (error "report exploded"))))
+
+(test unprintable-task-condition-does-not-stop-later-tasks
+  (with-clean-registry ()
+    (gui.runtime::%reset-tasks)
+    (let ((ran 0) (gui.runtime:*report-stream* (make-broadcast-stream)))
+      (gui:call-in-gui-thread (lambda () (error 'unprintable-task-condition)))
+      (gui:call-in-gui-thread (lambda () (incf ran)))
+      (is (= 2 (gui.runtime:run-queued-tasks)))
+      (is (= 1 ran)))))
+
 (test define-gui-rejects-arguments
   (signals error (macroexpand-1 '(gui:define-gui x (a) nil))))
 

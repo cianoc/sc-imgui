@@ -4,6 +4,7 @@
 
 (defmacro with-headless-imgui ((&key (width 800) (height 600)) &body body)
   `(progn
+     (%shim:clear-asserts)
      (unless (zerop (%shim:headless-create ,width ,height))
        (error "headless-create failed: ~A" (%shim:last-error)))
      (unwind-protect

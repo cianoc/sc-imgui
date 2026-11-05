@@ -41,14 +41,21 @@ true only when the panel function returned normally."
                      (mark-gui-failed name seen)
                      nil)))
                (block panel
-                 (handler-bind
-                     ((error (lambda (c)
-                               (let ((bt (ignore-errors (%backtrace-string))))
-                                 (mark-gui-failed name c)
-                                 (report-error name c bt))
-                               (return-from panel nil))))
-                   (funcall (fdefinition (gui-entry-function-name entry)))
-                   t)))
+                 ;; Non-ERROR serious conditions (stack or heap exhaustion) are
+                 ;; handled after unwinding, so there is room to report them.
+                 (handler-case
+                     (handler-bind
+                         ((error (lambda (c)
+                                   (let ((bt (ignore-errors (%backtrace-string))))
+                                     (mark-gui-failed name c)
+                                     (report-error name c bt))
+                                   (return-from panel nil))))
+                       (funcall (fdefinition (gui-entry-function-name entry)))
+                       t)
+                   (storage-condition (c)
+                     (mark-gui-failed name c)
+                     (report-error name c)
+                     nil))))
         ;; Pop anything the panel left open so later panels are not nested in it.
         (%imgui:error-recovery-try-to-recover-state state)))))
 

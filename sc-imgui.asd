@@ -1,7 +1,5 @@
-;;;; sc-imgui systems. Later tasks add sc-imgui/bindings and fill in sc-imgui.
+;;;; sc-imgui systems.
 
-;;; Primary system: Quicklisp's quickload requires it to exist before it will
-;;; load a "sc-imgui/..." subsystem.  Components arrive in later tasks.
 (asdf:defsystem "sc-imgui"
   :description "Dear ImGui + ImPlot for Common Lisp (SBCL)."
   :depends-on ("sc-imgui/bindings" "bordeaux-threads" "trivial-main-thread" "alexandria" "uiop")

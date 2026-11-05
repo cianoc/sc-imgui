@@ -38,10 +38,10 @@ commit whose output contains the docking API.
 (gui:start)                     ; opens the window, returns T at once
 
 (gui:define-gui hello ()
-  (when (%imgui:begin "Hello" (cffi:null-pointer) 0)
-    (when (%imgui:button "Click" '(%imgui::x 0.0 %imgui::y 0.0))
-      (print :clicked gui.runtime:*report-stream*)))
-  (%imgui:end))
+  (gui:with-window ("Hello")
+    (gui:text "Hello from Lisp")
+    (when (gui:button "Click")
+      (print :clicked gui.runtime:*report-stream*))))
 ```
 
 Re-evaluate a `define-gui` form (C-c C-c) and the window picks up the new
@@ -90,6 +90,40 @@ call `start` from another thread and leave the main thread idle, as
   window layout.
 - Errors are reported to the `*standard-output*` of the thread that called
   `start` (the REPL), never to the main thread's own output.
+
+## API summary
+
+Each item is demonstrated in [examples/](examples/README.md).
+
+- `gui:define-gui`: define or redefine a panel; `gui:show`, `gui:hide`, `gui:remove` control it by name.
+- `gui:call-in-gui-thread`: queue a function to run on the GUI thread before the next frame.
+- `gui:*debug-on-error*`: when true, panel errors enter the debugger with `retry-panel` and `disable-panel` restarts instead of showing a failed window.
+- Scope and layout macros: `with-window`, `with-child`, `with-row`, `with-grid`, `with-section` (see `examples/layout.lisp`).
+- Widgets: `text`, `button`, `checkbox`, `slider`, `input-text`, `combo`, ... each on a place, with functional `-value` variants (e.g. `slider-value`, `checkbox-value`) that take and return values.
+- Plots: `plot-lines`, `plot-bars`, `plot-scatter` from Lisp vectors (`examples/plots.lisp`).
+- Draw primitives and interaction helpers: `draw-circle`, `draw-arc`, `invisible-button`, `mouse-drag-delta` (`examples/custom-knob.lisp`).
+
+Notes:
+
+- Docked windows do not refit after a panel is redefined.
+- A window that is not opened on the frame right after a redefinition misses that one-time refit.
+
+## Linux
+
+Build packages (as in `.github/workflows/ci.yml`):
+
+```
+sudo apt-get install -y --no-install-recommends \
+  sbcl build-essential cmake pkg-config curl ca-certificates \
+  xvfb xauth libgl1-mesa-dri libgl1-mesa-dev \
+  libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev \
+  libwayland-dev libxkbcommon-dev libffi-dev
+```
+
+On Linux the shim requests an OpenGL 3.0 context, and ImGui's OpenGL3 backend
+enables large meshes (more than 64k vertices per draw list) only when the
+driver reports GL 3.2 or later. That is fine on Mesa, but very large plots may
+hit the 16-bit index limit on older drivers.
 
 ## Examples
 

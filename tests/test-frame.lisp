@@ -178,3 +178,51 @@ report and close the window.  Returns true if that handler ran."
         (redefine-panel *refit-a-form*)
         (run-frames 3)
         (is (> (second (window-size "refit-a")) (second a0)))))))
+
+;;; Reporting must never signal, and non-error serious conditions are isolated.
+
+(define-condition unprintable-condition (error) ()
+  (:report (lambda (c s) (declare (ignore c s)) (error "report exploded"))))
+
+(test unprintable-condition-fails-only-its-panel
+  (with-frame-env
+    (let ((n 0) (gui.runtime:*report-stream* (make-broadcast-stream)))
+      (gui:define-gui bad () (error 'unprintable-condition))
+      (gui:define-gui good () (incf n))
+      (finishes (frame))
+      (is (= 1 n))
+      (is (not (null (gui.runtime:gui-entry-failure (gui.runtime:find-gui 'bad)))))
+      (frame)
+      (is (= 2 n)))))
+
+(test dead-report-stream-does-not-break-frame
+  (with-frame-env
+    (let ((n 0)
+          (gui.runtime:*report-stream* (make-string-output-stream))
+          (*error-output* (make-string-output-stream)))
+      (close gui.runtime:*report-stream*)
+      (gui:define-gui bad () (error "boom"))
+      (gui:define-gui good () (incf n))
+      (finishes (frame))
+      (is (= 1 n))
+      ;; The report falls back to *error-output*.
+      (is (search "boom" (get-output-stream-string *error-output*))))))
+
+(defun %recurse (n) (+ 1 (%recurse (1+ n))))
+
+(test runaway-recursion-is-isolated
+  (with-frame-env
+    (let ((n 0) (gui.runtime:*report-stream* (make-string-output-stream)))
+      (gui:define-gui deep () (%recurse 0))
+      (gui:define-gui good () (incf n))
+      (frame)
+      (is (= 1 n))
+      (is (typep (gui.runtime:gui-entry-failure (gui.runtime:find-gui 'deep))
+                 'storage-condition))
+      ;; The guard page is re-protected after unwinding: overflow again.
+      (gui.runtime:clear-gui-failure 'deep)
+      (frame)
+      (is (= 2 n))
+      (is (typep (gui.runtime:gui-entry-failure (gui.runtime:find-gui 'deep))
+                 'storage-condition))
+      (is (search "DEEP" (get-output-stream-string gui.runtime:*report-stream*))))))

@@ -3,7 +3,7 @@
 ;;;; Run:  (ql:quickload :sc-imgui)  (gui:start)  (load "examples/error-recovery.lisp")
 ;;;;
 ;;;; 1. Two windows appear: "Healthy", which keeps running, and
-;;;;    "example-broken (failed)".  The broken panel (example-broken) signals
+;;;;    "EXAMPLE-BROKEN (failed)".  The broken panel (example-broken) signals
 ;;;;    an error while *example-break* is T; the error is reported to the REPL,
 ;;;;    the panel is switched off, and its failed window shows the message and
 ;;;;    a Retry button.
