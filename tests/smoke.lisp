@@ -2,11 +2,13 @@
 ;;;; (`make smoke`).  Opens a GLFW/OpenGL window.  Exit status is 0 only when
 ;;;; every check passed; 1 on a failed check or after 30 s; 2 if loading failed.
 ;;;;
-;;;; The frame loop must run on SBCL's main thread, which trivial-main-thread
-;;;; takes over by interrupting it with its task runner the first time it is
-;;;; asked to run something there.  So the checks run in a worker thread and the
-;;;; main thread just idles (interruptibly) in SLEEP, as it would at an idle
-;;;; REPL.  The worker ends the process with SB-EXT:EXIT :ABORT T.
+;;;; The frame loop must run on SBCL's main thread, which GUI:START takes over
+;;;; by interrupting it.  So the checks run in a worker thread and the main
+;;;; thread idles (interruptibly) in SLEEP, as it would at an idle REPL.  First,
+;;;; though, the main thread defers interrupts for a second while the first
+;;;; START is made, as a GC or a long foreign call would: the handoff must not
+;;;; be lost (trivial-main-thread's was, once in CI).  The worker ends the
+;;;; process with SB-EXT:EXIT :ABORT T.
 
 (require :asdf)
 
@@ -39,8 +41,17 @@
 (defvar *count-a* 0)
 (defvar *count-b* 0)
 
+(defvar *main-busy* :not-yet
+  "T while the main thread defers interrupts at startup, then NIL.")
+
+(defvar *report-output* (make-string-output-stream)
+  "Captures what the loop reports (START's *STANDARD-OUTPUT*); printed on failure.")
+
 (defun finish (code control &rest args)
   (format *error-output* "~&smoke: ~?~%" control args)
+  (unless (zerop code)
+    (format *error-output* "~&smoke: loop state ~S; loop reports:~%~A~%"
+            gui.runtime::*state* (get-output-stream-string *report-output*)))
   (finish-output *error-output*)
   (finish-output *standard-output*)
   (sb-ext:exit :code code :abort t))
@@ -114,8 +125,11 @@
 (defun run-checks ()
   (when (probe-file *ini*) (delete-file *ini*))
   (setf gui:*ini-path* *ini*)
-  (let ((out (make-string-output-stream)))
-    ;; 1. start returns T, then NIL while showing.
+  (wait-until (lambda () (not (eq *main-busy* :not-yet))))
+  (let ((out *report-output*))
+    ;; 1. start returns T, then NIL while showing, even though the main thread
+    ;; is deferring interrupts when it is asked to take the loop.
+    (check (eq *main-busy* t) "main thread deferring interrupts at the first start")
     (let ((first (let ((*standard-output* out)) (gui:start :title "sc-imgui smoke")))
           (second (let ((*standard-output* out)) (gui:start))))
       (check (eq first t) "first (gui:start) returned ~S" first)
@@ -166,8 +180,10 @@
       (check (= -1 (%shim:window-visible)) "window destroyed after shutdown")
       (check (null (gui:shutdown)) "second (gui:shutdown) returned NIL")
       (check (null (gui:stop)) "(gui:stop) after shutdown returned NIL")
-      (check (eq :free (trivial-main-thread:call-in-main-thread (lambda () :free) :blocking t))
-             "main thread runs other work after shutdown"))
+      (let ((free :pending))
+        (gui.runtime::%run-on-main-thread (lambda () (setf free :free)))
+        (wait-until (lambda () (not (eq free :pending))))
+        (check (eq :free free) "main thread runs other work after shutdown")))
     ;; 9. start after shutdown creates a new window and loop.
     (check-showing-again "sc-imgui smoke (new loop)")
     (check (eq t (gui:stop)) "stop before final shutdown")
@@ -186,5 +202,11 @@
                    (finish 0 "all checks passed"))
                  :name "smoke checks")
 
-;;; Leave the main thread idle and interruptible for trivial-main-thread.
+;;; Defer interrupts for 1 s while the checks thread makes the first START,
+;;; then leave the main thread idle and interruptible.
+(sb-sys:without-interrupts
+  (setf *main-busy* t)
+  (let ((end (+ (get-internal-real-time) internal-time-units-per-second)))
+    (loop while (< (get-internal-real-time) end)))
+  (setf *main-busy* nil))
 (loop (sleep 1))

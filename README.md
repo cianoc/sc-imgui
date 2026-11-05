@@ -56,7 +56,7 @@ window's close button; `(gui:start)` shows it again with the same panels.
 `(gui:shutdown)` destroys the window and ends the loop.
 
 The frame loop runs on SBCL's main thread (macOS requires it for Cocoa), handed
-over with `trivial-main-thread`, so `start` returns immediately and the REPL
+over by interrupting it (`sb-thread:interrupt-thread`), so `start` returns immediately and the REPL
 stays free. That only works when the REPL evaluates in some *other* thread.
 `start` called on the main thread signals `gui:main-thread-busy` and changes
 nothing, because running the loop there would freeze the REPL until the window

@@ -53,7 +53,7 @@
 ;;; START from SBCL's main thread would run the loop inside the caller (a
 ;;; SLIME REPL using the main thread, or a plain terminal REPL) and freeze it, so
 ;;; it refuses.  `make test` runs on the main thread; elsewhere hand the call to
-;;; the main thread through trivial-main-thread so the real check still runs.
+;;; the main thread so the real check still runs.
 (defun %start-on-main-thread ()
   "Call (GUI:START) on the main thread.  Returns the condition it signalled (or
 NIL) and the output it wrote."
@@ -61,9 +61,12 @@ NIL) and the output it wrote."
     (flet ((call ()
              (handler-case (progn (let ((*standard-output* out)) (gui:start)) nil)
                (gui:main-thread-busy (c) c))))
-      (values (if (trivial-main-thread:main-thread-p)
+      (values (if (gui.runtime::main-thread-p)
                   (call)
-                  (trivial-main-thread:call-in-main-thread #'call :blocking t))
+                  (let ((result :pending))
+                    (gui.runtime::%run-on-main-thread (lambda () (setf result (call))))
+                    (loop while (eq result :pending) do (sleep 0.01))
+                    result))
               (get-output-stream-string out)))))
 
 (test start-on-main-thread-signals
@@ -107,7 +110,7 @@ NIL) and the output it wrote."
   ;; A panel calling START while the loop runs (so on the main thread) does
   ;; nothing: it returns NIL and signals nothing.  Headless stand-in for the
   ;; running loop: *STATE* :SHOWING and the registered panels drawn in a frame.
-  (when (trivial-main-thread:main-thread-p)
+  (when (gui.runtime::main-thread-p)
     (let ((result :not-called) (signalled nil)
           (out (make-string-output-stream)))
       (unwind-protect
@@ -123,5 +126,27 @@ NIL) and the output it wrote."
                (is (null (gui.runtime:gui-entry-failure (gui.runtime:find-gui 'starter))))
                (is (string= "" (get-output-stream-string out)))))
         (setf gui.runtime::*state* nil))))
-  (unless (trivial-main-thread:main-thread-p)
+  (unless (gui.runtime::main-thread-p)
     (skip "not on the main thread")))
+
+;;; Regression: handing work to the main thread must survive a main thread
+;;; that is slow to accept interrupts (a GC, a long foreign call).
+;;; trivial-main-thread's queue lost such a task for good, so START returned T
+;;; and no frame was ever drawn (seen once in CI).  Needs the test run itself
+;;; to be on the main thread, as `make test` is.
+(test main-thread-handoff-survives-deferred-interrupts
+  (if (gui.runtime::main-thread-p)
+      (let ((ran nil))
+        (bt2:make-thread (lambda ()
+                           (sleep 0.1)
+                           (gui.runtime::%run-on-main-thread
+                            (lambda () (setf ran (if (gui.runtime::main-thread-p)
+                                                     :main
+                                                     :other))))))
+        ;; Defer interrupts for longer than trivial-main-thread's 0.5 s handshake.
+        (sb-sys:without-interrupts
+          (let ((end (+ (get-internal-real-time) internal-time-units-per-second)))
+            (loop while (< (get-internal-real-time) end))))
+        (loop repeat 300 until ran do (sleep 0.01))
+        (is (eq :main ran)))
+      (skip "not on the main thread")))

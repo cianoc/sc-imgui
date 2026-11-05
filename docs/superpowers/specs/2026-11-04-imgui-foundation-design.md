@@ -61,7 +61,7 @@ The frame loop runs on SBCL's main thread, and the REPL stays free on its Swank 
 
 **Starting and stopping**
 
-- `(gui:start)` returns immediately. The first time, it uses `trivial-main-thread` to run the loop on the main thread, which SLIME and Sly leave free. Calling `start` while the window is showing does nothing and returns `NIL`.
+- `(gui:start)` returns immediately. The first time, it hands the loop to the main thread, which SLIME and Sly leave free, with `sb-thread:interrupt-thread`. (Not `trivial-main-thread`: its task queue can lose a task queued while the main thread is slow to accept interrupts, so `start` returned `T` and no frame was ever drawn. A pending interrupt is never lost.) Calling `start` while the window is showing does nothing and returns `NIL`.
 - `(gui:stop)` saves the layout, hides the window and stops drawing panels. The loop keeps running: it waits for events (near-zero CPU) and still runs tasks queued with `call-in-gui-thread`. `start` shows the window again.
 - Closing the window behaves the same as `(gui:stop)`.
 - `(gui:shutdown)` hides the window, keeps processing events until it has left the screen, then destroys it, ends the loop and releases the main thread. `start` after a shutdown creates a new window and loop.

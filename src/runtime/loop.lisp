@@ -1,5 +1,6 @@
-;;; The frame loop.  It runs on SBCL's main thread (via trivial-main-thread),
-;;; so START returns at once and the REPL stays free.  That needs the REPL to
+;;; The frame loop.  It runs on SBCL's main thread (handed over with
+;;; SB-THREAD:INTERRUPT-THREAD), so START returns at once and the REPL stays
+;;; free.  That needs the REPL to
 ;;; evaluate in some other thread: START called on the main thread signals
 ;;; MAIN-THREAD-BUSY instead of creating the loop.
 ;;;
@@ -33,6 +34,19 @@ once; this only bounds the delay should a wake-up be missed.")
   "True while the window is showing and panels are drawn (or START has asked
 for that)."
   (eq *state* :showing))
+
+(defun main-thread-p ()
+  (eq sb-thread:*current-thread* (sb-thread:main-thread)))
+
+(defun %run-on-main-thread (function)
+  "Run FUNCTION on SBCL's main thread, with interrupts enabled, as soon as that
+thread accepts interrupts; return at once.  An interrupt stays pending while
+the main thread defers interrupts (a GC, a long foreign call), so FUNCTION is
+never lost.  (trivial-main-thread's task queue could lose it: its runner only
+looked at the queue when notified, and a notification sent before it waited
+was dropped.)  Afterwards the main thread resumes what it was doing."
+  (sb-thread:interrupt-thread (sb-thread:main-thread)
+                              (lambda () (sb-sys:with-interrupts (funcall function)))))
 
 (defun wake-loop ()
   "Wake the loop if it is waiting for events.  Safe from any thread, and a
@@ -111,7 +125,7 @@ wait for events while :HIDDEN."
 (defun %wait-while (predicate)
   "Unless on the main thread (where the loop would never get to run), poll
 PREDICATE for up to 5 s while it is true."
-  (unless (trivial-main-thread:main-thread-p)
+  (unless (main-thread-p)
     (loop repeat 500
           while (funcall predicate)
           do (sleep 0.01))))
@@ -133,7 +147,7 @@ and resumes drawing panels.  Errors are reported to the caller's
         ((:showing :shutting-down) (return-from start nil))
         (:hidden (setf *state* :showing *title* title))
         ((nil)
-         (when (trivial-main-thread:main-thread-p)
+         (when (main-thread-p)
            (error 'main-thread-busy))
          (setf *state* :showing
                *title* title
@@ -144,9 +158,7 @@ and resumes drawing panels.  Errors are reported to the caller's
                                 (declare (ignore c))
                                 ;; Could not hand the loop to the main thread.
                                 (bt2:with-lock-held (*loop-lock*) (setf *state* nil)))))
-          (trivial-main-thread:call-in-main-thread
-           (lambda () (%frame-loop width height title ini))
-           :blocking nil))
+          (%run-on-main-thread (lambda () (%frame-loop width height title ini))))
         (wake-loop))
     t))
 

@@ -2,7 +2,7 @@
 
 (asdf:defsystem "sc-imgui"
   :description "Dear ImGui + ImPlot for Common Lisp (SBCL)."
-  :depends-on ("sc-imgui/bindings" "bordeaux-threads" "trivial-main-thread" "alexandria" "uiop")
+  :depends-on ("sc-imgui/bindings" "bordeaux-threads" "alexandria" "uiop")
   :pathname "src/"
   :serial t
   :components ((:module "runtime"

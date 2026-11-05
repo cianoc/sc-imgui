@@ -28,8 +28,7 @@ true only when the panel function returned normally."
                  (restart-case
                      ;; Enter the debugger here, inside the RESTART-CASE, so
                      ;; that no outer handler (the frame loop's, which would
-                     ;; close the window, or trivial-main-thread's runner, which
-                     ;; would drop the condition) ever sees the error.
+                     ;; close the window) ever sees the error.
                      (handler-bind ((error (lambda (c)
                                              (setf seen c)
                                              (invoke-debugger c))))
