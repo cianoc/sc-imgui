@@ -1,11 +1,13 @@
 [submodule "native/third_party/imgui"]
 	path = native/third_party/imgui
 	url = https://github.com/ocornut/imgui.git
-	branch = docking
+	# Comes from ImGui's docking branch. The pinned commit is what is used;
+	# never run `git submodule update --remote` (see native/README.md).
 [submodule "native/third_party/cimgui"]
 	path = native/third_party/cimgui
 	url = https://github.com/cimgui/cimgui.git
-	branch = docking_inter
+	# Comes from cimgui's docking_inter branch. The pinned commit is what is used;
+	# never run `git submodule update --remote` (see native/README.md).
 [submodule "native/third_party/implot"]
 	path = native/third_party/implot
 	url = https://github.com/epezent/implot.git
