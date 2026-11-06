@@ -156,7 +156,17 @@ frames (a fresh context has base 0 until its first NewFrame)."
 ;;; Typed entry (Ctrl/Cmd-click)
 
 (defun ctrl-click (draw)
-  (with-keys-held (:ctrl) (click-item draw)))
+  "Ctrl/Cmd-click DRAW's item, then run one frame that consumes the Ctrl
+key-up.  (A key pressed in the same frame as the modifier's release is not
+seen by the text field: Escape there would be lost.)"
+  (with-keys-held (:ctrl) (click-item draw))
+  (with-test-frame () (funcall draw)))
+
+(defun assert-field-open ()
+  "Check that exactly one control has its text field open."
+  (let ((states (alexandria:hash-table-values gui::*control-states*)))
+    (is (= 1 (length states)))
+    (is (and states (gui::control-state-edit-text (first states))))))
 
 (test typed-entry-commits
   (with-controls-env ()
@@ -210,6 +220,7 @@ frames (a fresh context has base 0 until its first NewFrame)."
            (draw (lambda () (in-window (gui:number-box "f" v :min 20 :max 20000 :unit :hz)))))
       (ctrl-click draw)
       (type-text "900" draw)
+      (assert-field-open)
       (press-key %imgui:+key-escape+ draw)
       (is (= 440.0 v))
       (is (= 0 (hash-table-count gui::*control-states*))))
@@ -220,9 +231,23 @@ frames (a fresh context has base 0 until its first NewFrame)."
     (let* ((v 440.0)
            (draw (lambda () (in-window (gui:number-box "f" v :min 20 :max 20000 :unit :hz)))))
       (ctrl-click draw)
+      (assert-field-open)
       (setf v 880.0)                         ; a pattern changes the value meanwhile
       (press-key %imgui:+key-escape+ draw)
-      (is (= 880.0 v)))
+      (is (= 880.0 v))
+      (is (= 0 (hash-table-count gui::*control-states*))))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test enter-on-unedited-text-keeps-code-change       ; Review Focus 4, R10
+  (with-controls-env ()
+    (let* ((v 440.0)
+           (draw (lambda () (in-window (gui:number-box "f" v :min 20 :max 20000 :unit :hz)))))
+      (ctrl-click draw)
+      (assert-field-open)
+      (setf v 880.0)                         ; code changes the value meanwhile
+      (press-key %imgui:+key-enter+ draw)    ; Enter on the opening text "440 Hz"
+      (is (= 880.0 v))
+      (is (= 0 (hash-table-count gui::*control-states*))))
     (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
 
 (test clicking-elsewhere-cancels
@@ -232,18 +257,54 @@ frames (a fresh context has base 0 until its first NewFrame)."
            (draw (lambda () (in-window (funcall draw-v)))))
       (ctrl-click draw)
       (type-text "900" draw)
+      (assert-field-open)
       ;; Click a second control drawn below the first.
       (click-item (lambda () (in-window (funcall draw-v) (gui:number-box "other" w))))
       (is (= 440.0 v))
       (is (= 0 (hash-table-count gui::*control-states*))))
     (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
 
+(test ctrl-double-click-does-not-reset-in-core
+  ;; Through CONTROL-BEHAVIOR with no value-rect, so no text field opens and
+  ;; takes the mouse: the second click lands on the control's own item,
+  ;; where ImGui reports the double-click.  Only the Ctrl guard stops a reset.
+  (with-controls-env ()
+    (let* ((spec (gui::parse-control-spec "n" 0.7 :default 0.25))
+           (changed 0)
+           (draw (lambda ()
+                   (in-window
+                     (let ((frame (gui::control-behavior "n" spec 0.7 :width 60 :height 20)))
+                       (when (gui::control-frame-changed-p frame) (incf changed)))))))
+      (with-keys-held (:ctrl)
+        (click-item draw :clicker #'frames-with-double-click))
+      (is (= 0 changed))
+      (is (= 0 (hash-table-count gui::*control-states*))))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert)))
+  ;; Without Ctrl the same double-click does reset, so the check above can
+  ;; see one.  (A fresh context: more clicks in quick succession would count
+  ;; as a triple-click.)
+  (with-controls-env ()
+    (let* ((spec (gui::parse-control-spec "n" 0.7 :default 0.25))
+           (changed 0))
+      (click-item (lambda ()
+                    (in-window
+                      (when (gui::control-frame-changed-p
+                             (gui::control-behavior "n" spec 0.7 :width 60 :height 20))
+                        (incf changed))))
+                  :clicker #'frames-with-double-click)
+      (is (plusp changed)))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
 (test ctrl-double-click-does-not-reset
   (with-controls-env ()
     (let* ((v 0.7)
            (draw (lambda () (in-window (gui:number-box "n" v :default 0.25)))))
+      ;; Double-click the label, outside the value-rect: the field opened by
+      ;; the first click covers only the box, so the second click reaches
+      ;; the control's own item and ImGui reports a double-click on it.
       (with-keys-held (:ctrl)
-        (click-item draw :clicker #'frames-with-double-click))
+        (click-item draw :x-fn (lambda (r) (- (third r) 2))
+                         :clicker #'frames-with-double-click))
       (is (= 0.7 v))
       (let ((state (first (alexandria:hash-table-values gui::*control-states*))))
         (is (and state (gui::control-state-edit-text state)))

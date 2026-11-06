@@ -52,6 +52,7 @@ by ImGui's style alpha (so it fades inside WITH-DISABLED as stock widgets do)."
 (defstruct control-state
   position     ; accumulated drag position in [0, 1], or NIL when not dragging
   edit-text    ; text of an open text field, or NIL
+  edit-opening ; the text the field opened with
   edit-error   ; true when the field's text failed to parse
   edit-buffer  ; foreign buffer of +EDIT-BUFFER-SIZE+ bytes behind the field
   edit-phase   ; :focus (asking for keyboard focus), :refocus (asked, after a
@@ -112,6 +113,7 @@ end until it fits with its NUL."
   (set-edit-buffer state text)
   (setf (control-state-edit-text state) (cffi:foreign-string-to-lisp
                                          (control-state-edit-buffer state) :encoding :utf-8)
+        (control-state-edit-opening state) (control-state-edit-text state)
         (control-state-edit-error state) nil
         (control-state-edit-phase state) :focus))
 
@@ -122,6 +124,7 @@ end until it fits with its NUL."
       (cffi:foreign-free buffer)))
   (setf (control-state-edit-buffer state) nil
         (control-state-edit-text state) nil
+        (control-state-edit-opening state) nil
         (control-state-edit-error state) nil
         (control-state-edit-phase state) nil))
 
@@ -129,7 +132,9 @@ end until it fits with its NUL."
   "Draw STATE's open text field over VALUE-RECT, (x y w h), for control ID and
 handle its keys.  Returns :COMMIT and the parsed value (clamped and snapped
 under SPEC, as LIKE's type) on a successful Enter, :CANCEL when the field
-lost focus without one (Escape or a click elsewhere), else NIL."
+lost focus without one (Escape or a click elsewhere) or on Enter with the
+text it opened with (which may be stale if code changed the value since),
+else NIL."
   (destructuring-bind (x y w h) value-rect
     (set-cursor-screen-pos x y)
     (when (eq (control-state-edit-phase state) :focus)
@@ -150,7 +155,9 @@ lost focus without one (Escape or a click elsewhere), else NIL."
       (unless (string= text (control-state-edit-text state))
         (setf (control-state-edit-text state) text
               (control-state-edit-error state) nil))
-      (cond (entered
+      (cond ((and entered (string= text (control-state-edit-opening state)))
+             (return-from text-entry :cancel))
+            (entered
              (multiple-value-bind (parsed ok) (parse-control-text spec text)
                (when ok
                  (return-from text-entry
