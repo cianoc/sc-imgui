@@ -1030,3 +1030,45 @@ accessed by PLACE-GET/PLACE-SET, recording its bar rect in *FADER-BAR*."
             (is (not (member (gui::control-color :text-dim) colours)) "~A draws nothing in :text-dim"
                 name))))))
   (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert)))
+
+;;; Buttons are bevelled: raised (light top-left edge, dark bottom-right) when
+;;; up, indented (the edges swapped) when pressed -- a toggle that is on, or a
+;;; trigger held down.  The edge colours are the face colour lightened and
+;;; darkened.
+
+(defun edge-heights (points face)
+  "Mean y of the light-edge and dark-edge vertices of a button whose face is
+the theme role FACE: (values light dark)."
+  (flet ((mean-y (colour)
+           (let ((ys (loop for (nil y c) in points when (= c colour) collect y)))
+             (and ys (/ (reduce #'+ ys) (length ys))))))
+    (values (mean-y (gui::control-shade face gui::+bevel-light+))
+            (mean-y (gui::control-shade face gui::+bevel-dark+)))))
+
+(defun button-points (draw)
+  "Vertices DRAW (a button call inside a window) adds."
+  (let (points)
+    (in-window (let* ((dl (gui:window-draw-list)) (start (vtx-count dl)))
+                 (funcall draw)
+                 (setf points (vtx-points dl start))))
+    points))
+
+(test buttons-are-raised-when-up-and-indented-when-pressed
+  (with-controls-env ()
+    (dolist (case (list (list "toggle off" :control nil (lambda () (gui:toggle-value "Mute" nil)))
+                        (list "toggle on" :accent t (lambda () (gui:toggle-value "Mute" t)))
+                        (list "trigger up" :control nil (lambda () (gui:trigger "Hit")))))
+      (destructuring-bind (name face pressed draw) case
+        (let (points)
+          (dotimes (i 2) (with-test-frame () (setf points (button-points draw))))
+          (multiple-value-bind (light dark) (edge-heights points face)
+            (is (and light dark) "~A draws both bevel edges" name)
+            (when (and light dark)
+              (if pressed
+                  (is (> light dark) "~A is indented (light edge below)" name)
+                  (is (< light dark) "~A is raised (light edge above)" name)))))))
+    ;; A held trigger is indented: the press frame of a click.
+    (let ((frames (click-item (lambda () (button-points (lambda () (gui:trigger "Hit")))))))
+      (multiple-value-bind (light dark) (edge-heights (second frames) :accent)
+        (is (and light dark (> light dark)) "held trigger is indented")))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))

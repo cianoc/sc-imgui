@@ -18,7 +18,7 @@ Contents:
 
 There are two kinds of tests:
 
-- **`make test`** runs 233 [FiveAM](https://github.com/lispci/fiveam) tests in twelve suites. They run **headless**: ImGui runs with no window and no GPU, and each test draws frames itself by calling `NewFrame` and `Render`. They're fast, need no display, and run anywhere, including CI.
+- **`make test`** runs 234 [FiveAM](https://github.com/lispci/fiveam) tests in twelve suites. They run **headless**: ImGui runs with no window and no GPU, and each test draws frames itself by calling `NewFrame` and `Render`. They're fast, need no display, and run anywhere, including CI.
 - **`make smoke`** opens a **real window** and drives the real frame loop on SBCL's main thread: starting, live redefinition, error recovery, hiding, showing, closing, and shutting down. It needs a display. On Linux CI it runs under Xvfb, a virtual display.
 
 A third test lives outside this folder: `native/test_assert.c`, run by `make native`, checks that ImGui misuse is recorded rather than aborting the process. See `native/README.md`.
@@ -239,7 +239,7 @@ The pure-Lisp part of the controls: no ImGui. The file's local `spec` helper bui
 - Unit formatting at the boundaries (`999 Hz` and `1.00 kHz`, `-inf dB`, `C` for pan, `0 st`), plain-number precision, choice names and custom `:format` functions.
 - Parsing typed text (`2k`, `2.4 kHz`, `-6 dB`, `25R`), bare numbers following the display scale for `:percent` and `:pan`, rejecting garbage, and never signalling on huge numbers.
 
-### `test-controls.lisp` (suite `controls`, 73 tests)
+### `test-controls.lisp` (suite `controls`, 74 tests)
 
 The controls on a headless context, through the harness helpers above. `with-controls-env` sets up a headless context with the `:mid-light` theme and a base font size of 15; each test checks that no ImGui assertion was recorded. Comments mark the tests that guard a specific review risk.
 
@@ -247,7 +247,7 @@ The controls on a headless context, through the harness helpers above. `with-con
 - **Typed entry:** Ctrl-click (Cmd on macOS) opens the field; Enter commits, clamped and snapped; garbage and Enter keeps it open with the error flag and the value unchanged, and correcting it commits; Escape and clicking elsewhere cancel; a value changed by code survives Escape and an unedited Enter; Ctrl-double-click doesn't reset. A plain click on a number box opens the field once the double-click time has passed; a double-click still resets without opening it; a drag doesn't open it; a click on a knob doesn't.
 - **Knob:** drags and keeps its type, draws a non-positive log value, aligns in a row at two font sizes, draws bipolar and choice knobs, and signals on the wrong type.
 - **Fader:** in both orientations a click jumps to the clicked point only after the double-click time, a press-and-drag jumps at once and then tracks the mouse 1:1 along the bar, a drag across the axis changes nothing, a Shift-press doesn't jump (Shift-drag is ten times finer), a double-click resets instead of jumping, and a horizontal fader opens its text field over the value at the right end and doesn't draw over it; fill, bipolar fill and width; thickness and length defaults, including the vertical fader's 3.5 rem item, wide enough for `-12.0 dB` at three font sizes; the bar and fill rectangles' geometry; values (on every control) drawn in `:text`.
-- **Toggle and trigger:** a toggle flips and accepts any boolean; a trigger reports pressed, held and released on the right frames; both ignore input when disabled; widths.
+- **Toggle and trigger:** both are raised when up and indented when pressed (bevel edge positions); a toggle flips and accepts any boolean; a trigger reports pressed, held and released on the right frames; both ignore input when disabled; widths.
 - **XY pad:** a click jumps to the point and Shift-drag moves finely; each axis has its own specification; double-click resets both; y up increases; an absolute drag follows the mouse; pressing Shift doesn't jump; types are kept; out-of-range values aren't written; the macro evaluates its subforms once; size and a single item; malformed specifications and wrong value types signal.
 
 ### `test-examples.lisp` (suite `examples`, 2 tests)

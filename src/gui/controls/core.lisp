@@ -54,6 +54,19 @@ by ImGui's style alpha (so it fades inside WITH-DISABLED as stock widgets do)."
          (a (* (/ (ldb (byte 8 24) packed) 255.0) alpha (%style-value %imgui::alpha))))
     (dpb (truncate (+ (* (max 0.0 (min 1.0 a)) 255.0) 0.5)) (byte 8 24) packed)))
 
+(defun control-shade (role amount)
+  "The theme's colour for ROLE, lightened toward white by AMOUNT (0 to 1) or,
+when AMOUNT is negative, darkened toward black, packed and faded like
+CONTROL-COLOR.  Derived from the theme, so it follows SET-THEME."
+  (let* ((packed (control-color role))
+         (target (if (plusp amount) 255 0))
+         (k (min 1.0 (abs amount))))
+    (flet ((channel (pos)
+             (let ((c (ldb (byte 8 pos) packed)))
+               (truncate (+ c (* k (- target c)) 0.5)))))
+      (logior (channel 0) (ash (channel 8) 8) (ash (channel 16) 16)
+              (ash (ldb (byte 8 24) packed) 24)))))
+
 ;;; Per-control state
 
 (defstruct control-state
