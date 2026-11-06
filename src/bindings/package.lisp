@@ -15,7 +15,7 @@
            #:last-error #:headless-create #:headless-destroy
            #:assert-count #:last-assert #:clear-asserts
            #:show-window #:hide-window #:wait-events #:wake
-           #:window-visible #:test-request-close
+           #:window-visible #:test-request-close #:test-mouse-button
            #:add-font #:push-font #:set-clear-color))
 
 (defpackage #:%imgui (:use))

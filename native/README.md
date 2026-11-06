@@ -112,7 +112,7 @@ Notable settings:
 
 ### `shim.h`
 
-The contract between Lisp and the shim: twenty C functions, all declared `extern "C"`. `src/bindings/shim.lisp` binds exactly these. Each declaration's comment states its return values and which thread may call it.
+The contract between Lisp and the shim: twenty-one C functions, all declared `extern "C"`. `src/bindings/shim.lisp` binds exactly these. Each declaration's comment states its return values and which thread may call it.
 
 ### `shim.cpp`
 
@@ -140,10 +140,11 @@ The implementation. It does four jobs.
 
 **3. Recorded assertions.** `sc_imgui_assert_failed` is what `IM_ASSERT` calls. It counts the failure and stores `"expr @ file:line"` instead of aborting the process. `shim_assert_count`, `shim_last_assert`, and `shim_clear_asserts` let tests read and reset the record.
 
-**4. Test helpers.** `shim_window_visible` (1, 0, or -1 when there's no window) and `shim_test_request_close`, which sets the close flag the way the close button does and may be called from any thread. The smoke test uses both, on every platform.
+**4. Test helpers.** `shim_window_visible` (1, 0, or -1 when there's no window) and `shim_test_request_close`, which sets the close flag the way the close button does and may be called from any thread. The smoke test uses both, on every platform. `shim_test_mouse_button` feeds a GLFW mouse-button event through the shim's mouse callback, so the bindings tests can check modifier handling headless.
 
 Internal details worth knowing:
 
+- The shim replaces the GLFW backend's mouse-button callback (`mouse_button_cb`) after the backend installs its callbacks. The backend works out Ctrl/Shift/Alt/Super by asking GLFW which keys are down, which misses a modifier pressed while another application had keyboard focus: Cmd held in the REPL, then clicked into the window, read as up, so a Cmd-click acted as a plain click. The shim queues the click event's own modifiers instead, then the button.
 - `g_wake_mutex` guards the window pointer, because `shim_wake` and `shim_test_request_close` can run on other threads while the main thread destroys the window. GLFW allows `glfwPostEmptyEvent` from any thread, but not at the same time as `glfwTerminate`.
 - The `ImFont` pointers stay in the shim, in `g_fonts`, so Lisp only sees indexes. The list is cleared when the contexts are destroyed, which is on `shim_shutdown` and `shim_headless_destroy`.
 - `g_last_assert`, `g_last_error`, and `g_ini_path` are static `std::string`s, so the `const char *` values returned to Lisp stay valid after the call.

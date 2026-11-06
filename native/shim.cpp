@@ -88,6 +88,21 @@ static int store_font(ImFont *font, float size) {
   return (int)g_fonts.size() - 1;
 }
 
+// Mouse buttons, replacing the GLFW backend's callback.  The backend works
+// out Ctrl/Shift/Alt/Super by asking GLFW which keys are down, which misses a
+// modifier pressed while another application had keyboard focus: Cmd held in
+// the REPL and then clicked into the window reads as up.  The click event's
+// own MODS are right, so queue those, then the button, as the backend would.
+static void mouse_button_cb(GLFWwindow *, int button, int action, int mods) {
+  ImGuiIO &io = ImGui::GetIO();
+  io.AddKeyEvent(ImGuiMod_Ctrl, (mods & GLFW_MOD_CONTROL) != 0);
+  io.AddKeyEvent(ImGuiMod_Shift, (mods & GLFW_MOD_SHIFT) != 0);
+  io.AddKeyEvent(ImGuiMod_Alt, (mods & GLFW_MOD_ALT) != 0);
+  io.AddKeyEvent(ImGuiMod_Super, (mods & GLFW_MOD_SUPER) != 0);
+  if (button >= 0 && button < ImGuiMouseButton_COUNT)
+    io.AddMouseButtonEvent(button, action == GLFW_PRESS);
+}
+
 static int fail(const char *msg) {
   g_last_error = msg;
   return 1;
@@ -144,6 +159,9 @@ int shim_open_window(int width, int height, const char *title, const char *ini_p
     close_window();
     return fail("ImGui backend initialisation failed");
   }
+  // After the backend has installed its callbacks (it restores the previous,
+  // none, at shutdown).
+  glfwSetMouseButtonCallback(g_window, mouse_button_cb);
   g_backends = true;
   return 0;
 }
@@ -226,6 +244,10 @@ void shim_wake(void) {
 int shim_window_visible(void) {
   if (!g_window) return -1;
   return glfwGetWindowAttrib(g_window, GLFW_VISIBLE) ? 1 : 0;
+}
+
+void shim_test_mouse_button(int button, int action, int mods) {
+  if (ImGui::GetCurrentContext()) mouse_button_cb(nullptr, button, action, mods);
 }
 
 int shim_test_request_close(void) {

@@ -217,3 +217,40 @@
     (finishes (%shim:set-clear-color 0.1 0.1 0.1))
     (draw-some-text)
     (is (= 0 (%shim:assert-count)))))
+
+;;; Modifiers on a click come from the click event itself.  The GLFW backend
+;;; asks GLFW which keys are down, which misses a modifier pressed while
+;;; another application had keyboard focus (Cmd held before clicking into the
+;;; window from the REPL), so the shim takes them from the event instead.
+
+(defconstant +glfw-press+ 1)
+(defconstant +glfw-release+ 0)
+(defconstant +glfw-mod-shift+ #x1)
+(defconstant +glfw-mod-control+ #x2)
+(defconstant +glfw-mod-super+ #x8)
+
+(defun io-flag (slot)
+  (cffi:foreign-slot-value (%imgui:get-io-nil) '(:struct %imgui::im-gui-io) slot))
+
+(test click-modifiers-come-from-the-event
+  (with-headless-imgui ()
+    ;; Cmd on macOS arrives as Super (ImGui then reports it as Ctrl); Ctrl
+    ;; elsewhere.  Either way io.KeyCtrl must be true on the press.
+    (let ((cmd (if (io-flag '%imgui::config-mac-osx-behaviors)
+                   +glfw-mod-super+
+                   +glfw-mod-control+)))
+      (with-test-frame ())
+      (%shim:test-mouse-button 0 +glfw-press+ (logior cmd +glfw-mod-shift+))
+      (with-test-frame ()
+        (is (io-flag '%imgui::key-ctrl) "Cmd/Ctrl from the click's own modifiers")
+        (is (io-flag '%imgui::key-shift))
+        (is (plusp (cffi:mem-aref (cffi:foreign-slot-pointer (%imgui:get-io-nil)
+                                                             '(:struct %imgui::im-gui-io)
+                                                             '%imgui::mouse-down)
+                                  :uint8 0))
+            "the button is down"))
+      (%shim:test-mouse-button 0 +glfw-release+ 0)
+      (with-test-frame ()
+        (is (not (io-flag '%imgui::key-ctrl)))
+        (is (not (io-flag '%imgui::key-shift)))))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))

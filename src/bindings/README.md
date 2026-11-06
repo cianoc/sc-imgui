@@ -54,7 +54,7 @@ Every `make bindings` rewrites them completely, so a hand edit is lost. They're 
 
 ### The hand-written files
 
-**`package.lisp`** — Defines `sc-imgui.bindings` (uses `CL`, exports the loading API and `optional-string`), `%shim` (uses nothing, exports its 20 functions), and `%imgui` and `%implot` (use nothing, export nothing here; the generated files export their own names).
+**`package.lisp`** — Defines `sc-imgui.bindings` (uses `CL`, exports the loading API and `optional-string`), `%shim` (uses nothing, exports its 21 functions), and `%imgui` and `%implot` (use nothing, export nothing here; the generated files export their own names).
 
 **`types.lisp`** — Defines `optional-string`, the type every generated `const char*` argument uses. It behaves like CFFI's `:string` (a Lisp string is copied to foreign memory for the call and freed afterwards; a foreign pointer passes through), except that `nil` passes NULL, which many optional ImGui arguments need. It subclasses CFFI's own string type rather than defining a new one, because calls that pass a struct by value go through cffi-libffi, which only knows how to translate CFFI's string type. Inheriting it keeps strings handled the same way on both call paths. Return values stay plain `:string`.
 
@@ -77,7 +77,7 @@ Counts and lists are from the current code. Use them to check an upgrade: everyt
 
 ### `%shim`
 
-All 20 functions are used outside this directory. All run on the GUI (main) thread unless marked otherwise.
+All 21 functions are used outside this directory. All run on the GUI (main) thread unless marked otherwise.
 
 | Function | Returns | Used by | Purpose |
 | --- | --- | --- | --- |
@@ -97,6 +97,7 @@ All 20 functions are used outside this directory. All run on the GUI (main) thre
 | `(headless-create width height)`, `(headless-destroy)` | 0 on success | tests | ImGui with no window |
 | `(window-visible)` | 1, 0, or -1 with no window | tests | |
 | `(test-request-close)` | | tests | **Any thread.** Simulate the close button |
+| `(test-mouse-button button action mods)` | | tests | Feed a GLFW mouse-button event (action 1 press, 0 release; GLFW modifier bits) through the shim's mouse callback |
 
 ### `%imgui`
 

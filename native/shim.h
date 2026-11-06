@@ -25,6 +25,7 @@ int         shim_assert_count(void);
 const char *shim_last_assert(void);           /* "expr @ file:line" */
 void        shim_clear_asserts(void);
 int         shim_window_visible(void);        /* main thread; 1 visible, 0 hidden, -1 no window */
+void        shim_test_mouse_button(int button, int action, int mods); /* tests, main thread: feed a GLFW mouse-button event (action 1 press, 0 release; GLFW mod bits) through the shim's callback */
 int         shim_test_request_close(void);    /* tests, any thread: set the should-close flag as the close button does; 0 = set, -1 = no window */
 
 #ifdef __cplusplus

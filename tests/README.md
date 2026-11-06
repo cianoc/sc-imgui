@@ -18,7 +18,7 @@ Contents:
 
 There are two kinds of tests:
 
-- **`make test`** runs 231 [FiveAM](https://github.com/lispci/fiveam) tests in twelve suites. They run **headless**: ImGui runs with no window and no GPU, and each test draws frames itself by calling `NewFrame` and `Render`. They're fast, need no display, and run anywhere, including CI.
+- **`make test`** runs 232 [FiveAM](https://github.com/lispci/fiveam) tests in twelve suites. They run **headless**: ImGui runs with no window and no GPU, and each test draws frames itself by calling `NewFrame` and `Render`. They're fast, need no display, and run anywhere, including CI.
 - **`make smoke`** opens a **real window** and drives the real frame loop on SBCL's main thread: starting, live redefinition, error recovery, hiding, showing, closing, and shutting down. It needs a display. On Linux CI it runs under Xvfb, a virtual display.
 
 A third test lives outside this folder: `native/test_assert.c`, run by `make native`, checks that ImGui misuse is recorded rather than aborting the process. See `native/README.md`.
@@ -128,7 +128,7 @@ Tests the binding generator against the fixtures, without loading ImGui:
 - **Unused overrides:** `generate-bindings` warns with `unused-name-override` for an override that matches nothing in either library, and doesn't warn for overrides that are used.
 - **All or nothing:** `generate-bindings` run on temporary JSON writes neither file when cimplot has a collision.
 
-### `test-bindings.lisp` (suite `bindings`, 22 tests)
+### `test-bindings.lisp` (suite `bindings`, 23 tests)
 
 Tests the loaded native library and the generated bindings, through real calls:
 
