@@ -313,7 +313,7 @@ The macro writes whichever places changed and returns true if either did. `xy-pa
 - **All sizes are in rem,** multiples of the base font size: knob diameters, fader lengths and thickness, box and button widths, and the XY pad's size. They scale with `set-font-size`. A size given as `(:px n)` is fixed.
 - **One control, one ImGui item.** Each control reserves one rectangle that covers everything it draws, label and value text included, so `with-row`, `with-grid` and `with-group` treat it as a unit, and a row of controls shares a top edge.
 - **Widths don't change as the value changes.** Text wider than its control is clipped at the edge, so rows stay aligned as values change.
-- **Feedback follows the theme.** A hovered control's track changes from `:frame` to `:frame-hover`. While you drag or edit, the value text is drawn in full-strength `:text`. Inside `with-disabled`, input is ignored and every colour fades with ImGui's style alpha, like the stock widgets.
+- **Feedback follows the theme.** A hovered control's track changes from `:frame` to `:frame-hover`, and stays so while you drag. Labels and values are drawn in `:text`. Inside `with-disabled`, input is ignored and every colour fades with ImGui's style alpha, like the stock widgets.
 - **IDs** follow the usual rules: the label is the ID, `##` hides a suffix, and `with-id` separates repeated controls.
 
 #### Errors
@@ -405,7 +405,7 @@ The palette gives each role a colour. A colour is `"#rrggbb"`, `"#rrggbbaa"`, or
 | `:control-hover` | The same, hovered |
 | `:border` | Borders, separators, plot grid |
 | `:text` | Text |
-| `:text-dim` | Disabled text; a control's value text while it isn't being used |
+| `:text-dim` | Disabled text; the XY pad's crosshair |
 | `:accent` | Check marks, slider grabs, pressed controls, selections |
 | `:accent-text` | Text drawn on the accent. For custom controls; the ImGui mapping doesn't use it |
 | `:series` | A list of colours for plot lines, bars and markers |

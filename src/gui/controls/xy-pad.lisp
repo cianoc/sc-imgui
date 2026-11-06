@@ -140,7 +140,7 @@ at SQ-Y, showing the in-range X-VALUE and Y-VALUE."
       (%imgui:pop-clip-rect))
     (draw-clipped-centered-text
      x0 (+ y1 (item-spacing-y)) side
-     (control-color (if active :text :text-dim))
+     (control-color :text)
      (format nil "~A / ~A" (format-control-value x-spec x-value)
              (format-control-value y-spec y-value)))
     (values)))

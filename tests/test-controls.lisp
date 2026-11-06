@@ -622,25 +622,28 @@ accessed by PLACE-GET/PLACE-SET, recording its bar rect in *FADER-BAR*."
   ;; label line and its spacing.
   (is (equal '(26 39 20 120) (gui::fader-bar-rect t 10 20 52 120 20 15 4))))
 
-(test fader-value-text-dims-when-inactive
-  ;; Hidden labels, so the only text drawn is the value.
+(test values-use-full-strength-text
+  ;; Values are drawn in the theme's :text whether or not the control is in
+  ;; use.  Hidden labels, so the only text drawn is the value.
   (with-controls-env ()
-    (let (h vt)
+    (let (results)
       ;; A new window's first frame clips all text (and sizes the window to
       ;; fit), so record the second.
       (dotimes (i 2)
+        (setf results nil)
         (with-test-frame ()
-          (in-window (setf h (control-colors (gui:fader-value "##h" 0.5 :length 10))
-                           vt (control-colors (gui:fader-value "##v" 0.5 :vertical t))))))
-      (dolist (colors (list h vt))
-        (is (member (gui::control-color :text-dim) colors))
-        (is (not (member (gui::control-color :text) colors)))))
-    ;; prime-and-drag frames: move, press, move (active), release.
-    (let* ((v 0.5)
-           (frames (prime-and-drag 20 0 (lambda ()
-                                          (in-window (control-colors
-                                                      (gui:fader "##h" v :length 10)))))))
-      (is (member (gui::control-color :text) (nth 2 frames))))
+          (in-window
+            (push (list "horizontal fader" (control-colors (gui:fader-value "##h" 0.5 :length 10)))
+                  results)
+            (push (list "vertical fader" (control-colors (gui:fader-value "##v" 0.5 :vertical t)))
+                  results)
+            (push (list "knob" (control-colors (gui:knob-value "##k" 0.5))) results)
+            (push (list "number box" (control-colors (gui:number-box-value "##n" 0.5))) results)
+            (push (list "xy pad" (control-colors (gui:xy-pad-value "##xy" 0.5 0.5))) results))))
+      (loop for (name colours) in results
+            do (is (member (gui::control-color :text) colours) "~A value in :text" name)
+               (is (not (member (gui::control-color :text-dim) colours))
+                   "~A draws nothing in :text-dim" name)))
     (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
 
 (test fader-wrong-type-signals

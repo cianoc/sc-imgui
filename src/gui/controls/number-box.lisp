@@ -95,7 +95,7 @@ return (values new-value changed-p).  WIDTH is the box's width in rem or
             (%imgui:push-clip-rect (vec2 x y) (vec2 (+ x box-width) (+ y height)) t)
             (unwind-protect
                  (draw-text text-x text-y
-                            (control-color (if (control-frame-active-p frame) :text :text-dim))
+                            (control-color :text)
                             text)
               (%imgui:pop-clip-rect))))
         (when (plusp label-width)

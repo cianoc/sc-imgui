@@ -91,7 +91,7 @@ centred in it."
              (lo (min position origin))
              (hi (max position origin))
              (text-y (+ y (/ (- thickness line) 2)))
-             (value-color (control-color (if (control-frame-active-p frame) :text :text-dim))))
+             (value-color (control-color :text)))
         (destructuring-bind (bar-x bar-y bar-w bar-h) bar
           ;; While a horizontal fader's text field is open over the right half
           ;; of its bar, the bar and fill stop at the field so it stays visible.

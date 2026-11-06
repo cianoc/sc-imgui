@@ -65,7 +65,7 @@ clipped to them."
         (unless (control-frame-editing-p frame)
           (draw-clipped-centered-text
            x (+ value-y (/ (- value-height line) 2)) width
-           (control-color (if (control-frame-active-p frame) :text :text-dim))
+           (control-color :text)
            (format-control-value spec (control-frame-value frame))))
         (if (control-frame-changed-p frame)
             (values (control-frame-value frame) t)
