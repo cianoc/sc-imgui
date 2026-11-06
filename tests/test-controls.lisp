@@ -798,3 +798,63 @@ seen by the text field: Escape there would be lost.)"
                    (fail "no error for ~S" pair))
           (gui:widget-value-error (e) (is (equal "Pad" (gui::widget-value-error-label e)))))))
     (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+;;; Click-to-edit on the number box: a click (press and release without a
+;;; drag) opens the text field once ImGui's double-click time has passed, so a
+;;; double-click still resets.  Headless frames are 1/60 s apart.
+
+(defun idle-frames (n draw)
+  (dotimes (i n) (with-test-frame () (funcall draw))))
+
+(defun double-click-frames ()
+  "Frames that cover ImGui's double-click time, plus a margin."
+  (+ 2 (ceiling (* 60 (cffi:foreign-slot-value (%imgui:get-io-nil) '(:struct %imgui::im-gui-io)
+                                               '%imgui::mouse-double-click-time)))))
+
+(defun open-field-p ()
+  (some #'gui::control-state-edit-text (alexandria:hash-table-values gui::*control-states*)))
+
+(test number-box-click-opens-text-field
+  (with-controls-env ()
+    (let* ((v 0)
+           (draw (lambda () (in-window (gui:number-box "Transpose" v :min -24 :max 24 :unit :semitones)))))
+      (click-item draw)
+      (is (not (open-field-p)) "not before the double-click time has passed")
+      (idle-frames (double-click-frames) draw)
+      (is (open-field-p) "a click opens the field")
+      (type-text "7" draw)
+      (press-key %imgui:+key-enter+ draw)
+      (is (eql 7 v))
+      (is (= 0 (hash-table-count gui::*control-states*))))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test number-box-double-click-resets-without-opening
+  (with-controls-env ()
+    (let* ((v 5)
+           (draw (lambda () (in-window (gui:number-box "Transpose" v :min -24 :max 24 :default 0)))))
+      (click-item draw :clicker #'frames-with-double-click)
+      (idle-frames (double-click-frames) draw)
+      (is (eql 0 v))
+      (is (not (open-field-p)))
+      (is (= 0 (hash-table-count gui::*control-states*))))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test number-box-drag-does-not-open
+  (with-controls-env ()
+    (let* ((v 0.0)
+           (draw (lambda () (in-window (gui:number-box "n" v)))))
+      (prime-and-drag 0 (- (gui::rem-px 2)) draw)
+      (idle-frames (double-click-frames) draw)
+      (is (> v 0.1))
+      (is (not (open-field-p)))
+      (is (= 0 (hash-table-count gui::*control-states*))))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test knob-click-does-not-open
+  (with-controls-env ()
+    (let ((v 0.5))
+      (click-item (lambda () (in-window (gui:knob "k" v))))
+      (idle-frames (double-click-frames) (lambda () (in-window (gui:knob "k" v))))
+      (is (not (open-field-p)))
+      (is (= 0 (hash-table-count gui::*control-states*))))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))

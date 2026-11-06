@@ -3,7 +3,8 @@
 ;;;; Run:  (ql:quickload :sc-imgui)  (gui:start)
 ;;;;       (load (asdf:system-relative-pathname :sc-imgui "examples/controls.lisp"))
 ;;;; Drag a knob or fader up or down (Shift for fine); double-click resets it;
-;;;; Cmd-click (Ctrl-click off macOS) types a value, e.g. 2k or -6.
+;;;; Cmd-click (Ctrl-click off macOS) types a value, e.g. 2k or -6; a plain
+;;;; click on the Transpose number box does too.
 ;;;; Drag in the XY pad to move cutoff and resonance together.
 ;;;; Try (gui:set-theme :dark) and (gui:set-font-size 20).
 

@@ -77,7 +77,8 @@ return (values new-value changed-p).  WIDTH is the box's width in rem or
     (multiple-value-bind (x y) (cursor-screen-pos)
       (let* ((frame (control-behavior label spec value
                                       :width (+ box-width gap label-width) :height height
-                                      :value-rect (list x y box-width height)))
+                                      :value-rect (list x y box-width height)
+                                      :click-edits t))
              (text-y (+ y (/ (- height (%imgui:get-font-size)) 2))))
         ;; While editing, the core's text field (already drawn) is the box.
         (unless (control-frame-editing-p frame)

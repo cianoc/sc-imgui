@@ -64,6 +64,9 @@ by ImGui's style alpha (so it fades inside WITH-DISABLED as stock widgets do)."
   edit-buffer  ; foreign buffer of +EDIT-BUFFER-SIZE+ bytes behind the field
   edit-phase   ; :focus (asking for keyboard focus), :refocus (asked, after a
                ; failed Enter) or :active (field focused)
+  moved        ; true once the current drag has moved the value
+  double-click ; true when the current press was the second of a double-click
+  click-at     ; ImGui time of a click that will open the text field, or NIL
   (frame -1))  ; ImGui frame count when the control last drew
 
 (defconstant +edit-buffer-size+ 64)
@@ -238,12 +241,15 @@ the range."
                          (+ (value->position spec value) (* notches (if shift 0.001 0.01)))
                          like))))
 
-(defun control-behavior (label spec value &key width height (axis :vertical) value-rect travel)
+(defun control-behavior (label spec value
+                         &key width height (axis :vertical) value-rect travel click-edits)
   "Reserve WIDTH x HEIGHT pixels at the cursor as one item named LABEL and
 apply the shared interaction to VALUE under SPEC: double-click reset,
 Ctrl/Cmd-click text entry (drawn over VALUE-RECT, (x y w h); without one,
 Ctrl/Cmd-click does nothing), drag along AXIS (a full sweep takes TRAVEL
-pixels, default 10 rem), then the wheel.  Returns a
+pixels, default 10 rem), then the wheel.  With CLICK-EDITS, a plain click
+(press and release without moving the value) also opens the text field, once
+ImGui's double-click time has passed without a second click.  Returns a
 CONTROL-FRAME whose value is the new value, or VALUE clamped for display when
 unchanged; CHANGED-P is true only when input changed it.  Never writes
 anything."
@@ -281,15 +287,33 @@ anything."
                (when state (setf (control-state-frame state) frame-count))
                ;; Double-click resets to the default; with Ctrl/Cmd held it
                ;; only opens the text field.
-               (when (and hovered (not ctrl) (%imgui:is-mouse-double-clicked-nil 0))
-                 (setf new (clamp-to-spec spec (control-spec-default spec) value)
-                       input t))
+               (let ((double-click (and hovered (not ctrl)
+                                        (%imgui:is-mouse-double-clicked-nil 0))))
+                 (when double-click
+                   (setf new (clamp-to-spec spec (control-spec-default spec) value)
+                         input t))
+                 ;; A pending click-to-edit opens the field once the
+                 ;; double-click time has passed; a second click cancels it.
+                 (when (and state (control-state-click-at state))
+                   (cond (double-click
+                          (setf (control-state-click-at state) nil))
+                         ((> (- (%imgui:get-time) (control-state-click-at state))
+                             (%io-value %imgui::mouse-double-click-time))
+                          (setf (control-state-click-at state) nil)
+                          (when value-rect
+                            (start-text-entry state (format-control-value spec new))))))
+                 (when (and double-click state)
+                   (setf (control-state-double-click state) t)))
                ;; A press starts a drag, or with Ctrl/Cmd held opens the text
                ;; field (never a drag).
                (when (%imgui:is-item-activated)
                  (cond ((not ctrl)
                         (setf state (ensure-control-state id)
-                              (control-state-position state) (value->position spec new)))
+                              (control-state-position state) (value->position spec new)
+                              (control-state-moved state) nil)
+                        (when (%imgui:is-mouse-double-clicked-nil 0)
+                          (setf (control-state-double-click state) t
+                                (control-state-click-at state) nil)))
                        (value-rect
                         (setf state (ensure-control-state id))
                         (start-text-entry state (format-control-value spec new)))))
@@ -303,13 +327,28 @@ anything."
                                                                (/ (* delta (if shift 0.1 1.0))
                                                                   range))))))
                             (setf (control-state-position state) position
+                                  (control-state-moved state) t
                                   new (position->value spec position value)
                                   input t)))))
                      ((and state (control-state-position state))
-                      ;; The drag ended.
+                      ;; The drag ended.  A press that moved nothing and wasn't
+                      ;; a double-click is a click: with CLICK-EDITS it opens
+                      ;; the text field after the double-click time.
                       (setf (control-state-position state) nil)
-                      (unless (control-state-edit-text state)
-                        (remove-control-state id))))
+                      (if (and click-edits value-rect
+                               (not (control-state-moved state))
+                               (not (control-state-double-click state)))
+                          (setf (control-state-click-at state) (%imgui:get-time))
+                          (unless (control-state-edit-text state)
+                            (remove-control-state id)))
+                      (setf (control-state-double-click state) nil)))
+               ;; A finished click that opened nothing leaves no state.
+               (when (and state (not active) (not (control-state-position state))
+                          (not (control-state-edit-text state))
+                          (not (control-state-click-at state))
+                          (gethash id *control-states*))
+                 (remove-control-state id)
+                 (setf state nil))
                ;; Wheel while hovered; claim it so the window doesn't scroll.
                (when hovered
                  (unless (eql (car *wheel-residue*) id)

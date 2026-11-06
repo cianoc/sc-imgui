@@ -291,7 +291,7 @@ The same for every value control, except where a control says otherwise:
 
 **`(trigger label &key width)`** — A momentary button with no place. Returns three values: true on the frame it's pressed, true while it's held, and true on the frame it's released. It is lit in `:accent` while held.
 
-**`number-box`**, **`(number-box-value label value &rest spec &key width)`** — Live's compact number field: the formatted value in a `:frame` box, with the label beside it. All the interaction above applies, including typed entry. The box is wide enough for the longest value it can show; `width` sets it in rem.
+**`number-box`**, **`(number-box-value label value &rest spec &key width)`** — Live's compact number field: the formatted value in a `:frame` box, with the label beside it. All the interaction above applies, including typed entry. A plain click (press and release without dragging) also opens the text field, once the double-click time (0.3 s) has passed, so a double-click still resets; dragging works as on the other controls. The box is wide enough for the longest value it can show; `width` sets it in rem.
 
 **`xy-pad`**, **`(xy-pad-value label x-value y-value &key x y (size 8))`** — A square pad that edits two values. The macro is `(xy-pad label x-place y-place &key x y size)`. `x` and `y` are each a value specification as a list, such as `:x '(:min 20 :max 20000 :scale :log :unit :hz)`. The pad is `:frame` with faint grid lines, crosshair lines through the point, and the point in `:accent`; the label is above and both values below. `size` is the side in rem. It handles input differently:
 
