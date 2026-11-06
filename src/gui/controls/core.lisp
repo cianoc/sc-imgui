@@ -238,11 +238,12 @@ the range."
                          (+ (value->position spec value) (* notches (if shift 0.001 0.01)))
                          like))))
 
-(defun control-behavior (label spec value &key width height (axis :vertical) value-rect)
+(defun control-behavior (label spec value &key width height (axis :vertical) value-rect travel)
   "Reserve WIDTH x HEIGHT pixels at the cursor as one item named LABEL and
 apply the shared interaction to VALUE under SPEC: double-click reset,
 Ctrl/Cmd-click text entry (drawn over VALUE-RECT, (x y w h); without one,
-Ctrl/Cmd-click does nothing), drag along AXIS, then the wheel.  Returns a
+Ctrl/Cmd-click does nothing), drag along AXIS (a full sweep takes TRAVEL
+pixels, default 10 rem), then the wheel.  Returns a
 CONTROL-FRAME whose value is the new value, or VALUE clamped for display when
 unchanged; CHANGED-P is true only when input changed it.  Never writes
 anything."
@@ -296,7 +297,7 @@ anything."
                (cond ((and active state (control-state-position state))
                       (%imgui:set-mouse-cursor %imgui:+mouse-cursor-none+)
                       (let ((delta (drag-delta axis))
-                            (range (rem-px 10)))
+                            (range (or travel (rem-px 10))))
                         (when (and (/= 0 delta) (finite-p delta) (plusp range) (finite-p range))
                           (let ((position (max 0.0 (min 1.0 (+ (control-state-position state)
                                                                (/ (* delta (if shift 0.1 1.0))

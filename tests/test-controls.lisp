@@ -456,10 +456,27 @@ seen by the text field: Escape there would be lost.)"
 ;;; Fader
 
 (test horizontal-fader-follows-horizontal-drag
+  ;; A horizontal fader tracks the mouse 1:1: a full sweep is the bar's own
+  ;; length, so the fill edge stays under the cursor.  The window has a fixed
+  ;; size so the bar's length is known.
   (with-controls-env ()
-    (let ((v 0.0))
-      (prime-and-drag (gui::rem-px 5) 0 (lambda () (in-window (gui:fader "Vol" v))))
-      (is (< (abs (- v 0.5)) 0.02)))
+    (let ((v 0.0) (width nil))
+      (flet ((draw ()
+               (%imgui:set-next-window-size (gui::vec2 600 400) %imgui:+cond-always+)
+               (in-window (gui:fader "Vol" v))
+               (setf width (- (third *item-rect*) (first *item-rect*)))))
+        (dotimes (i 2) (with-test-frame () (draw)))
+        (prime-and-drag (/ width 2) 0 #'draw)
+        (is (< (abs (- v 0.5)) 0.02) "half the bar (~,1F px) gives ~A" (/ width 2) v)))
+    (let ((v 0.0) (width nil))
+      (flet ((draw ()
+               (%imgui:set-next-window-size (gui::vec2 600 400) %imgui:+cond-always+)
+               (in-window (gui:fader "Vol" v))
+               (setf width (- (third *item-rect*) (first *item-rect*)))))
+        (dotimes (i 2) (with-test-frame () (draw)))
+        (with-keys-held (:shift)
+          (prime-and-drag (/ width 2) 0 #'draw))
+        (is (< (abs (- v 0.05)) 0.01) "Shift: half the bar gives ~A" v)))
     (let ((v 0.0))
       (prime-and-drag 0 -50 (lambda () (in-window (gui:fader "Vol" v))))
       (is (= 0.0 v)))
