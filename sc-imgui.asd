@@ -23,7 +23,10 @@
                              (:file "widgets")
                              (:file "theme")
                              (:file "plots")
-                             (:file "draw")))))
+                             (:file "draw")
+                             (:module "controls"
+                              :serial t
+                              :components ((:file "spec")))))))
 
 (asdf:defsystem "sc-imgui/generator"
   :description "Generates CFFI bindings from cimgui/cimplot JSON definitions."
@@ -71,4 +74,5 @@
                (:file "test-plots")
                (:file "test-draw")
                (:file "test-theme")
+               (:file "test-control-spec")
                (:file "test-examples")))

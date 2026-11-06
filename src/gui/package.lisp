@@ -14,7 +14,7 @@
            #:with-id #:with-disabled #:with-style #:with-row #:with-grid
            #:same-line #:new-line #:separator #:spacing #:indent #:unindent
            #:set-next-item-width
-           #:widget-value-error
+           #:widget-value-error #:control-spec-error
            #:slider #:slider-value #:drag #:drag-value #:checkbox #:checkbox-value
            #:combo #:combo-value #:input-text #:input-text-value #:selectable #:selectable-value
            #:list-box #:list-box-value #:button #:text
