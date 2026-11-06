@@ -103,3 +103,34 @@
   (is (= 1 (gui::parse-control-text (spec :value 0 :choices '("Sine" "Saw")) "saw")))
   (is (equal '(nil nil) (multiple-value-list
                          (gui::parse-control-text (spec :value 0 :choices '("Sine" "Saw")) "tri")))))
+
+(test parse-never-signals-on-huge-numbers
+  (let ((s (spec :unit :hz :min 20 :max 20000))
+        (huge (format nil "1~A.5" (make-string 60 :initial-element #\0))))
+    (is (equal '(nil nil) (multiple-value-list (gui::parse-control-text s huge))))
+    (finishes (gui::parse-control-text            ; tiny: may underflow, must not signal
+               s (format nil "0.~A1" (make-string 60 :initial-element #\0))))))
+
+(test bare-numbers-follow-display-scale
+  (flet ((p (unit text &rest args) (gui::parse-control-text (apply #'spec :unit unit args) text)))
+    (is (= 0.62 (p :percent "62")))
+    (is (= 0.5 (p :pan "25" :min -1 :max 1)))
+    (is (= -0.5 (p :pan "-25" :min -1 :max 1)))
+    (is (= 0 (p :pan "0" :min -1 :max 1)))
+    (is (= 0.5 (p :pan "25R" :min -1 :max 1)))
+    (is (= -1 (p :pan "50L" :min -1 :max 1)))
+    (is (= -6 (p :db "-6" :min -70 :max 6)))
+    (is (= 440 (p :hz "440" :min 20 :max 20000)))
+    (is (= 120 (p :ms "120" :min 0 :max 5000)))
+    (is (= 3 (p :semitones "3" :min -12 :max 12)))))
+
+(test format-parse-boundaries
+  (flet ((f (unit v &rest args) (gui::format-control-value (apply #'spec :unit unit args) v)))
+    (is (string= "1.00 kHz" (f :hz 999.6 :min 20 :max 20000)))
+    (is (string= "0.0 dB" (f :db -0.04 :min -70 :max 6))))
+  (let ((s (spec :unit :hz :min 20 :max 20000)))
+    (is (= 0.5 (gui::parse-control-text s ".5")))
+    (is (= 5 (gui::parse-control-text s "5.")))
+    (is (= 440 (gui::parse-control-text s "  440 Hz  ")))
+    (is (equal '(nil nil) (multiple-value-list (gui::parse-control-text s "-"))))
+    (is (equal '(nil nil) (multiple-value-list (gui::parse-control-text s ""))))))

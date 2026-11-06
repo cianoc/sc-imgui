@@ -78,18 +78,22 @@ and the index after it, or NIL if there is no number."
 (defun unit-multiplier (unit suffix)
   "The exact factor for SUFFIX (lower-case, trimmed) under UNIT, or NIL."
   (flet ((in (&rest names) (member suffix names :test #'string=)))
-    (cond ((string= suffix "") 1)
+    (cond ((and (string= suffix "") (not (member unit '(:percent :pan)))) 1)
           (t (ecase unit
                ((nil) nil)
                (:hz (cond ((in "hz") 1) ((in "k" "khz") 1000)))
                (:db (and (in "db") 1))
                (:ms (cond ((in "ms") 1) ((in "s") 1000)))
-               (:percent (and (in "%") 1/100))
+               (:percent (and (in "" "%") 1/100))
                (:semitones (and (in "st") 1))
-               (:pan (cond ((in "l") -1/50) ((in "r") 1/50))))))))
+               (:pan (cond ((in "") 1/50) ((in "l") -1/50) ((in "r") 1/50))))))))
 
 (defun coerce-parsed (rational)
-  (if (integerp rational) rational (float rational 1f0)))
+  "RATIONAL as an integer or single-float, or NIL if it is out of float range."
+  (if (integerp rational)
+      rational
+      (handler-case (float rational 1f0)
+        (arithmetic-error () nil))))
 
 (defun parse-control-text (spec string)
   "Parse typed STRING under SPEC.  Returns (values value t), or (values nil nil).
@@ -112,4 +116,5 @@ The value is not clamped."
           (let ((factor (unit-multiplier
                          unit (string-trim " " (subseq lower end)))))
             (unless factor (fail))
-            (values (coerce-parsed (* number factor)) t)))))))
+            (let ((value (coerce-parsed (* number factor))))
+              (if value (values value t) (fail)))))))))
