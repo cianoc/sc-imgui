@@ -93,7 +93,14 @@ static int store_font(ImFont *font, float size) {
 // modifier pressed while another application had keyboard focus: Cmd held in
 // the REPL and then clicked into the window reads as up.  The click event's
 // own MODS are right, so queue those, then the button, as the backend would.
-static void mouse_button_cb(GLFWwindow *, int button, int action, int mods) {
+//
+// A press on the window while it doesn't have keyboard focus also gives it
+// focus.  On macOS a Cmd-click deliberately doesn't activate a background
+// window, so a Cmd-click that opens a control's text field would otherwise
+// leave the keyboard with the REPL until a plain click.
+static void mouse_button_cb(GLFWwindow *window, int button, int action, int mods) {
+  if (window && action == GLFW_PRESS && !glfwGetWindowAttrib(window, GLFW_FOCUSED))
+    glfwFocusWindow(window);
   ImGuiIO &io = ImGui::GetIO();
   io.AddKeyEvent(ImGuiMod_Ctrl, (mods & GLFW_MOD_CONTROL) != 0);
   io.AddKeyEvent(ImGuiMod_Shift, (mods & GLFW_MOD_SHIFT) != 0);
