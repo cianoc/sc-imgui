@@ -59,6 +59,12 @@ Re-evaluating the `define-gui` form changes the window on the next frame. `(gui:
 | [Widgets](#widgets) | `slider`, `drag`, `checkbox`, `combo`, `input-text`, `selectable`, `list-box` | macros | Edit a place; true when changed |
 | | `slider-value`, `drag-value`, ... `list-box-value` | functions | Same, returning `(values new changed-p)` |
 | | `button`, `text` | functions | Clickable button; formatted text |
+| [Controls](#controls) | `knob`, `fader`, `number-box` | macros | Audio controls with units, scales and typed entry; true when changed |
+| | `knob-value`, `fader-value`, `number-box-value` | functions | Same, returning `(values new changed-p)` |
+| | `toggle`, `toggle-value` | macro, function | A lit on/off button on a boolean place |
+| | `trigger` | function | Momentary button; returns pressed, held, released |
+| | `xy-pad`, `xy-pad-value` | macro, function | Two values on one square pad |
+| | `control-spec-error` | condition | A control got an invalid specification |
 | | `widget-value-error` | condition | A widget got a value of the wrong type |
 | [Plots](#plots) | `with-plot` | macro | An ImPlot plot area; items take the theme's series colours |
 | | `plot-lines`, `plot-bars`, `plot-scatter` | functions | Plot Lisp sequences |
@@ -224,6 +230,102 @@ Each place-taking macro has the form `(widget label place &rest args)`, where `a
 
 **`widget-value-error`** — A subclass of `type-error`, signalled before any foreign call when a widget gets a value or argument of the wrong type, such as a `nil` slider value. Its report names the widget's label; `widget-value-error-label` reads it. Inside a panel, the runtime treats it like any panel error.
 
+### Controls
+
+Audio controls that look and handle like Ableton Live's: a knob, a fader, a toggle, a trigger, a number box and an XY pad. They take their colours from the theme, size themselves in rem, and follow `set-theme` and `set-font-size` live. They edit any place, like the widgets above, and don't depend on cl-collider. The code is in `src/gui/controls/`. `examples/controls.lisp` is a synth device that uses all six.
+
+The value controls (`knob`, `fader`, `number-box`, and each axis of `xy-pad`) share one implementation of mapping, interaction, display and typed entry, so they behave the same wherever they overlap. Each is a place macro with a `-value` function, like the widgets: the macro writes the new value back and returns true when it changed, and the function returns `(values new-value changed-p)` and writes nothing. `changed-p` is true on every frame the value changes during a drag, so code can follow it continuously.
+
+```lisp
+(gui:knob "Cutoff" *cutoff* :min 20 :max 20000 :scale :log :unit :hz)
+```
+
+#### Value specification
+
+Every value control takes these keyword arguments:
+
+| Argument | Meaning |
+| --- | --- |
+| `:min`, `:max` | Range. Defaults 0 and 1. |
+| `:scale` | `:linear` (default) or `:log`. `:log` needs `min` above 0. |
+| `:step` | Snap to multiples of this. An integer value with no `:step` snaps to 1, so integer places stay integers. |
+| `:choices` | A list of strings. The value is an index, and the control steps through the choices. Replaces `:min`, `:max`, `:step` and `:scale`. |
+| `:bipolar` | Draw the arc or fill from an origin instead of from `min`. `t` uses 0 if the range includes it, otherwise the midpoint; a number sets the origin. |
+| `:default` | Value for double-click reset. Defaults to the origin when bipolar, otherwise `min`. |
+| `:unit` | A built-in formatter, which also parses typed text. See below. |
+| `:format` | A function of the value that returns a string. Overrides `:unit`. |
+
+#### Units
+
+| Unit | Values | Display | Bare typed number |
+| --- | --- | --- | --- |
+| `:hz` | Frequency in Hz | `440 Hz`, `2.40 kHz` (kHz from 1000) | Hz |
+| `:db` | Level in dB | `-6.0 dB`; `-inf dB` at or below -70 | dB |
+| `:ms` | Time in ms | `120 ms`, `1.20 s` (s from 1000) | ms |
+| `:percent` | 0 to 1 | `62 %` | Percent: `62` is 62 % |
+| `:semitones` | Semitones | `+3 st`, `-12 st`, `0 st` | Semitones |
+| `:pan` | -1 to 1 | `50L`, `C`, `25R` (Live's 50L to 50R scale) | On the display scale: `25` is 25R, `-25` is 25L |
+
+With neither `:unit` nor `:format`, numbers show with a precision that suits the range, and a choice control shows the selected choice's name.
+
+#### Interaction
+
+The same for every value control, except where a control says otherwise:
+
+- **Drag vertically,** up to increase. A full sweep of the range takes 10 rem of travel. Shift makes it 10 times finer. The control accumulates the unsnapped position during a drag, so stepped and choice controls don't stick between steps. The cursor is hidden while dragging.
+- **Double-click** resets to `:default`.
+- **Mouse wheel,** while hovered, moves 1% of the range per notch, or one step for stepped controls and choices. Shift makes it 0.1%. Trackpad fractions add up, and a stepped or choice control steps once per whole notch. The control claims the wheel, so the window doesn't scroll under it.
+- **Cmd-click** on macOS (Ctrl-click on Linux and Windows) opens a text field in place of the value:
+    - Enter parses the text with the control's unit. `2k`, `2.4 kHz`, `1.2 s`, `-6`, `-6 dB` and `25R` all work. The result is clamped and snapped, and the field closes.
+    - If the text can't be parsed, the field stays open with the text unchanged, outlined in the theme's `:error` colour, and the value is unchanged. The outline clears when you edit the text.
+    - Escape or clicking elsewhere cancels and leaves the value unchanged.
+    - Enter on text you haven't edited closes the field without writing, so a value that code changed in the meantime is kept.
+
+#### Controls
+
+**`knob`**, **`(knob-value label value &rest spec &key (size 2.5))`** — A 270° arc open at the bottom, with the label above in `:text-dim` and the formatted value below. The track is `:frame`, the value arc is `:accent` (from `min`, or from the origin when bipolar), and a short pointer marks the position. `size` is the arc's diameter in rem. The knob is its diameter plus 0.5 rem wide.
+
+**`fader`**, **`(fader-value label value &rest spec &key vertical length thickness)`** — Horizontal by default, like Live's bar slider: a flat bar in `:frame`, filled in `:accent` up to the value, with the label left-aligned and the value right-aligned inside it. It fills the available width unless `length` (in rem) is given. With `:vertical t` it is a mixer fader, filled from the bottom, with the label above and the value below. `thickness` defaults to the frame height in both orientations, so a horizontal fader is as tall as other controls on its row. A vertical fader's `length` defaults to 8 rem. A bipolar fill grows out from the origin. A fader drags along its own axis, so a horizontal fader follows horizontal drags; everything else is as above.
+
+**`toggle`**, **`(toggle-value label value &key width)`** — A rectangular button showing the label: lit in `:accent` when on, `:control` when off. A click flips the boolean in the place, which holds `t` or `nil`. It has no value specification, wheel or typed entry. `width` is in rem; the default fits the label plus 1 rem.
+
+**`(trigger label &key width)`** — A momentary button with no place. Returns three values: true on the frame it's pressed, true while it's held, and true on the frame it's released. It is lit in `:accent` while held.
+
+**`number-box`**, **`(number-box-value label value &rest spec &key width)`** — Live's compact number field: the formatted value in a `:frame` box, with the label beside it. All the interaction above applies, including typed entry. The box is wide enough for the longest value it can show; `width` sets it in rem.
+
+**`xy-pad`**, **`(xy-pad-value label x-value y-value &key x y (size 8))`** — A square pad that edits two values. The macro is `(xy-pad label x-place y-place &key x y size)`. `x` and `y` are each a value specification as a list, such as `:x '(:min 20 :max 20000 :scale :log :unit :hz)`. The pad is `:frame` with faint grid lines, crosshair lines through the point, and the point in `:accent`; the label is above and both values below. `size` is the side in rem. It handles input differently:
+
+- Pressing anywhere moves the point there, and dragging follows the mouse.
+- Shift-drag is relative and fine: 0.1 times the pad's size. If you release Shift mid-drag, the drag goes back to absolute and the point snaps to the mouse.
+- Double-click resets both axes.
+- There is no wheel or typed entry.
+
+The macro writes whichever places changed and returns true if either did. `xy-pad-value` returns `(values new-x new-y changed-p)`. An axis you didn't change comes back as given, not clamped.
+
+**Choices.** `:choices` works on knobs, faders and number boxes. The place holds the selected index:
+
+```lisp
+(gui:knob "Wave" *wave* :choices '("Sine" "Saw" "Square" "Noise"))
+```
+
+#### Layout and sizing
+
+- **All sizes are in rem,** multiples of the base font size: knob diameters, fader lengths and thickness, box and button widths, and the XY pad's size. They scale with `set-font-size`. A size given as `(:px n)` is fixed.
+- **One control, one ImGui item.** Each control reserves one rectangle that covers everything it draws, label and value text included, so `with-row`, `with-grid` and `with-group` treat it as a unit, and a row of controls shares a top edge.
+- **Widths don't depend on the text.** Text wider than its control is clipped at the edge, so rows stay aligned as values change.
+- **Feedback follows the theme.** A hovered control's track changes from `:frame` to `:frame-hover`. While you drag or edit, the value text is drawn in full-strength `:text`. Inside `with-disabled`, input is ignored and every colour fades with ImGui's style alpha, like the stock widgets.
+- **IDs** follow the usual rules: the label is the ID, `##` hides a suffix, and `with-id` separates repeated controls.
+
+#### Errors
+
+- **A value of the wrong type**, such as a `nil` place or a string where a number belongs, signals `widget-value-error` naming the label, before any foreign call.
+- **An invalid specification** signals **`control-spec-error`**, a subclass of `error` whose report names the label and the problem. `control-spec-error-label` and `control-spec-error-problem` read the two parts. The problems are: `min` not below `max`; `:log` with `min` of 0 or less; a non-positive `:step`; empty or non-string `:choices`, or `:choices` with `:min`, `:max`, `:step` or `:scale`; a `:default` outside the range; an unknown `:unit`; a malformed `:x` or `:y`.
+- **A value outside the range**, for example set from code, is displayed clamped but not written back unless the user changes the control. Drawing a control never changes its value.
+- **Types are preserved.** A `double-float` stays a `double-float`; integers and choice indexes stay integers.
+- **A `:format` function that signals** fails the panel, like any other error in panel code.
+
+Inside a panel, all of these fail the panel through the usual error handling.
+
 ### Plots
 
 **`(with-plot (title &key (width -1) (height 0) flags) &body body)`** — An ImPlot plot area. A width of -1 fills the available width; a height of 0 uses ImPlot's default. Flags use `%implot`'s `FLAGS` prefix, such as `:no-title` or `:no-legend`. The body, which calls the plot functions, runs only when the plot is visible.
@@ -337,7 +439,7 @@ Without `:base`, the palette must have every role. Defining a name that exists r
 
 ### Limits
 
-ImGui's stock slider draws a grab handle on a track, not a bar filled up to the value. Filled sliders, arc knobs and lit toggles are custom controls (part 3). They should take their colours from `theme-color`, so they follow the theme.
+ImGui's stock slider draws a grab handle on a track, not a bar filled up to the value. Filled sliders, arc knobs and lit toggles are the [controls](#controls): `fader`, `knob` and `toggle`. They take their colours from `theme-color`, so they follow the theme.
 
 ## File by file
 
@@ -354,10 +456,12 @@ The `sc-imgui` system loads these in this order (`sc-imgui.asd`); each may use t
 | `theme.lisp` | Themes: the palette-to-ImGui and ImPlot colour maps, `define-theme`, `set-theme`, `set-font-size`, `theme-color`, `apply-theme` (internal; writes the styles and the clear colour, and runs from `gui.runtime:*after-window-created-hook*`), and the two shipped themes. |
 | `plots.lisp` | `with-plot` and the plot functions. `plot-data` decides whether to copy; `plot-pair` matches `xs` and `ys`; `plot-spec` builds ImPlot's `ImPlotSpec` argument with the theme's next series colour (`next-series-color`) and ImPlot's other defaults; vectors are pinned with `cffi:with-pointer-to-vector-data` during each call. |
 | `draw.lisp` | `color`, the draw functions, and the interaction helpers. |
+| `controls/` | The audio controls, loaded after `draw.lisp`: `spec.lisp` (value specifications, `control-spec-error`, mapping between value and position), `units.lisp` (formatting and parsing for each unit), `core.lisp` (the shared interaction, per-control state, typed entry, rem sizes), then `number-box.lisp`, `knob.lisp`, `fader.lisp`, `buttons.lisp` (toggle and trigger) and `xy-pad.lisp`. |
 
 ## Building a custom widget
 
-`examples/custom-knob.lisp` builds a knob from the pieces above. It's the pattern part 3's audio widgets will follow:
+`examples/custom-knob.lisp` builds a knob from the pieces above. `gui:knob` now exists (see [Controls](#controls)), and this walkthrough shows how the controls are built: each reserves an invisible button, reads interaction, and draws with the primitives and `theme-color`. The real controls add one shared layer for mapping, display and typed entry (`src/gui/controls/`).
+
 
 ```lisp
 (defun example-knob (label value min max &key (size 48))
@@ -403,6 +507,23 @@ The knob draws on top of the area it reserved. Wrapping each knob in `with-group
           (gui:text "~A" (synth-name s))
           (when (gui:slider "Amp" (synth-amp s) :min 0.0 :max 1.0)
             (ctrl s :amp (synth-amp s))))))))
+```
+
+### A synth device
+
+A row of knobs, a volume fader, and a toggle and trigger, in one window. `examples/controls.lisp` is a fuller version with a vertical fader, a number box and an XY pad.
+
+```lisp
+(gui:define-gui saw-device ()
+  (gui:with-window ("Saw")
+    (gui:with-row ()
+      (gui:knob "Cutoff" *cutoff* :min 20 :max 20000 :scale :log :unit :hz)
+      (gui:knob "Res" *res* :unit :percent)
+      (gui:knob "Pan" *pan* :min -1 :max 1 :bipolar t :unit :pan))
+    (gui:fader "Volume" *vol* :min -70 :max 6 :default 0 :unit :db)
+    (gui:with-row ()
+      (gui:toggle "Mute" *mute*)
+      (when (gui:trigger "Hit") (play-note)))))
 ```
 
 ### A live scope with no copying
@@ -512,10 +633,10 @@ Add new wrappers here rather than calling `%imgui` throughout your own code, so 
 **A new place widget.** Write a `-value` function that checks its arguments with `%check` before any foreign call, passes out-values through `(scratch)`, and returns `(values new changed-p)`, returning the original value unchanged when nothing changed. Then generate the macro:
 
 ```lisp
-(defun knob-value (label value &key (min 0.0) (max 1.0))
+(defun meter-value (label value &key (min 0.0) (max 1.0))
   (%check label value 'real)
   ...)
-(define-place-widget knob knob-value)
+(define-place-widget meter meter-value)
 ```
 
 **A new scope macro.** Wrap the begin call and the body in `unwind-protect` with the end call. Check ImGui's rule for each pair:
@@ -538,7 +659,7 @@ These common ImGui features exist in `%imgui` but have no `gui` wrapper yet. Cal
 | Tooltips | `begin-tooltip`, `end-tooltip` | `set-tooltip` isn't bound (it's variadic); use `begin-tooltip` and `gui:text` |
 | Popups and modals | `open-popup-str`, `begin-popup`, `begin-popup-modal`, `end-popup` | |
 | Colour pickers | `color-edit3`, `color-edit4`, `color-picker4` | Take a pointer to 3 or 4 floats |
-| Vertical sliders | `v-slider-float`, `v-slider-int` | Useful for faders |
+| Vertical sliders | `v-slider-float`, `v-slider-int` | `gui:fader` with `:vertical t` is the audio version |
 | Multi-value sliders | `slider-float2`, `slider-float3`, ... | Take a pointer to an array |
 | Radio buttons | `radio-button-bool` | |
 | Numeric inputs | `input-float`, `input-int` | Typed entry with +/- buttons |
@@ -636,6 +757,7 @@ After `define-gui` is re-evaluated, its windows resize to fit their contents on 
 | `plots` | No copying for specialized vectors; coercion; length and type errors; every plot kind; series colours cycle per item and restart per plot |
 | `draw` | `color` matches ImGui; every primitive adds vertices; polyline edge cases; invisible-button clicks and drags |
 | `theme` | Colour and size parsing and errors; `define-theme` with and without `:base`; the palette mapping reaching every ImGui and ImPlot colour; rem and pixel sizes; `set-theme`, `set-font-size` and `theme-color`; the shipped themes |
+| `controls` | Value specifications, units and parsing; every control's interaction (drag, Shift, wheel, double-click, typed entry), layout and no ImGui assertions |
 | `examples` | Every file in `examples/` loads and draws without failures or assertions |
 
 Not directly tested (see "Known gaps" in `tests/README.md`): the `drag` macro, `with-section`, the layout functions, `item-hovered-p`, `mouse-pos`, `content-region-avail`, `set-cursor-screen-pos`, `reset-mouse-drag-delta`, and the visible effect of `with-style`, `with-disabled`, and `with-font`. Some run indirectly through the examples.
@@ -646,4 +768,5 @@ The examples, each loaded after `(gui:start)` with `(load (asdf:system-relative-
 - `layout.lisp`: rows, a grid, a section, a scrolling child.
 - `plots.lisp`: a live line plot, bars, and a scatter plot.
 - `custom-knob.lisp`: the knob from [Building a custom widget](#building-a-custom-widget), coloured with `theme-color`.
+- `controls.lisp`: a synth device with knobs, faders, a toggle, a trigger, a number box and an XY pad.
 - `error-recovery.lisp`: a deliberately failing panel and how to recover it.

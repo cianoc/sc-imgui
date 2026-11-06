@@ -13,7 +13,8 @@
                 (%shim:assert-count))))))
 
 (test examples-run-cleanly
-  (dolist (file '("hello.lisp" "layout.lisp" "plots.lisp" "custom-knob.lisp"))
+  (dolist (file '("hello.lisp" "layout.lisp" "plots.lisp" "custom-knob.lisp"
+                    "controls.lisp"))
     (multiple-value-bind (entries asserts) (run-example file)
       (is (plusp (length entries)) "~A registers no panels" file)
       (is (every (lambda (e) (null (cdr e))) entries) "~A has a failed panel" file)

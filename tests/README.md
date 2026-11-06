@@ -18,7 +18,7 @@ Contents:
 
 There are two kinds of tests:
 
-- **`make test`** runs 140 [FiveAM](https://github.com/lispci/fiveam) tests in eleven suites. They run **headless**: ImGui runs with no window and no GPU, and each test draws frames itself by calling `NewFrame` and `Render`. They're fast, need no display, and run anywhere, including CI.
+- **`make test`** runs 212 [FiveAM](https://github.com/lispci/fiveam) tests in twelve suites. They run **headless**: ImGui runs with no window and no GPU, and each test draws frames itself by calling `NewFrame` and `Render`. They're fast, need no display, and run anywhere, including CI.
 - **`make smoke`** opens a **real window** and drives the real frame loop on SBCL's main thread: starting, live redefinition, error recovery, hiding, showing, closing, and shutting down. It needs a display. On Linux CI it runs under Xvfb, a virtual display.
 
 A third test lives outside this folder: `native/test_assert.c`, run by `make native`, checks that ImGui misuse is recorded rather than aborting the process. See `native/README.md`.
@@ -40,7 +40,7 @@ Then:
 ```sh
 make test                  # every suite
 make test SUITE=widgets    # one suite: generator, bindings, registry, frame, loop,
-                           # scopes, widgets, plots, draw, theme, examples
+                           # scopes, widgets, plots, draw, theme, controls, examples
 make smoke                 # real window; needs a display
 ```
 
@@ -69,7 +69,7 @@ Defines `sc-imgui.tests`, which uses FiveAM and the generator package, so genera
 
 ### `suites.lisp`
 
-Defines the suite `all` and the eleven suites inside it, plus `run-suites`, which runs a suite by name and returns true only when every check passed. **A new suite must be added to the list here**, or `make test SUITE=<name>` reports "Unknown suite".
+Defines the suite `all` and the twelve suites inside it, plus `run-suites`, which runs a suite by name and returns true only when every check passed. **A new suite must be added to the list here**, or `make test SUITE=<name>` reports "Unknown suite".
 
 ### `headless.lisp`
 
@@ -83,9 +83,15 @@ Shared helpers for tests that run ImGui without a window. Most tests are built f
 | `last-item-center`, `last-item-rect` | The center or rectangle of the last drawn item | Used to aim simulated clicks. |
 | `frames-with-click` | Simulates a click at (x, y) over four frames (move, press, release, idle), calling the draw function once per frame and returning its values | ImGui reads input from an event queue, so each event must be queued *before* the frame that should see it. A button reports a click on the release frame. `:warmup` runs extra frames first, because a newly created window is hidden on its first frame and can't be hovered until the next. |
 | `in-window` | Runs the body inside a window named `"w"`, and records the last item's rectangle and the current item width | Saves boilerplate, and gives `click-item` something to aim at. |
-| `click-item` | Draws twice so the item has a rectangle, then clicks its center | The two priming frames cover the hidden-first-frame rule. |
+| `click-item` | Draws twice so the item has a rectangle, then clicks its center (`:x-fn` picks another point, `:clicker` another click function) | The two priming frames cover the hidden-first-frame rule. |
 | `click-item-at-right-edge` | Clicks 2 pixels inside the right edge of the item's *frame* | An item's rectangle includes its label, so the frame's right edge is calculated from the item width, not the rectangle. |
-| `frames-with-drag`, `prime-and-drag` | Press, move by (dx, dy) while held, release | Used for drag interactions, such as the knob in the examples. |
+| `frames-with-drag`, `prime-and-drag` | Press, move by (dx, dy) while held, release; `:shift t` holds Shift throughout | Used for drag interactions, such as the knob in the examples and the controls. |
+| `drag-path` | Prime a drawing function, press on its item, then move by each dy of a list, one frame per step, with an optional `:between` function called before each | Lets a test watch a value frame by frame, such as overshoot then reverse. |
+| `frames-with-wheel` | Move to (x, y), then send mouse-wheel notches (a number, or a list with one event per frame as a trackpad sends); `:shift t` holds Shift | Uses `im-gui-io-add-mouse-wheel-event`. The first frame after the event sees it in `io.MouseWheel`. |
+| `frames-with-double-click` | Press and release twice at (x, y), one frame each | Double-click needs two presses within ImGui's double-click time. |
+| `with-keys-held` | Queues key-down events for `:shift` or `:ctrl` before the body and key-up events after it, even if the body unwinds | Uses `im-gui-io-add-key-event`. `:ctrl` is what ImGui reports as `io.KeyCtrl`, which is Cmd on macOS, so one test works on every platform. |
+| `press-key` | Queues a key-down for a key, runs a frame, queues the key-up and runs another | For Enter and Escape in typed entry. |
+| `set-base-font-size` | Sets ImGui's base font size in its style, without reapplying the theme | Tests of controls at font sizes 13 and 15, and a size change mid-drag. |
 | `type-text` | Queues typed characters and runs two frames | Text input needs a frame to receive the characters and one to apply them. |
 | `with-clean-registry` | Empties the panel registry and task queue before and after the body | The registry is global, so without this, panels from one test would leak into the next. |
 | `bundled-font` | The native path of a file in `assets/fonts/` | The shim takes native namestrings, and the tests shouldn't depend on the working directory. |
@@ -208,7 +214,7 @@ The widgets, through simulated mouse and keyboard input:
 - `draw-polyline` draws nothing for a single point, and rejects an odd number of coordinates.
 - An invisible button reports clicks, and a drag reports its distance while the button is held.
 
-### `test-theme.lisp` (suite `theme`, 12 tests)
+### `test-theme.lisp` (suite `theme`, 15 tests)
 
 Themes, on a headless context. The tests apply a theme directly with `gui::apply-theme`, or queue it and run the task with `run-queued-tasks`, and read ImGui's and ImPlot's styles back through `%imgui:get-style` and `%implot:get-style`. Helpers local to the file read colours and sizes from those styles. `with-test-themes` forgets the themes a test defines.
 
@@ -219,12 +225,35 @@ Themes, on a headless context. The tests apply a theme directly with `gui::apply
 - `theme-color` matches `gui:color`, and `set-theme` with an unknown name lists the known themes.
 - With no window, `set-theme` and `set-font-size` only set their variables and queue nothing. With a window, showing or hidden, each queues one task that applies the change, and the result draws with no ImGui assertions.
 - Redefining the current theme reapplies it.
+- Both shipped themes define `:error`, a theme without `:base` and without `:error` is rejected, and a derived theme inherits it.
+
+### `test-control-spec.lisp` (suite `controls`, 15 tests)
+
+The pure-Lisp part of the controls: no ImGui. The file's local `spec` helper builds a normalized specification from keywords.
+
+- Mapping between value and position round-trips for linear, log, stepped and bipolar specs, and choices clamp their index. A non-positive value on a log scale maps to position 0 instead of signalling.
+- Integer places snap to 1, and a `double-float` stays a `double-float`.
+- Bipolar origins and defaults: `t` picks 0 or the midpoint; a number sets the origin.
+- Every specification error names the label and the problem.
+- Unit formatting at the boundaries (`999 Hz` and `1.00 kHz`, `-inf dB`, `C` for pan, `0 st`), plain-number precision, choice names and custom `:format` functions.
+- Parsing typed text (`2k`, `2.4 kHz`, `-6 dB`, `25R`), bare numbers following the display scale for `:percent` and `:pan`, rejecting garbage, and never signalling on huge numbers.
+
+### `test-controls.lisp` (suite `controls`, 54 tests)
+
+The controls on a headless context, through the harness helpers above. `with-controls-env` sets up the context and captures the assertion count; each test checks that no ImGui assertion was recorded. Comments mark the tests that guard a specific review risk.
+
+- **The core, through `number-box`:** a drag up raises the value by the expected amount, Shift is ten times finer, and overshooting then reversing doesn't stick. Double-click resets; wheel notches move 1% or one step, 0.1% with Shift, and trackpad fractions add up to a step. Drawing never writes. Disabled controls ignore input. Per-control state is removed after release and when the control vanishes mid-drag. A font-size change mid-drag is safe. A signalling `:format` propagates, wrong value types signal before drawing, and types are preserved.
+- **Typed entry:** Ctrl-click (Cmd on macOS) opens the field; Enter commits, clamped and snapped; garbage and Enter keeps it open with the error flag and the value unchanged, and correcting it commits; Escape and clicking elsewhere cancel; a value changed by code survives Escape and an unedited Enter; Ctrl-double-click doesn't reset.
+- **Knob:** drags and keeps its type, draws a non-positive log value, aligns in a row at two font sizes, draws bipolar and choice knobs, and signals on the wrong type.
+- **Fader:** a horizontal fader follows a horizontal drag and a vertical one a vertical drag; fill, bipolar fill and width; thickness and length defaults; the fill rectangle's geometry.
+- **Toggle and trigger:** a toggle flips and accepts any boolean; a trigger reports pressed, held and released on the right frames; both ignore input when disabled; widths.
+- **XY pad:** a click jumps to the point and Shift-drag moves finely; each axis has its own specification; double-click resets both; y up increases; an absolute drag follows the mouse; pressing Shift doesn't jump; types are kept; out-of-range values aren't written; the macro evaluates its subforms once; size and a single item; malformed specifications and wrong value types signal.
 
 ### `test-examples.lisp` (suite `examples`, 2 tests)
 
 Loads each file in `examples/` headlessly and draws three frames:
 
-- `hello`, `layout`, `plots`, and `custom-knob` register panels, none fails, and no ImGui assertion is recorded.
+- `hello`, `layout`, `plots`, `custom-knob`, and `controls` register panels, none fails, and no ImGui assertion is recorded.
 - `error-recovery` fails exactly its one deliberately broken panel.
 
 This keeps the examples working as the code changes.
@@ -420,6 +449,13 @@ Which tests protect each key behavior. Check these before changing the related c
 | The shim's font indexes and push/pop | `bindings`: `add-font-returns-indexes`, `push-font-balances-pop-font` |
 | Row and grid layout | `scopes`: `with-row-places-items-on-one-line`, `with-grid-fills-columns-in-order` |
 | Widgets write back to their places | `widgets` suite |
+| Controls map, format and parse values | `controls`: `linear-round-trip`, `log-round-trip`, `unit-formatting`, `text-parsing`, `bare-numbers-follow-display-scale`, `spec-errors` |
+| Controls share one interaction | `controls`: `drag-up-increases`, `shift-drag-is-ten-times-finer`, `double-click-resets`, `wheel-nudges`, `trackpad-wheel-fractions-step-stepped-controls` |
+| Typed entry and the error outline | `controls`: `typed-entry-commits`, `bad-entry-stays-open-then-corrects`, `escape-cancels`, `enter-on-unedited-text-keeps-code-change` |
+| Control state never leaks | `controls`: `state-removed-after-release`, `state-removed-when-control-vanishes-mid-drag` |
+| Controls ignore input when disabled | `controls`: `disabled-ignores-input`, `toggle-disabled-ignores-click`, `xy-disabled-ignores-input` |
+| Controls line up and scale with the font | `controls`: `knob-row-aligns-at-two-sizes`, `fader-sizes-follow-thickness-and-length`, `toggle-sizes`, `xy-size-and-one-item` |
+| Themes define the `:error` role | `theme`: `shipped-themes-define-error`, `theme-without-base-needs-error` |
 | Plots take Lisp vectors without copying | `plots`: `specialized-vectors-are-not-copied` |
 | Drawing primitives and interaction | `draw` suite |
 | The examples keep working | `examples` suite |

@@ -29,6 +29,7 @@ several windows, and loading one again simply redefines it.
 | `layout.lisp` | `with-row`, a four-column `with-grid`, `with-section`, a scrolling `with-child` of `selectable` rows, a `list-box` |
 | `plots.lisp` | A live sine with `plot-lines`, plus `plot-bars` and `plot-scatter`, from float vectors |
 | `custom-knob.lisp` | `example-knob`, a draggable knob built from `invisible-button`, `mouse-drag-delta`, `draw-circle` and `draw-arc` |
+| `controls.lisp` | A synth device: `knob`s (log Hz, percent, bipolar pan, choices), `fader`s, `toggle`, `trigger`, `number-box` and `xy-pad`. Cmd-click (Ctrl-click off macOS) a control to type a value |
 | `error-recovery.lisp` | A broken panel beside a healthy one; fix it with `(setf *example-break* nil)` and Retry, or by re-evaluating |
 
 Each file starts with a comment saying what to try. Edit a panel and
