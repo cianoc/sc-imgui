@@ -116,6 +116,29 @@
   (check (equal '(15.0 15.0 28.0) *font-sizes*)
          "with-font panel drew ~A, sizes ~S" when *font-sizes*))
 
+(defun style-window-bg ()
+  "ImGui's window background colour, read on the GUI thread, as (r g b a)."
+  (gui-thread-value
+   (lambda ()
+     (let ((c (cffi:mem-aptr (cffi:foreign-slot-pointer (%imgui:get-style)
+                                                        '(:struct %imgui::im-gui-style)
+                                                        '%imgui::colors)
+                             '(:struct %imgui::im-vec4) %imgui:+col-window-bg+)))
+       (loop for slot in '(%imgui::x %imgui::y %imgui::z %imgui::w)
+             collect (cffi:foreign-slot-value c '(:struct %imgui::im-vec4) slot))))))
+
+(defun style-frame-padding-x ()
+  (gui-thread-value
+   (lambda ()
+     (cffi:foreign-slot-value
+      (cffi:foreign-slot-pointer (%imgui:get-style) '(:struct %imgui::im-gui-style)
+                                 '%imgui::frame-padding)
+      '(:struct %imgui::im-vec2) '%imgui::x))))
+
+(defun check-theme (name when)
+  (check (equal (gui::parse-color (if (eq name :dark) "#2f2f2f" "#c4c4c4")) (style-window-bg))
+         "theme ~S applied ~A" name when))
+
 (defun redefine (form)
   (handler-bind ((warning #'muffle-warning)) (eval form)))
 
@@ -172,7 +195,26 @@
     (check (eql 1 (window-visible)) "window visible while running")
     (check-fonts "at the first start")
     (let ((report (get-output-stream-string out)))
-      (check (not (search "FONT failed" report)) "no font errors reported"))
+      (check (not (search "FONT failed" report)) "no font errors reported")
+      (check (not (search "THEME failed" report)) "no theme errors reported"))
+    ;; Themes: the default at creation, then live switches between frames.
+    (check-theme :mid-light "at the first start")
+    (check (eq :dark (gui:set-theme :dark)) "(gui:set-theme :dark)")
+    (wait-frames 2)
+    (check-theme :dark "live")
+    (check (= 13 (gui:set-font-size 13)) "(gui:set-font-size 13)")
+    (setf *font-sizes* nil)
+    (wait-until (lambda () (and *font-sizes* (= 13 (first *font-sizes*)))))
+    (check (< (abs (- (* 0.38 13) (style-frame-padding-x))) 1e-4)
+           "frame padding follows the font size (~,2F px at 13)" (style-frame-padding-x))
+    (check-theme :dark "after set-font-size")
+    (gui:set-font-size 15)
+    (gui:set-theme :mid-light)
+    (wait-frames 2)
+    (check-theme :mid-light "after switching back")
+    (check (< (abs (- (* 0.38 15) (style-frame-padding-x))) 1e-4) "frame padding back at 15 px")
+    (let ((report (get-output-stream-string out)))
+      (check (not (search "[gui]" report)) "no errors from the switches: ~S" report))
     ;; 3. Redefinition takes effect within 60 frames.
     (let ((f0 *frames*))
       (redefine '(gui:define-gui smoke-counter ()
@@ -221,6 +263,7 @@
     ;; 9. start after shutdown creates a new window and loop.
     (check-showing-again "sc-imgui smoke (new loop)")
     (check-fonts "in the new loop")
+    (check-theme :mid-light "in the new loop")
     (let ((asserts (gui-thread-value #'%shim:assert-count)))
       (check (zerop asserts) "no ImGui asserts (~D; last ~S)" asserts
              (gui-thread-value #'%shim:last-assert)))

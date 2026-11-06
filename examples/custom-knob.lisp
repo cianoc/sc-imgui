@@ -23,14 +23,14 @@
              (cy (+ y r))
              (start (* pi 0.75))
              (end (+ start (* (/ (- value min) (- max min)) pi 1.5))))
-        (gui:draw-circle cx cy (- r 2) (gui:color 0.2 0.2 0.25) :filled t)
-        (gui:draw-arc cx cy (- r 3) start (+ start (* pi 1.5)) (gui:color 0.4 0.4 0.4)
+        ;; Colours come from the current theme, so the knob follows set-theme.
+        (gui:draw-circle cx cy (- r 2) (gui:theme-color (if active :control-hover :control))
+                         :filled t)
+        (gui:draw-arc cx cy (- r 3) start (+ start (* pi 1.5)) (gui:theme-color :border)
                       :thickness 3)
-        (gui:draw-arc cx cy (- r 3) start end
-                      (if active (gui:color 1 0.7 0.2) (gui:color 0.3 0.7 1))
-                      :thickness 3)
+        (gui:draw-arc cx cy (- r 3) start end (gui:theme-color :accent) :thickness 3)
         (gui:draw-line cx cy (+ cx (* (- r 6) (cos end))) (+ cy (* (- r 6) (sin end)))
-                       (gui:color 1 1 1) :thickness 2)))
+                       (gui:theme-color :text) :thickness 2)))
     (gui:text "~A ~,2F" label value)
     value))
 

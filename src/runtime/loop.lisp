@@ -90,6 +90,20 @@ Main thread, after the window opens."
         (setf *font-table* (nreverse table)))
     (error (c) (report-error :font c))))
 
+(defvar *after-window-created-hook* '()
+  "Functions of no arguments called on the GUI thread each time the window is
+created, after the fonts are loaded and before the first frame.  An error in
+one is reported with source :THEME and the rest still run.  The gui package
+adds its theme here.")
+
+(defun window-created ()
+  "What the loop does once the window has opened: load the fonts, then run
+*AFTER-WINDOW-CREATED-HOOK*.  Never signals."
+  (load-fonts)
+  (dolist (function *after-window-created-hook*)
+    (handler-case (funcall function)
+      (error (c) (report-error :theme c)))))
+
 (defvar *loop-lock* (bt2:make-lock :name "gui loop"))
 (defvar *state* nil
   "Requested loop state: NIL (no loop), :SHOWING, :HIDDEN or :SHUTTING-DOWN.
@@ -105,6 +119,10 @@ once; this only bounds the delay should a wake-up be missed.")
   "True while the window is showing and panels are drawn (or START has asked
 for that)."
   (eq *state* :showing))
+
+(defun window-open-p ()
+  "True while the loop has a window, showing or hidden."
+  (and (member *state* '(:showing :hidden)) t))
 
 (defun main-thread-p ()
   (eq sb-thread:*current-thread* (sb-thread:main-thread)))
@@ -163,7 +181,7 @@ wait for events while :HIDDEN."
                  (return-from frames nil))
                (setf opened t
                      *shown* t)
-               (load-fonts)
+               (window-created)
                (loop
                  (run-queued-tasks)
                  (ecase *state*

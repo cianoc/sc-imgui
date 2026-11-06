@@ -26,6 +26,8 @@ static bool g_headless = false;
 // Fonts added with shim_add_font, by index.  Lisp only ever sees the indexes.
 // Valid for the current ImGui context; cleared when it is destroyed.
 static std::vector<ImFont *> g_fonts;
+// The colour behind all windows, set by the theme.
+static float g_clear_color[3] = {0.1f, 0.1f, 0.1f};
 // Guards g_window against shim_wake, which other threads call: GLFW allows
 // glfwPostEmptyEvent from any thread, but not concurrently with glfwTerminate.
 static std::mutex g_wake_mutex;
@@ -165,7 +167,7 @@ void shim_end_frame(void) {
   int w = 0, h = 0;
   glfwGetFramebufferSize(g_window, &w, &h);
   glViewport(0, 0, w, h);
-  glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+  glClearColor(g_clear_color[0], g_clear_color[1], g_clear_color[2], 1.0f);
   glClear(GL_COLOR_BUFFER_BIT);
   ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
   glfwSwapBuffers(g_window);
@@ -274,6 +276,12 @@ int shim_add_font(const char *path, float size) {
     return path ? -1 : 0;
   }
   return -1;
+}
+
+void shim_set_clear_color(float r, float g, float b) {
+  g_clear_color[0] = r;
+  g_clear_color[1] = g;
+  g_clear_color[2] = b;
 }
 
 void shim_push_font(int index, float size) {

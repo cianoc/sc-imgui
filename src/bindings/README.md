@@ -19,7 +19,7 @@ This directory is the only Lisp code that crosses into C. It loads the native li
 | --- | --- |
 | `%imgui` | Dear ImGui, through cimgui: functions, structs, and enum constants. Generated. |
 | `%implot` | ImPlot, through cimplot. Generated. |
-| `%shim` | The shim's own functions from `native/shim.h`: window, frames, fonts, headless mode, assertions. Hand-written. |
+| `%shim` | The shim's own functions from `native/shim.h`: window, frames, fonts, background colour, headless mode, assertions. Hand-written. |
 | `sc-imgui.bindings` | Library loading and the `optional-string` type. Hand-written. |
 
 The `%` prefix marks them as low level: they mirror the C APIs one-to-one and check nothing. Application code should use `gui` (`src/gui/README.md`), dropping into these only for something `gui` doesn't wrap yet.
@@ -54,7 +54,7 @@ Every `make bindings` rewrites them completely, so a hand edit is lost. They're 
 
 ### The hand-written files
 
-**`package.lisp`** — Defines `sc-imgui.bindings` (uses `CL`, exports the loading API and `optional-string`), `%shim` (uses nothing, exports its 19 functions), and `%imgui` and `%implot` (use nothing, export nothing here; the generated files export their own names).
+**`package.lisp`** — Defines `sc-imgui.bindings` (uses `CL`, exports the loading API and `optional-string`), `%shim` (uses nothing, exports its 20 functions), and `%imgui` and `%implot` (use nothing, export nothing here; the generated files export their own names).
 
 **`types.lisp`** — Defines `optional-string`, the type every generated `const char*` argument uses. It behaves like CFFI's `:string` (a Lisp string is copied to foreign memory for the call and freed afterwards; a foreign pointer passes through), except that `nil` passes NULL, which many optional ImGui arguments need. It subclasses CFFI's own string type rather than defining a new one, because calls that pass a struct by value go through cffi-libffi, which only knows how to translate CFFI's string type. Inheriting it keeps strings handled the same way on both call paths. Return values stay plain `:string`.
 
@@ -77,7 +77,7 @@ Counts and lists are from the current code. Use them to check an upgrade: everyt
 
 ### `%shim`
 
-All 19 functions are used outside this directory. All run on the GUI (main) thread unless marked otherwise.
+All 20 functions are used outside this directory. All run on the GUI (main) thread unless marked otherwise.
 
 | Function | Returns | Used by | Purpose |
 | --- | --- | --- | --- |
@@ -92,6 +92,7 @@ All 19 functions are used outside this directory. All run on the GUI (main) thre
 | `(last-error)` | string | runtime, tests | Why the last call returned nonzero |
 | `(assert-count)`, `(last-assert)`, `(clear-asserts)` | count; `"expr @ file:line"`; | tests (and you, from the REPL) | Recorded ImGui assertions |
 | `(add-font path size)` | index, or -1 | runtime, tests | Add a font file at `size` pixels. The first font added is the default and sets the base size. `path` `nil` adds ImGui's built-in font as the first font (index 0). On -1, `(last-error)` says why and names the path. Call it right after `open-window`. |
+| `(set-clear-color r g b)` | | gui (the theme), tests | Set the colour behind all windows, components 0 to 1. Default 0.1 grey. Harmless with no window; kept across windows. |
 | `(push-font index size)` | | gui (`with-font`), tests | Push the font at `index` at `size` pixels (0 keeps the size). Balance with `%imgui:pop-font`. -1 or an unknown index changes nothing but still balances. |
 | `(headless-create width height)`, `(headless-destroy)` | 0 on success | tests | ImGui with no window |
 | `(window-visible)` | 1, 0, or -1 with no window | tests | |
@@ -107,13 +108,14 @@ All 19 functions are used outside this directory. All run on the GUI (main) thre
 - **Drawing:** `get-window-draw-list`, `im-draw-list-add-line`, `im-draw-list-add-rect`, `im-draw-list-add-rect-filled`, `im-draw-list-add-circle`, `im-draw-list-add-circle-filled`, `im-draw-list-path-arc-to`, `im-draw-list-path-stroke`, `im-draw-list-add-polyline`, `im-draw-list-add-text-vec2`.
 - **Queries:** `is-item-hovered`, `is-item-active`, `get-item-rect-min`, `get-item-rect-max`, `get-cursor-screen-pos`, `set-cursor-screen-pos`, `get-mouse-pos`, `get-mouse-drag-delta`, `reset-mouse-drag-delta`, `get-content-region-avail`.
 - **Error recovery (runtime):** `error-recovery-store-state`, `error-recovery-try-to-recover-state`.
+- **Themes (`theme.lisp`):** `get-style`, written through its struct definition.
 - **Constants:** `+cond-always+`, `+child-flags-borders+`, `+child-flags-none+`, `+tree-node-flags-default-open+`, `+slider-flags-logarithmic+`, `+im-draw-flags-closed+`, plus every constant reached through `gui:enum-flags` with the prefixes `WINDOW-FLAGS`, `TABLE-FLAGS`, `COL`, and `STYLE-VAR`.
 
 **Used only by the tests:** `new-frame`, `render`, `get-io-nil`, `get-current-context`, `get-id-str`, `get-item-id`, `calc-item-width`, `calc-text-size`, `get-window-size`, `set-window-size-vec2`, `set-next-window-pos`, `set-next-item-open`, `tree-node-str`, `tree-pop`, `progress-bar`, `color-convert-float4-to-u32`, `im-gui-io-add-mouse-pos-event`, `im-gui-io-add-mouse-button-event`, `im-gui-io-add-input-characters-utf8`, `+window-flags-no-resize+`, `+window-flags-no-title-bar+`. See `tests/README.md`.
 
 ### `%implot`
 
-**Used by `src/gui/plots.lisp`:** `begin-plot`, `end-plot`, `plot-line-float-ptr-int`, `plot-line-double-ptr-int`, `plot-line-float-ptr-float-ptr`, `plot-line-double-ptrdouble-ptr`, `plot-bars-float-ptr-int`, `plot-bars-double-ptr-int`, `plot-scatter-float-ptr-float-ptr`, `plot-scatter-double-ptrdouble-ptr`, `+marker-none+`, `+marker-circle+`, plus constants reached through `gui:enum-flags` with the prefix `FLAGS`.
+**Used by `src/gui/plots.lisp`:** `begin-plot`, `end-plot`, `plot-line-float-ptr-int`, `plot-line-double-ptr-int`, `plot-line-float-ptr-float-ptr`, `plot-line-double-ptrdouble-ptr`, `plot-bars-float-ptr-int`, `plot-bars-double-ptr-int`, `plot-scatter-float-ptr-float-ptr`, `plot-scatter-double-ptrdouble-ptr`, `+marker-none+`, `+marker-circle+`, plus constants reached through `gui:enum-flags` with the prefixes `FLAGS` and `COL`. `src/gui/theme.lisp` uses `get-style`.
 
 ### Internal symbols used from outside
 
@@ -126,6 +128,7 @@ These aren't exported, but other code depends on them, written with `::`:
 | `%imgui::im-gui-io`, `display-size` | tests | Reading the display size |
 | `%imgui::im-draw-list`, `vtx-buffer`, `im-vector-im-draw-vert`, `size` | tests | Counting vertices in a draw list |
 | `%imgui::im-gui-error-recovery-state` | runtime | Allocated around every panel call to save and restore ImGui's state |
+| `%imgui::im-gui-style` and its size fields, `colors`, `font-size-base`, `im-vec4`; `%implot::im-plot-style`, `colors` | `gui/theme.lisp`, tests | Writing theme colours and sizes into ImGui's and ImPlot's styles |
 | `%implot::line-color`, `line-colors`, `line-weight`, `fill-color`, `fill-colors`, `fill-alpha`, `marker`, `marker-size`, `marker-sizes`, `marker-line-color`, `marker-line-colors`, `marker-fill-color`, `marker-fill-colors`, `size`, `offset`, `stride`, `flags` | `gui/plots.lisp` | Every field of `ImPlotSpec`, built as a plist for each plot call |
 
 ## How the generated API behaves
@@ -265,7 +268,7 @@ The generator writes `sc-imgui.bindings:optional-string` into every generated fu
 
 ## Tests
 
-The `bindings` suite (`tests/test-bindings.lisp`, 21 tests) checks the real library and generated code through actual calls:
+The `bindings` suite (`tests/test-bindings.lisp`, 22 tests) checks the real library and generated code through actual calls:
 
 | Test | Protects |
 | --- | --- |
@@ -281,6 +284,7 @@ The `bindings` suite (`tests/test-bindings.lisp`, 21 tests) checks the real libr
 | `add-font-returns-indexes`, `add-font-bad-path-fails-and-names-it` | `add-font` indexes, and a bad path failing with its name in `last-error` and no index used up |
 | `failed-or-nil-first-font-gives-a-working-default` | A missing file, a NIL path, or a non-font file as the first font leaves the built-in font as index 0 and no ImGui asserts |
 | `push-font-balances-pop-font` | `push-font` with a real, `-1`, or missing index, each balanced by `pop-font` |
+| `set-clear-color-is-harmless-without-a-window` | `set-clear-color` with no window and on a headless context, with no ImGui asserts |
 
 Which suites to run after each kind of change:
 

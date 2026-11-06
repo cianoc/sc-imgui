@@ -17,6 +17,7 @@ int         shim_wait_events(double timeout); /* main thread; wait up to timeout
 void        shim_wake(void);                  /* any thread; wakes shim_wait_events; no-op without a window */
 const char *shim_last_error(void);            /* message for the last nonzero return, or "" */
 int         shim_add_font(const char *path, float size); /* main thread; add a font file (NULL = none) at SIZE px; returns its index, or -1 with shim_last_error.  The first font is the default and sets the base size; if it fails (or PATH is NULL) the built-in font takes index 0 */
+void        shim_set_clear_color(float r, float g, float b); /* main thread; colour behind all windows, 0-1 components (default 0.1 grey); kept across windows */
 void        shim_push_font(int index, float size);       /* main thread; PushFont the font at INDEX at SIZE px (0 = keep size); -1 or no such font pushes NULL, so PopFont balances */
 int         shim_headless_create(int width, int height); /* contexts, DisplaySize, DeltaTime 1/60, font atlas built; 0 = ok */
 void        shim_headless_destroy(void);

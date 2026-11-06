@@ -6,13 +6,14 @@ Contents:
 2. [Quick reference](#quick-reference)
 3. [Core ideas](#core-ideas)
 4. [Package reference](#package-reference)
-5. [File by file](#file-by-file)
-6. [Building a custom widget](#building-a-custom-widget)
-7. [Recipes](#recipes)
-8. [Extending the API](#extending-the-api)
-9. [Not yet wrapped](#not-yet-wrapped)
-10. [Gotchas](#gotchas)
-11. [Tests and examples](#tests-and-examples)
+5. [Themes](#themes)
+6. [File by file](#file-by-file)
+7. [Building a custom widget](#building-a-custom-widget)
+8. [Recipes](#recipes)
+9. [Extending the API](#extending-the-api)
+10. [Not yet wrapped](#not-yet-wrapped)
+11. [Gotchas](#gotchas)
+12. [Tests and examples](#tests-and-examples)
 
 ## Overview
 
@@ -49,6 +50,9 @@ Re-evaluating the `define-gui` form changes the window on the next frame. `(gui:
 | | `*fonts*`, `*font-size*` | variables | Fonts to load and the base size, read when the window is created |
 | | `main-thread-busy` | condition | `start` called on the main thread |
 | | `unknown-font` | condition | `with-font` got a name that isn't loaded |
+| [Themes](#themes) | `define-theme`, `set-theme`, `set-font-size` | functions | Define a theme; switch it live; change the base font size live |
+| | `theme-color` | function | The current theme's colour for a palette role, for custom widgets |
+| | `*theme*` | variable | Name of the theme applied when the window is created |
 | [Scopes](#scopes) | `with-window`, `with-group`, `with-child`, `with-section`, `with-id`, `with-disabled`, `with-style`, `with-font` | macros | Balanced ImGui begin/end and push/pop |
 | [Layout](#layout) | `with-row`, `with-grid` | macros | Items on one line; items in a table |
 | | `same-line`, `new-line`, `separator`, `spacing`, `indent`, `unindent`, `set-next-item-width` | functions | Fine layout control |
@@ -56,7 +60,7 @@ Re-evaluating the `define-gui` form changes the window on the next frame. `(gui:
 | | `slider-value`, `drag-value`, ... `list-box-value` | functions | Same, returning `(values new changed-p)` |
 | | `button`, `text` | functions | Clickable button; formatted text |
 | | `widget-value-error` | condition | A widget got a value of the wrong type |
-| [Plots](#plots) | `with-plot` | macro | An ImPlot plot area |
+| [Plots](#plots) | `with-plot` | macro | An ImPlot plot area; items take the theme's series colours |
 | | `plot-lines`, `plot-bars`, `plot-scatter` | functions | Plot Lisp sequences |
 | [Drawing](#drawing) | `color` | function | Pack RGBA into ImGui's color format |
 | | `window-draw-list`, `draw-line`, `draw-rect`, `draw-circle`, `draw-arc`, `draw-polyline`, `draw-text` | functions | Draw shapes and text |
@@ -142,6 +146,20 @@ Arguments in `&key` lists show their defaults. "Place" means a `setf`-able form.
 
 **`main-thread-busy`** — Condition signalled by `start` on the main thread. Its report explains the SLIME setting needed (`swank::*main-thread-used*`).
 
+### Themes
+
+See [Themes](#themes) for the palette roles, sizes and recipes.
+
+**`(define-theme name &key base palette style colors)`** — Defines or redefines the theme `name` and returns `name`. It is a function, so its arguments are evaluated: quote the data. `base` names a theme whose palette, style and colors are copied first; `palette`, `style` and `colors` then override them key by key. A theme without `base` must give every palette role. Everything is checked here, and an error names the bad colour, role, colour name or size. Redefining the current theme applies it to a window that exists.
+
+**`(set-theme name)`** — Sets `*theme*` to `name` and, if a window exists (showing or hidden), applies it between frames. An unknown name is an error that lists the known themes. Returns `name`. With no window it only sets `*theme*`, which is used when the window is created.
+
+**`(set-font-size px)`** — Sets `*font-size*` to `px` and, if a window exists, sets ImGui's base font size to `px` between frames and reapplies the theme, so rem sizes follow. Returns `px`. With no window it only sets `*font-size*`, which is used when the window is created.
+
+**`(theme-color role)`** — The current theme's colour for the palette `role`, packed as `color` does, for `draw-line`, `draw-circle` and the like. For `:series` it is the first series colour. Plain Lisp, safe from any thread. An unknown role is an error.
+
+**`*theme*`** — Name of the theme applied when the window is created. Default `:mid-light`. Change it with `set-theme`, which also applies it to a window that exists.
+
 ### Scopes
 
 **`(with-window (title &key flags) &body body)`** — An ImGui window. `body` runs only when the window is visible (not collapsed or clipped). `End` always runs. Flags use the `WINDOW-FLAGS` prefix, such as `:no-title-bar`, `:no-resize`, `:no-move`, `:always-auto-resize`. On the first frame after its panel is redefined, the window refits to its contents.
@@ -210,6 +228,8 @@ Each place-taking macro has the form `(widget label place &rest args)`, where `a
 
 **`(with-plot (title &key (width -1) (height 0) flags) &body body)`** — An ImPlot plot area. A width of -1 fills the available width; a height of 0 uses ImPlot's default. Flags use `%implot`'s `FLAGS` prefix, such as `:no-title` or `:no-legend`. The body, which calls the plot functions, runs only when the plot is visible.
 
+Each plot item takes its line, fill and marker colour from the current theme's `:series`, in order, cycling. The count restarts at the first colour for each `with-plot`. Outside a `with-plot`, ImPlot picks the colour.
+
 **`(plot-lines label ys &key xs)`** — A line through `ys`, against `xs` or against 0, 1, 2, ... when `xs` is `nil`.
 
 **`(plot-bars label ys &key (bar-size 0.67))`** — Bars at x = 0, 1, 2, ..., each `bar-size` wide.
@@ -264,6 +284,60 @@ For custom widgets. Coordinates are in **screen space**, in pixels from the top-
 
 Most ImGui prefixes lose their `ImGui` part (`WINDOW-FLAGS`, `TABLE-FLAGS`, `COL`, `STYLE-VAR`), but a few enums keep `IM-` (`IM-DRAW-FLAGS`, `IM-FONT-FLAGS`, ...). See "Enum constant prefixes aren't uniform" in `generator/README.md`.
 
+## Themes
+
+A theme replaces ImGui's default look. The two shipped themes are inspired by Ableton Live: flat, compact, low-contrast, with an orange accent. `:mid-light` is the default; `:dark` is the other. Themes are data, defined in `theme.lisp`. A theme has a palette, a style, and optional colour overrides, and it is applied when the window is created and again whenever you call `set-theme`.
+
+### Palette
+
+The palette gives each role a colour. A colour is `"#rrggbb"`, `"#rrggbbaa"`, or a list `(r g b [a])` of reals from 0 to 1.
+
+| Role | Used for |
+| --- | --- |
+| `:background` | The colour behind all windows (the GL clear colour) |
+| `:panel` | Window, child and popup backgrounds |
+| `:title` | Title bars, menu bars, table headers, inactive tabs |
+| `:frame` | Backgrounds of sliders, checkboxes, text fields and plots |
+| `:frame-hover` | The same, hovered |
+| `:control` | Buttons, headers, scrollbar grabs |
+| `:control-hover` | The same, hovered |
+| `:border` | Borders, separators, plot grid |
+| `:text` | Text |
+| `:text-dim` | Disabled text |
+| `:accent` | Check marks, slider grabs, pressed controls, selections |
+| `:accent-text` | Text drawn on the accent. For custom controls; the ImGui mapping doesn't use it |
+| `:series` | A list of colours for plot lines, bars and markers |
+
+The palette maps onto all of ImGui's colours (`*imgui-color-map*` in `theme.lisp`) and all of ImPlot's (`*implot-color-map*`). Some mappings use a role at part opacity, such as the accent at 35% for text selection.
+
+### Sizes
+
+`:style` sets ImGui style sizes by `ImGuiStyle` field name (`:frame-padding`, `:item-spacing`, `:frame-rounding`, ...). A number is in **rem**: it is multiplied by ImGui's current base font size when the theme is applied. `(:px n)` is a fixed number of pixels. A size that ImGui keeps as a pair (`:frame-padding`) is a two-element list, each element a number or `(:px n)`.
+
+This works like CSS rem. One font-size setting controls the density of the whole UI: padding, spacing, scrollbars and indents all follow `set-font-size`. Rounding and border sizes in the shipped themes are fixed pixels.
+
+### Colour overrides
+
+`:colors` overrides individual ImGui colours by `COL` name, the same names `with-style` takes (`:button`, `:frame-bg`, ...). Overrides apply after the palette mapping. An unknown name is an error at `define-theme`.
+
+### Defining a theme
+
+Give `:base` to start from another theme and override only what differs:
+
+```lisp
+(gui:define-theme :my-dark
+  :base :dark
+  :palette '(:accent "#4fb3ff")
+  :style '(:frame-rounding (:px 6))
+  :colors '(:button-hovered "#555555"))
+```
+
+Without `:base`, the palette must have every role. Defining a name that exists replaces it. Defining the current theme reapplies it at once.
+
+### Limits
+
+ImGui's stock slider draws a grab handle on a track, not a bar filled up to the value. Filled sliders, arc knobs and lit toggles are custom controls (part 3). They should take their colours from `theme-color`, so they follow the theme.
+
 ## File by file
 
 The `sc-imgui` system loads these in this order (`sc-imgui.asd`); each may use the ones before it.
@@ -276,7 +350,8 @@ The `sc-imgui` system loads these in this order (`sc-imgui.asd`); each may use t
 | `scopes.lisp` | `with-window`, `with-group`, `with-child`, `with-section`, `with-id`, `with-font`, `with-disabled`, `with-style`. |
 | `layout.lisp` | The layout functions, `with-row`, and `with-grid`. |
 | `widgets.lisp` | `widget-value-error`; the `-value` functions; `define-place-widget`, which generates each place macro from its `-value` function using `get-setf-expansion`; `button` and `text`. |
-| `plots.lisp` | `with-plot` and the plot functions. `plot-data` decides whether to copy; `plot-pair` matches `xs` and `ys`; `plot-spec` builds ImPlot's `ImPlotSpec` argument with ImPlot's defaults; vectors are pinned with `cffi:with-pointer-to-vector-data` during each call. |
+| `theme.lisp` | Themes: the palette-to-ImGui and ImPlot colour maps, `define-theme`, `set-theme`, `set-font-size`, `theme-color`, `apply-theme` (internal; writes the styles and the clear colour, and runs from `gui.runtime:*after-window-created-hook*`), and the two shipped themes. |
+| `plots.lisp` | `with-plot` and the plot functions. `plot-data` decides whether to copy; `plot-pair` matches `xs` and `ys`; `plot-spec` builds ImPlot's `ImPlotSpec` argument with the theme's next series colour (`next-series-color`) and ImPlot's other defaults; vectors are pinned with `cffi:with-pointer-to-vector-data` during each call. |
 | `draw.lisp` | `color`, the draw functions, and the interaction helpers. |
 
 ## Building a custom widget
@@ -297,10 +372,9 @@ The `sc-imgui` system loads these in this order (`sc-imgui.asd`); each may use t
       (let* ((cx (+ x r)) (cy (+ y r))                 ; 4. draw it from the current value
              (start (* pi 0.75))
              (end (+ start (* (/ (- value min) (- max min)) pi 1.5))))
-        (gui:draw-circle cx cy (- r 2) (gui:color 0.2 0.2 0.25) :filled t)
-        (gui:draw-arc cx cy (- r 3) start end
-                      (if active (gui:color 1 0.7 0.2) (gui:color 0.3 0.7 1))
-                      :thickness 3)))
+        (gui:draw-circle cx cy (- r 2) (gui:theme-color (if active :control-hover :control))
+                         :filled t)
+        (gui:draw-arc cx cy (- r 3) start end (gui:theme-color :accent) :thickness 3)))
     (gui:text "~A ~,2F" label value)
     value))                                            ; 5. return the new value
 ```
@@ -310,7 +384,7 @@ The steps:
 1. **Record the position** with `cursor-screen-pos` before adding any item.
 2. **Reserve the area** with `invisible-button`. It makes the area an item, so the layout moves past it, and gives it mouse input. Its label is its ID, so repeated widgets need distinct labels or `with-id`.
 3. **Read the interaction** with `item-active-p` and `mouse-drag-delta`. Resetting the drag delta after each use makes it a per-frame change, so the value never drifts.
-4. **Draw** with the primitives, in screen coordinates relative to the recorded position.
+4. **Draw** with the primitives, in screen coordinates relative to the recorded position. Colours come from `theme-color`, so the knob follows `set-theme`. (The full example also draws the track and the pointer.)
 5. **Return the new value.** This makes it a `-value`-style function. To give it a place form too, see [Extending the API](#extending-the-api).
 
 The knob draws on top of the area it reserved. Wrapping each knob in `with-group` lets several sit in a row with their labels.
@@ -384,6 +458,40 @@ For another weight, download `Inter-Bold.ttf` from the same Inter release (`Inte
 ```
 
 The panels stay registered through `shutdown`, so they come back on the new window.
+
+### Switching theme
+
+```lisp
+(gui:set-theme :dark)        ; applies between frames
+(gui:set-theme :mid-light)
+```
+
+With no window yet, `set-theme` only sets `gui:*theme*`, used when the window is created.
+
+### Live-like density
+
+Sizes are in rem, so one call changes the density of the whole UI:
+
+```lisp
+(gui:set-font-size 13)       ; smaller text, tighter padding and spacing
+(gui:set-font-size 15)       ; the default
+```
+
+### A custom accent
+
+```lisp
+(gui:define-theme :my-dark :base :dark :palette '(:accent "#4fb3ff"))
+(gui:set-theme :my-dark)
+```
+
+### Colours for a custom widget
+
+Use `theme-color` instead of fixed colours, so the widget follows the theme:
+
+```lisp
+(gui:draw-circle cx cy r (gui:theme-color :control) :filled t)
+(gui:draw-arc cx cy r a0 a1 (gui:theme-color :accent) :thickness 3)
+```
 
 ### A fixed window
 
@@ -524,8 +632,9 @@ After `define-gui` is re-evaluated, its windows resize to fit their contents on 
 | --- | --- |
 | `scopes` | Every scope macro, including `with-font`, stays balanced after an error; `with-font` sizes, nesting, the unknown-name error, and no fonts loaded; `with-row` and `with-grid` placement; `with-id` stability across garbage collection; `enum-flags`; no variable capture |
 | `widgets` | Every widget writing back through simulated input; number types preserved; `-value` variants; UTF-8 truncation; `widget-value-error`; places evaluated once |
-| `plots` | No copying for specialized vectors; coercion; length and type errors; every plot kind |
+| `plots` | No copying for specialized vectors; coercion; length and type errors; every plot kind; series colours cycle per item and restart per plot |
 | `draw` | `color` matches ImGui; every primitive adds vertices; polyline edge cases; invisible-button clicks and drags |
+| `theme` | Colour and size parsing and errors; `define-theme` with and without `:base`; the palette mapping reaching every ImGui and ImPlot colour; rem and pixel sizes; `set-theme`, `set-font-size` and `theme-color`; the shipped themes |
 | `examples` | Every file in `examples/` loads and draws without failures or assertions |
 
 Not directly tested (see "Known gaps" in `tests/README.md`): the `drag` macro, `with-section`, the layout functions, `item-hovered-p`, `mouse-pos`, `content-region-avail`, `set-cursor-screen-pos`, `reset-mouse-drag-delta`, and the visible effect of `with-style`, `with-disabled`, and `with-font`. Some run indirectly through the examples.
@@ -535,5 +644,5 @@ The examples, each loaded after `(gui:start)` with `(load "examples/<file>.lisp"
 - `hello.lisp`: text, a button, a slider, a checkbox.
 - `layout.lisp`: rows, a grid, a section, a scrolling child.
 - `plots.lisp`: a live line plot, bars, and a scatter plot.
-- `custom-knob.lisp`: the knob from [Building a custom widget](#building-a-custom-widget).
+- `custom-knob.lisp`: the knob from [Building a custom widget](#building-a-custom-widget), coloured with `theme-color`.
 - `error-recovery.lisp`: a deliberately failing panel and how to recover it.

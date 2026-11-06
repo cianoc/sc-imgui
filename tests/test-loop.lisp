@@ -244,3 +244,26 @@ NIL) and the output it wrote."
   (loop for start = 0 then (+ pos (length needle))
         for pos = (search needle haystack :start2 start)
         while pos count t))
+
+;;; After the window opens: fonts, then *AFTER-WINDOW-CREATED-HOOK*.
+;;; WINDOW-CREATED is what the loop calls; here it runs on a headless context.
+
+(test after-window-created-hook-runs-after-fonts-and-survives-errors
+  (let ((out (make-string-output-stream)) seen)
+    (with-headless-imgui ()
+      (let ((gui.runtime:*report-stream* out)
+            (gui.runtime::*font-table* nil)
+            (gui.runtime:*after-window-created-hook*
+              (list (lambda () (push (list :fonts gui.runtime::*font-table*) seen))
+                    (lambda () (error "hook boom"))
+                    (lambda () (push :third seen)))))
+        (finishes (gui.runtime::window-created))
+        (draw-some-text)
+        (is (= 0 (%shim:assert-count)))))
+    (setf seen (reverse seen))
+    (is (eq :fonts (first (first seen))))
+    (is (assoc :regular (second (first seen))) "fonts were loaded before the hook ran")
+    (is (eq :third (second seen)) "a failing hook does not stop the rest")
+    (let ((report (get-output-stream-string out)))
+      (is (search "[gui] THEME failed" report))
+      (is (search "hook boom" report)))))

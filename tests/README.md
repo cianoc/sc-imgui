@@ -18,7 +18,7 @@ Contents:
 
 There are two kinds of tests:
 
-- **`make test`** runs 125 [FiveAM](https://github.com/lispci/fiveam) tests in ten suites. They run **headless**: ImGui runs with no window and no GPU, and each test draws frames itself by calling `NewFrame` and `Render`. They're fast, need no display, and run anywhere, including CI.
+- **`make test`** runs 140 [FiveAM](https://github.com/lispci/fiveam) tests in eleven suites. They run **headless**: ImGui runs with no window and no GPU, and each test draws frames itself by calling `NewFrame` and `Render`. They're fast, need no display, and run anywhere, including CI.
 - **`make smoke`** opens a **real window** and drives the real frame loop on SBCL's main thread: starting, live redefinition, error recovery, hiding, showing, closing, and shutting down. It needs a display. On Linux CI it runs under Xvfb, a virtual display.
 
 A third test lives outside this folder: `native/test_assert.c`, run by `make native`, checks that ImGui misuse is recorded rather than aborting the process. See `native/README.md`.
@@ -40,7 +40,7 @@ Then:
 ```sh
 make test                  # every suite
 make test SUITE=widgets    # one suite: generator, bindings, registry, frame, loop,
-                           # scopes, widgets, plots, draw, examples
+                           # scopes, widgets, plots, draw, theme, examples
 make smoke                 # real window; needs a display
 ```
 
@@ -69,7 +69,7 @@ Defines `sc-imgui.tests`, which uses FiveAM and the generator package, so genera
 
 ### `suites.lisp`
 
-Defines the suite `all` and the ten suites inside it, plus `run-suites`, which runs a suite by name and returns true only when every check passed. **A new suite must be added to the list here**, or `make test SUITE=<name>` reports "Unknown suite".
+Defines the suite `all` and the eleven suites inside it, plus `run-suites`, which runs a suite by name and returns true only when every check passed. **A new suite must be added to the list here**, or `make test SUITE=<name>` reports "Unknown suite".
 
 ### `headless.lisp`
 
@@ -121,7 +121,7 @@ Tests the binding generator against the fixtures, without loading ImGui:
 - **Unused overrides:** `generate-bindings` warns with `unused-name-override` for an override that matches nothing in either library, and doesn't warn for overrides that are used.
 - **All or nothing:** `generate-bindings` run on temporary JSON writes neither file when cimplot has a collision.
 
-### `test-bindings.lisp` (suite `bindings`, 21 tests)
+### `test-bindings.lisp` (suite `bindings`, 22 tests)
 
 Tests the loaded native library and the generated bindings, through real calls:
 
@@ -129,7 +129,7 @@ Tests the loaded native library and the generated bindings, through real calls:
 - Headless frames run, and **ImGui misuse is recorded instead of aborting** (`assert-does-not-abort`).
 - `ImGuiIO` isn't opaque: `display-size` reads back as 800.
 - Structs returned by value work, and simulated clicks land (`frames-with-click-clicks-a-button`) or miss (`mouse-over-nothing-does-not-click`).
-- The window-related shim functions are harmless when there's no window.
+- The window-related shim functions are harmless when there's no window. `set-clear-color` is harmless with no window and on a headless context.
 - `nil` and string arguments, and `t`/`nil` booleans, reach C correctly on both CFFI call paths: plain calls, and cffi-libffi calls used when a struct is passed by value.
 - **Fonts:** `add-font` returns consecutive indexes, a bad path returns -1 with the path in `last-error` and uses up no index, and a missing file, a NIL path, or a file that isn't a font as the first font all leave a working built-in default at index 0 with no ImGui assertion. `push-font` with a real, `-1`, or missing index is balanced by `pop-font`.
 
@@ -155,7 +155,7 @@ Drawing registered panels and recovering from their errors, headless:
 - Reporting never signals: an unprintable condition, or a closed report stream (which falls back to `*error-output*`), doesn't break the frame.
 - Runaway recursion fails only its own panel, and works again the second time, which shows the stack guard is restored.
 
-### `test-loop.lisp` (suite `loop`, 16 tests)
+### `test-loop.lisp` (suite `loop`, 17 tests)
 
 `start`, `stop`, and `shutdown` without opening a window. A real window is the smoke test's job.
 
@@ -165,6 +165,7 @@ Drawing registered panels and recovering from their errors, headless:
 - A failure to open the window is reported, and doesn't destroy the headless context.
 - A panel calling `start` while the loop runs gets `nil`. *Main thread only; skipped otherwise.*
 - **Fonts** are loaded on a headless context with `with-loaded-fonts`, standing in for the loop's call to `load-fonts`. The defaults are the two bundled Inter files and a base size of 15. `:regular` loads first as index 0 whatever its place in the plist, and the rest follow in order. A font that fails is reported with source `:font`, naming the font and path, and its name maps to the regular font. A bad or missing `:regular` falls back to the built-in font. Having no `:regular` isn't an error. `*font-size*` sets the base size. Unusable settings (a size that isn't a number, an odd-length plist, a path that isn't a string) are each reported once with source `:font`, and `load-fonts` never signals, so the GUI keeps drawing.
+- **The after-window-created hook:** `window-created`, the function the loop calls once the window opens, runs on a headless context. The fonts are loaded before the hook functions run, a hook function that signals is reported with source `:theme`, and the functions after it still run.
 - **Regression:** a handoff to the main thread survives the main thread deferring interrupts for a second. That's the case where the earlier `trivial-main-thread` version lost the request. *Main thread only; skipped otherwise.*
 
 ### `test-scopes.lisp` (suite `scopes`, 13 tests)
@@ -192,12 +193,13 @@ The widgets, through simulated mouse and keyboard input:
 - **A `nil` place signals `widget-value-error`, naming the label,** before any foreign call.
 - A list box tolerates no selection and duplicate items.
 
-### `test-plots.lisp` (suite `plots`, 6 tests)
+### `test-plots.lisp` (suite `plots`, 7 tests)
 
 - Specialized `single-float` and `double-float` vectors are passed without copying; lists and general vectors are converted to `single-float` vectors.
 - Non-numbers, and `xs` and `ys` of different lengths, signal errors naming the plot label.
 - Every plot kind draws cleanly, including empty data and mixed float types.
 - The plot body runs, and `EndPlot` balances.
+- **Series colours:** each item in a `with-plot` takes the next `:series` colour of the theme, cycling past the last one, and the count restarts at the first colour in the next `with-plot`.
 
 ### `test-draw.lisp` (suite `draw`, 5 tests)
 
@@ -205,6 +207,18 @@ The widgets, through simulated mouse and keyboard input:
 - Every drawing primitive adds vertices to the draw list.
 - `draw-polyline` draws nothing for a single point, and rejects an odd number of coordinates.
 - An invisible button reports clicks, and a drag reports its distance while the button is held.
+
+### `test-theme.lisp` (suite `theme`, 12 tests)
+
+Themes, on a headless context. The tests apply a theme directly with `gui::apply-theme`, or queue it and run the task with `run-queued-tasks`, and read ImGui's and ImPlot's styles back through `%imgui:get-style` and `%implot:get-style`. Helpers local to the file read colours and sizes from those styles. `with-test-themes` forgets the themes a test defines.
+
+- Both shipped themes write their palette into the ImGui and ImPlot colours they map to, and the mapping sets every ImGui and ImPlot colour.
+- Rem sizes scale with the base font size, and `(:px n)` sizes don't.
+- `:base` copies a theme and overrides it key by key, and a `:colors` override wins over the palette mapping.
+- Colour parsing accepts the hex and list forms, and `define-theme` rejects bad data with an error that names the colour, role, colour name or size.
+- `theme-color` matches `gui:color`, and `set-theme` with an unknown name lists the known themes.
+- With no window, `set-theme` and `set-font-size` only set their variables and queue nothing. With a window, showing or hidden, each queues one task that applies the change, and the result draws with no ImGui assertions.
+- Redefining the current theme reapplies it.
 
 ### `test-examples.lisp` (suite `examples`, 2 tests)
 
@@ -225,6 +239,8 @@ This keeps the examples working as the code changes.
 4. A panel that signals an error doesn't stop other panels, and the error report reaches the stream captured by `start`.
 5. `stop` hides the window while the loop keeps running, saves the layout to `*ini-path*`, and `start` shows the same window again.
 6. A simulated close-button press hides the window, and `start` brings it back. `shutdown` ends the loop, `start` afterwards opens a fresh window that draws frames, and a final `shutdown` ends cleanly.
+
+It also checks themes. The default theme (`:mid-light`) must be applied at the first start and in the new loop after `shutdown`, read from ImGui's window background colour on the GUI thread. `(gui:set-theme :dark)` must apply between frames, `(gui:set-font-size 13)` must set the base size and move the frame padding to 0.38 rem (0.38 × 13 px), and switching back to `:mid-light` and 15 px must restore both. No theme errors may be reported, and nothing may be reported by the switches.
 
 It also checks fonts. The `smoke-fonts` panel draws text with `with-font` (`:semibold`, and `:regular` at 28 px). At the first start and again in the new loop after `shutdown`, the font table must be `((:regular . 0) (:semibold . 1))` and the panel must see sizes 15, 15, and 28. No font errors may be reported, the font table must be `nil` after `shutdown`, and there must be no ImGui assertions (read on the GUI thread) after the new loop's fonts.
 
@@ -393,6 +409,14 @@ Which tests protect each key behavior. Check these before changing the related c
 | The bundled fonts are the defaults, and load in order | `loop`: `default-fonts-are-the-bundled-inter-files`, `fonts-load-in-order-and-are-usable-by-name`, `font-size-sets-the-base-size`; smoke fonts checks |
 | A bad font is reported and falls back | `loop`: `bad-font-is-reported-and-falls-back-to-regular`, `bad-or-missing-regular-uses-the-built-in-font`, `bad-font-settings-are-reported-not-signalled`; `bindings`: `add-font-bad-path-fails-and-names-it`, `failed-or-nil-first-font-gives-a-working-default` |
 | `with-font` selects a font and size, and restores | `scopes`: `with-font-size-applies-inside-and-restores`, `with-font-nests`, `with-font-unknown-name-lists-loaded-fonts`, `with-font-without-loaded-fonts-changes-nothing` |
+| The after-window-created hook runs after the fonts and survives errors | `loop`: `after-window-created-hook-runs-after-fonts-and-survives-errors` |
+| The theme is applied at window creation and switched live | `theme`: `with-a-window-each-change-queues-one-task-that-applies-it`; smoke theme checks |
+| Shipped palettes reach every ImGui and ImPlot colour | `theme`: `shipped-themes-write-their-palettes`, `every-colour-is-set-by-the-mapping` |
+| Rem and pixel sizes follow the font size | `theme`: `rem-sizes-scale-with-the-font-size-and-px-sizes-do-not`; smoke theme checks |
+| `define-theme` validates and inherits | `theme`: `base-inheritance-and-partial-overrides`, `colors-overrides-win`, `colour-parsing`, `define-theme-rejects-bad-data-naming-it` |
+| `set-theme`, `set-font-size`, `theme-color` | `theme`: `set-theme-unknown-name-lists-known-themes`, `without-a-window-set-theme-and-set-font-size-only-set-variables`, `redefining-the-current-theme-reapplies-it`, `theme-color-matches-gui-color` |
+| Plot items take the theme's series colours | `plots`: `series-colours-cycle-per-item-and-restart-per-plot` |
+| The shim's clear colour is harmless without a window | `bindings`: `set-clear-color-is-harmless-without-a-window` |
 | The shim's font indexes and push/pop | `bindings`: `add-font-returns-indexes`, `push-font-balances-pop-font` |
 | Row and grid layout | `scopes`: `with-row-places-items-on-one-line`, `with-grid-fills-columns-in-order` |
 | Widgets write back to their places | `widgets` suite |

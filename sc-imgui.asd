@@ -21,6 +21,7 @@
                              (:file "scopes")
                              (:file "layout")
                              (:file "widgets")
+                             (:file "theme")
                              (:file "plots")
                              (:file "draw")))))
 
@@ -69,4 +70,5 @@
                (:file "test-widgets")
                (:file "test-plots")
                (:file "test-draw")
+               (:file "test-theme")
                (:file "test-examples")))

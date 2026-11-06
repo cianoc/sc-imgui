@@ -13,5 +13,6 @@
            #:retry-panel #:disable-panel
            #:*ini-path* #:*fonts* #:*font-size* #:font-index
            #:unknown-font #:unknown-font-name #:unknown-font-loaded
+           #:*after-window-created-hook* #:window-open-p
            #:start #:stop #:shutdown #:running-p #:wake-loop
            #:main-thread-busy))

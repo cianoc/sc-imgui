@@ -9,6 +9,7 @@
            #:*debug-on-error*
            #:start #:stop #:shutdown #:running-p #:*ini-path* #:main-thread-busy
            #:*fonts* #:*font-size* #:with-font #:unknown-font
+           #:*theme* #:define-theme #:set-theme #:set-font-size #:theme-color
            #:enum-flags #:with-window #:with-group #:with-child #:with-section
            #:with-id #:with-disabled #:with-style #:with-row #:with-grid
            #:same-line #:new-line #:separator #:spacing #:indent #:unindent

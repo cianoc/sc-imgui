@@ -109,6 +109,9 @@ hidden or destroyed window actually leave the screen on macOS.
 - `gui:*fonts*` (a plist of font name to file) and `gui:*font-size*` (default
   15) choose the fonts, loaded when the window is created: change them, then
   `(gui:shutdown)` and `(gui:start)`. `stop` and `start` do not reload fonts.
+- `gui:*theme*` (default `:mid-light`; the other shipped theme is `:dark`) is the
+  look applied when the window is created. `(gui:set-theme :dark)` switches it
+  live, and `(gui:set-font-size 13)` changes the density live.
 
 ## Fonts
 

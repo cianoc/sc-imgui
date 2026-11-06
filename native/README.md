@@ -21,7 +21,7 @@ Contents:
 
 Almost all of ImGui and ImPlot is called from Lisp directly. cimgui and cimplot expose them as plain C functions, and `src/bindings/imgui.lisp` and `src/bindings/implot.lisp` bind those functions. The bindings are generated from JSON descriptions that cimgui and cimplot ship.
 
-The shim (`shim.h` and `shim.cpp`) covers only what cimgui doesn't: creating and showing the window, driving each frame through ImGui's C++ backends, a headless mode for tests, and recording ImGui assertions instead of aborting. Lisp binds the shim's functions in `src/bindings/shim.lisp` as the `%shim` package.
+The shim (`shim.h` and `shim.cpp`) covers only what cimgui doesn't: creating and showing the window, driving each frame through ImGui's C++ backends, the colour behind the windows, a headless mode for tests, and recording ImGui assertions instead of aborting. Lisp binds the shim's functions in `src/bindings/shim.lisp` as the `%shim` package.
 
 The design keeps every platform-specific detail (OpenGL versions, GLFW setup, framebuffer sizes) in battle-tested backend code. The Lisp side only calls a handful of functions like `begin-frame` and `end-frame`.
 
@@ -112,7 +112,7 @@ Notable settings:
 
 ### `shim.h`
 
-The contract between Lisp and the shim: nineteen C functions, all declared `extern "C"`. `src/bindings/shim.lisp` binds exactly these. Each declaration's comment states its return values and which thread may call it.
+The contract between Lisp and the shim: twenty C functions, all declared `extern "C"`. `src/bindings/shim.lisp` binds exactly these. Each declaration's comment states its return values and which thread may call it.
 
 ### `shim.cpp`
 
@@ -133,6 +133,7 @@ The implementation. It does four jobs.
 | `shim_shutdown` | Full teardown for `gui:shutdown`: hides the window if visible, keeps processing events until 0.5 s after the hide (see [Gotchas](#macos-the-window-must-leave-the-screen-before-it-is-destroyed)), then destroys the backends, contexts, and window, and terminates GLFW. |
 | `shim_last_error` | Message for the last nonzero return, or `""`. |
 | `shim_add_font` | Adds a font file at a size in pixels and returns its index, or -1 with the reason, including the path, in `shim_last_error`. The first font added becomes ImGui's default font and sets the base size. If the first call fails, or the path is NULL, ImGui's built-in scalable font takes index 0 instead: the call returns -1 for a failed path and 0 for NULL. A later NULL path returns -1. A missing file records no ImGui assert. A file that isn't a font does trip an ImGui assert, which the shim removes from the assert record and reports through `shim_last_error`. Call it after `shim_open_window` and before the first frame. |
+| `shim_set_clear_color` | Sets the colour behind all windows, as three components from 0 to 1. `shim_end_frame` clears to it before drawing. Default is 0.1 grey. It is a static value, so it is harmless with no window and is kept when a window is destroyed and created again. The theme sets it from its `:background`. |
 | `shim_push_font` | `PushFont` for the font at an index, at a size in pixels (0 keeps the current size). An index of -1, or one with no font, pushes NULL, so the matching `PopFont` still balances. |
 
 **2. Headless mode for tests.** `shim_headless_create` sets up ImGui with no window or GPU: a fixed display size, a frame time of 1/60 s, no `.ini` file, and two backend flags (see [Gotchas](#headless-mode-depends-on-two-backend-flags)). `make test` runs with this, so it works on CI with no display. `shim_headless_destroy` undoes it.

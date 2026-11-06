@@ -27,3 +27,5 @@
   (path sc-imgui.bindings:optional-string) (size :float))
 (cffi:defcfun ("shim_push_font" push-font) :void ; main thread; balance with %imgui:pop-font
   (index :int) (size :float))
+(cffi:defcfun ("shim_set_clear_color" set-clear-color) :void ; main thread
+  (r :float) (g :float) (b :float))

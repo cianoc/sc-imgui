@@ -210,3 +210,10 @@
         (is (equal before missing) "an index with no font changes nothing")
         (is (equal before after) "pop-font restores")))
     (is (= 0 (%shim:assert-count)))))
+
+(test set-clear-color-is-harmless-without-a-window
+  (finishes (%shim:set-clear-color 0.5 0.25 0.125))
+  (with-headless-imgui ()
+    (finishes (%shim:set-clear-color 0.1 0.1 0.1))
+    (draw-some-text)
+    (is (= 0 (%shim:assert-count)))))

@@ -10,7 +10,21 @@ returned true, so BODY and EndPlot both run only then."
     `(let ((,open (%implot:begin-plot ,title (vec2 ,width ,height)
                                       ,(%flags-form "FLAGS" flags '#:%implot))))
        (when ,open
-         (unwind-protect (progn ,@body) (%implot:end-plot))))))
+         (let ((*series-index* 0))
+           (unwind-protect (progn ,@body) (%implot:end-plot)))))))
+
+(defvar *series-index* nil
+  "Index of the next :series colour within the current WITH-PLOT, else NIL.")
+
+(defun next-series-color ()
+  "The current theme's next :series colour (cycling) as a by-value ImVec4, or
+ImPlot's automatic colour outside WITH-PLOT or without a theme."
+  (let ((series (and *series-index* (theme-series))))
+    (if series
+        (destructuring-bind (r g b a) (nth (mod *series-index* (length series)) series)
+          (incf *series-index*)
+          (list '%imgui::x r '%imgui::y g '%imgui::z b '%imgui::w a))
+        (list '%imgui::x 0.0f0 '%imgui::y 0.0f0 '%imgui::z 0.0f0 '%imgui::w -1.0f0))))
 
 (deftype %plot-single () '(simple-array single-float (*)))
 (deftype %plot-double () '(simple-array double-float (*)))
@@ -34,17 +48,18 @@ new single-float vector of its elements.  Non-reals signal an error naming LABEL
          out))))
 
 (defun plot-spec (stride &optional (marker %implot:+marker-none+))
-  "An ImPlotSpec (as a by-value plist) with ImPlot's defaults, STRIDE bytes and MARKER."
-  (flet ((auto () (list '%imgui::x 0.0f0 '%imgui::y 0.0f0 '%imgui::z 0.0f0 '%imgui::w -1.0f0))
-         (nullp () (cffi:null-pointer)))
-    (list '%implot::line-color (auto) '%implot::line-colors (nullp)
+  "An ImPlotSpec (as a by-value plist) with ImPlot's defaults, STRIDE bytes and
+MARKER, coloured with the theme's next :series colour."
+  (let ((c (next-series-color))
+        (null (cffi:null-pointer)))
+    (list '%implot::line-color c '%implot::line-colors null
           '%implot::line-weight 1.0f0
-          '%implot::fill-color (auto) '%implot::fill-colors (nullp)
+          '%implot::fill-color c '%implot::fill-colors null
           '%implot::fill-alpha 1.0f0
           '%implot::marker marker '%implot::marker-size 4.0f0
-          '%implot::marker-sizes (nullp)
-          '%implot::marker-line-color (auto) '%implot::marker-line-colors (nullp)
-          '%implot::marker-fill-color (auto) '%implot::marker-fill-colors (nullp)
+          '%implot::marker-sizes null
+          '%implot::marker-line-color c '%implot::marker-line-colors null
+          '%implot::marker-fill-color c '%implot::marker-fill-colors null
           '%implot::size 4.0f0 '%implot::offset 0 '%implot::stride stride
           '%implot::flags 0)))
 

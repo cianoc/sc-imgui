@@ -16,7 +16,7 @@
            #:assert-count #:last-assert #:clear-asserts
            #:show-window #:hide-window #:wait-events #:wake
            #:window-visible #:test-request-close
-           #:add-font #:push-font))
+           #:add-font #:push-font #:set-clear-color))
 
 (defpackage #:%imgui (:use))
 
