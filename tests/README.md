@@ -240,7 +240,7 @@ The pure-Lisp part of the controls: no ImGui. The file's local `spec` helper bui
 
 ### `test-controls.lisp` (suite `controls`, 54 tests)
 
-The controls on a headless context, through the harness helpers above. `with-controls-env` sets up the context and captures the assertion count; each test checks that no ImGui assertion was recorded. Comments mark the tests that guard a specific review risk.
+The controls on a headless context, through the harness helpers above. `with-controls-env` sets up a headless context with the `:mid-light` theme and a base font size of 15; each test checks that no ImGui assertion was recorded. Comments mark the tests that guard a specific review risk.
 
 - **The core, through `number-box`:** a drag up raises the value by the expected amount, Shift is ten times finer, and overshooting then reversing doesn't stick. Double-click resets; wheel notches move 1% or one step, 0.1% with Shift, and trackpad fractions add up to a step. Drawing never writes. Disabled controls ignore input. Per-control state is removed after release and when the control vanishes mid-drag. A font-size change mid-drag is safe. A signalling `:format` propagates, wrong value types signal before drawing, and types are preserved.
 - **Typed entry:** Ctrl-click (Cmd on macOS) opens the field; Enter commits, clamped and snapped; garbage and Enter keeps it open with the error flag and the value unchanged, and correcting it commits; Escape and clicking elsewhere cancel; a value changed by code survives Escape and an unedited Enter; Ctrl-double-click doesn't reset.
