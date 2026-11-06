@@ -312,3 +312,48 @@ seen by the text field: Escape there would be lost.)"
       (press-key %imgui:+key-escape+ draw)
       (is (= 0.7 v)))
     (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test knob-drags-and-keeps-type
+  (with-controls-env ()
+    (let ((v 0.0d0))
+      (prime-and-drag 0 (- (gui::rem-px 10)) (lambda () (in-window (gui:knob "k" v))))
+      (is (typep v 'double-float)) (is (> v 0.99d0)))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test knob-draws-nonpositive-log-value
+  (with-controls-env ()
+    (let ((v 0))
+      (with-test-frame () (in-window (gui:knob "f" v :min 20 :max 20000 :scale :log :unit :hz)))
+      (is (eql 0 v)))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test knob-row-aligns-at-two-sizes
+  (with-controls-env ()
+    (dolist (px '(13.0 15.0))
+      (set-base-font-size px)
+      (let (rects)
+        (with-test-frame ()
+          (in-window (gui:with-row ()
+                       (progn (gui:knob-value "Cutoff frequency" 0.5) (push (last-item-rect) rects))
+                       (progn (gui:knob-value "Q" 0.5) (push (last-item-rect) rects)))))
+        (destructuring-bind ((ax1 ay1 ax2 ay2) (bx1 by1 bx2 by2)) (reverse rects)
+          (is (= ay1 by1))
+          (is (= (- ax2 ax1) (- bx2 bx1)))
+          (is (< (abs (- (- ax2 ax1) (* 3.0 px))) 1.0))
+          (is (= (- ay2 ay1) (- by2 by1))))))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test knob-bipolar-choices-draw-cleanly
+  (with-controls-env ()
+    (let ((pan 0.0) (wave 1))
+      (with-test-frame ()
+        (in-window (gui:knob "Pan" pan :min -1 :max 1 :bipolar t :unit :pan)
+                   (gui:knob "Wave" wave :choices '("Sine" "Saw" "Square"))))
+      (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert)))))
+
+(test knob-wrong-type-signals
+  (with-controls-env ()
+    (let ((v "x"))
+      (with-test-frame ()
+        (signals gui:widget-value-error (in-window (gui:knob "k" v)))))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
