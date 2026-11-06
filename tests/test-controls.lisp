@@ -947,14 +947,61 @@ accessed by PLACE-GET/PLACE-SET, recording its bar rect in *FADER-BAR*."
         (is (some #'gui::control-state-edit-text
                   (alexandria:hash-table-values gui::*control-states*))
             "the field is open")
-        (destructuring-bind (x1 y1 x2 y2) rect
-          (declare (ignore y1 y2))
-          (let* ((field-left (+ x1 (/ (- x2 x1) 2)))
+        (progn
+          (let* ((field-colours (mapcar (lambda (c) (apply #'gui:color (gui::parse-color c)))
+                                        '("#010203" "#010204" "#010205")))
+                 (field-left (reduce #'min (remove-if-not (lambda (p) (member (third p) field-colours))
+                                                          points)
+                                     :key #'first :initial-value most-positive-single-float))
                  (bar-colours (list (gui::control-color :frame) (gui::control-color :frame-hover)
                                     (gui::control-color :accent)))
                  (over (remove-if-not (lambda (p) (and (member (third p) bar-colours)
                                                        (> (first p) (+ field-left 0.5))))
                                       points)))
+            (is (< field-left (third rect)) "the field's background was found")
             (is (null over) "~D bar/fill vertices drawn over the text field" (length over))))
         (press-key %imgui:+key-escape+ draw))
+      (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert)))))
+
+(test horizontal-fader-text-field-opens-where-the-value-is
+  ;; The field opens over the value at the right end of the bar, with its
+  ;; text where the value's text was -- not at the middle of the bar.  The
+  ;; field's background is found by a distinct test-theme colour.
+  (with-test-themes (:test-field)
+    (gui:define-theme :test-field :base :mid-light
+                      :colors '(:frame-bg "#010203" :frame-bg-hovered "#010204"
+                                :frame-bg-active "#010205"))
+    (with-headless-imgui ()
+      (set-base-font-size 15)
+      (gui::apply-theme :test-field)
+      (let* ((gui:*theme* :test-field)
+             (v 0.5) (points nil) (rect nil) (text-left nil)
+             (draw (lambda ()
+                     (in-window
+                       (let* ((dl (gui:window-draw-list))
+                              (start (vtx-count dl)))
+                         (multiple-value-bind (new changed) (gui:fader-value "Vol" v :length 20)
+                           (when changed (setf v new)))
+                         (setf points (vtx-points dl start)
+                               rect (last-item-rect))
+                         ;; Where the value's text is drawn when not editing.
+                         (destructuring-bind (x1 y1 x2 y2) rect
+                           (declare (ignore y1 y2))
+                           (setf text-left (max (+ x1 (/ (- x2 x1) 2))
+                                                (- x2 (gui::rem-px 0.4) (gui::text-width "0.50"))))))))))
+        (with-test-frame () (funcall draw))
+        (let ((expected-text-left text-left))
+          (ctrl-click draw)
+          (with-test-frame () (funcall draw))
+          (let* ((field-colours (mapcar (lambda (c) (apply #'gui:color (gui::parse-color c)))
+                                        '("#010203" "#010204" "#010205")))
+                 (field (remove-if-not (lambda (p) (member (third p) field-colours)) points))
+                 (field-left (reduce #'min field :key #'first :initial-value most-positive-single-float))
+                 (field-right (reduce #'max field :key #'first :initial-value 0.0))
+                 (padding (gui::%style-x %imgui::frame-padding)))
+            (is (plusp (length field)) "the field's background is drawn")
+            (is (< (abs (- (+ field-left padding) expected-text-left)) 1.5)
+                "field text starts at ~,1F, the value's text was at ~,1F"
+                (+ field-left padding) expected-text-left)
+            (is (<= field-right (+ (third rect) 0.5)) "the field stays inside the fader"))))
       (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert)))))

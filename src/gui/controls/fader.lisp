@@ -21,6 +21,23 @@ centred in the item below the label LINE and SPACING."
       (list (+ x (/ (- item-width thickness) 2)) (+ y line spacing) thickness len)
       (list x y len thickness)))
 
+(defconstant +value-pad-rem+ 0.4
+  "Gap, in rem, between a horizontal fader's right end and its value text.")
+
+(defun horizontal-value-rect (spec value x y width thickness frame-height)
+  "Where a horizontal fader's text field opens (x y w h): over the value at
+the bar's right end, sized to the value's text plus ImGui's frame padding (at
+least 3 rem), so the typed text starts where the value's text was.  Never
+left of the bar's middle or past its right end."
+  (let* ((padding (%style-x %imgui::frame-padding))
+         (text (text-width (format-control-value spec (clamp-to-spec spec value))))
+         (text-left (max (+ x (/ width 2)) (- (+ x width) (rem-px +value-pad-rem+) text)))
+         (field-w (min (max (+ text (* 2 padding)) (rem-px 3)) (/ width 2)))
+         (field-x (max (+ x (/ width 2))
+                       (min (- text-left padding) (- (+ x width) field-w)))))
+    (list field-x (+ y (/ (- thickness frame-height) 2))
+          (- (min (+ x width) (+ field-x field-w)) field-x) frame-height)))
+
 (defun fader-press-position (vertical bar mx my)
   "The position (0 at min, 1 at max) of the screen point MX MY along BAR
 (x y w h): left to right when horizontal, bottom to top when VERTICAL."
@@ -57,8 +74,8 @@ centred in it."
                          thickness))
              (value-rect (if vertical
                              (list x (+ y line spacing-y len spacing-y) width frame-height)
-                             (list (+ x (/ width 2)) (+ y (/ (- thickness frame-height) 2))
-                                   (/ width 2) frame-height)))
+                             (horizontal-value-rect spec value x y width thickness
+                                                    frame-height)))
              (bar (fader-bar-rect vertical x y width len thickness line spacing-y))
              (frame (control-behavior label spec value
                                       :width width :height height
@@ -99,7 +116,7 @@ centred in it."
                   (draw-clipped-centered-text
                    x (+ (second value-rect) (/ (- frame-height line) 2)) width value-color
                    (format-control-value spec (control-frame-value frame)))))
-              (let ((pad (rem-px 0.4))
+              (let ((pad (rem-px +value-pad-rem+))
                     (half (/ width 2)))
                 (%imgui:push-clip-rect (vec2 bar-x bar-y) (vec2 (+ bar-x bar-w) (+ bar-y bar-h)) t)
                 (unwind-protect
