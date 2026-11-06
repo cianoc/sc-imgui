@@ -80,13 +80,16 @@ before and after."
     (list (getf min '%imgui::x) (getf min '%imgui::y)
           (getf max '%imgui::x) (getf max '%imgui::y))))
 
-(defun click-item (draw-fn &key (x-fn (lambda (r) (/ (+ (first r) (third r)) 2))))
+(defun click-item (draw-fn &key (x-fn (lambda (r) (/ (+ (first r) (third r)) 2)))
+                                (clicker #'frames-with-click))
   "Prime DRAW-FN (which must use IN-WINDOW) so its item has a rect, then click
-the item at X-FN of the rect.  Returns the list of DRAW-FN's values per frame."
+the item at X-FN of the rect.  CLICKER, a function of x, y and DRAW-FN, does
+the clicking (FRAMES-WITH-DOUBLE-CLICK, or a closure over FRAMES-WITH-WHEEL).
+Returns its value: by default the list of DRAW-FN's values per frame."
   (setf *item-rect* nil)
   (dotimes (i 2) (with-test-frame () (funcall draw-fn)))
   (let ((r *item-rect*))
-    (frames-with-click (funcall x-fn r) (/ (+ (second r) (fourth r)) 2) draw-fn)))
+    (funcall clicker (funcall x-fn r) (/ (+ (second r) (fourth r)) 2) draw-fn)))
 
 (defun click-item-at-right-edge (draw-fn)
   "Click the item's frame 2 pixels in from its right edge.  The item rect also
@@ -104,18 +107,95 @@ covers the label, so the frame's edge is min-x plus the item width."
    (cffi:foreign-slot-pointer draw-list '(:struct %imgui::im-draw-list) '%imgui::vtx-buffer)
    '(:struct %imgui::im-vector-im-draw-vert) '%imgui::size))
 
-(defun frames-with-drag (x y dx dy draw-fn)
+(defun %modifier-key (modifier)
+  (ecase modifier
+    (:shift %imgui:+mod-shift+)
+    (:ctrl %imgui:+mod-ctrl+)))
+
+(defmacro with-keys-held ((&rest modifiers) &body body)
+  "Queue key-down events for MODIFIERS (:shift, :ctrl) before BODY and key-up
+events after it (even when BODY unwinds).  The events are consumed by the
+next frame each precedes."
+  (let ((mods (gensym "MODS")))
+    `(let ((,mods (mapcar #'%modifier-key ',modifiers)))
+       (dolist (key ,mods) (%imgui:im-gui-io-add-key-event (%imgui:get-io-nil) key t))
+       (unwind-protect (progn ,@body)
+         (dolist (key ,mods) (%imgui:im-gui-io-add-key-event (%imgui:get-io-nil) key nil))))))
+
+(defun frames-with-drag (x y dx dy draw-fn &key shift)
   "Move to (X, Y), press, move by (DX, DY) while held, then release, calling
-DRAW-FN once per frame; returns the list of its values (one per frame)."
+DRAW-FN once per frame; returns the list of its values (one per frame).
+SHIFT holds Shift throughout."
+  (if shift
+      (with-keys-held (:shift) (frames-with-drag x y dx dy draw-fn))
+      (let ((io (%imgui:get-io-nil)))
+        (loop for event in (list (lambda () (%imgui:im-gui-io-add-mouse-pos-event
+                                             io (float x 1.0f0) (float y 1.0f0)))
+                                 (lambda () (%imgui:im-gui-io-add-mouse-button-event io 0 t))
+                                 (lambda () (%imgui:im-gui-io-add-mouse-pos-event
+                                             io (float (+ x dx) 1.0f0) (float (+ y dy) 1.0f0)))
+                                 (lambda () (%imgui:im-gui-io-add-mouse-button-event io 0 nil)))
+              collect (progn (funcall event)
+                             (with-test-frame () (funcall draw-fn)))))))
+
+(defun frames-with-wheel (x y notches draw-fn &key shift)
+  "Move to (X, Y) (one frame), then queue a vertical wheel of NOTCHES and run
+two more frames (the first sees it in io.MouseWheel).  SHIFT holds Shift.
+Returns the list of DRAW-FN's values per frame."
+  (if shift
+      (with-keys-held (:shift) (frames-with-wheel x y notches draw-fn))
+      (let ((io (%imgui:get-io-nil)))
+        (loop for event in (list (lambda () (%imgui:im-gui-io-add-mouse-pos-event
+                                             io (float x 1.0f0) (float y 1.0f0)))
+                                 (lambda () (%imgui:im-gui-io-add-mouse-wheel-event
+                                             io 0.0f0 (float notches 1.0f0)))
+                                 nil)
+              collect (progn (when event (funcall event))
+                             (with-test-frame () (funcall draw-fn)))))))
+
+(defun frames-with-double-click (x y draw-fn)
+  "Move to (X, Y), press, release, press, release: one frame each.  Returns
+the list of DRAW-FN's values per frame."
   (let ((io (%imgui:get-io-nil)))
     (loop for event in (list (lambda () (%imgui:im-gui-io-add-mouse-pos-event
                                          io (float x 1.0f0) (float y 1.0f0)))
                              (lambda () (%imgui:im-gui-io-add-mouse-button-event io 0 t))
-                             (lambda () (%imgui:im-gui-io-add-mouse-pos-event
-                                         io (float (+ x dx) 1.0f0) (float (+ y dy) 1.0f0)))
+                             (lambda () (%imgui:im-gui-io-add-mouse-button-event io 0 nil))
+                             (lambda () (%imgui:im-gui-io-add-mouse-button-event io 0 t))
                              (lambda () (%imgui:im-gui-io-add-mouse-button-event io 0 nil)))
           collect (progn (funcall event)
                          (with-test-frame () (funcall draw-fn))))))
+
+(defun drag-path (dys draw-fn &key between)
+  "Prime DRAW-FN (which must use IN-WINDOW), move to its item's center (one
+frame) and press (one frame); then for each DY in DYS call BETWEEN (if given)
+with the step index, move vertically by DY from the previous position, and run
+a frame; then release (one frame).  Returns DRAW-FN's values per frame."
+  (setf *item-rect* nil)
+  (dotimes (i 2) (with-test-frame () (funcall draw-fn)))
+  (let* ((io (%imgui:get-io-nil))
+         (r *item-rect*)
+         (x (/ (+ (first r) (third r)) 2))
+         (y (/ (+ (second r) (fourth r)) 2)))
+    (flet ((frame () (with-test-frame () (funcall draw-fn)))
+           (move () (%imgui:im-gui-io-add-mouse-pos-event io (float x 1.0f0) (float y 1.0f0))))
+      (append
+       (progn (move) (list (frame)))
+       (progn (%imgui:im-gui-io-add-mouse-button-event io 0 t) (list (frame)))
+       (loop for dy in dys
+             for i from 0
+             collect (progn (when between (funcall between i))
+                            (incf y dy)
+                            (move)
+                            (frame)))
+       (progn (%imgui:im-gui-io-add-mouse-button-event io 0 nil) (list (frame)))))))
+
+(defun set-base-font-size (px)
+  "Set ImGui's style FontSizeBase to PX (as GUI:SET-FONT-SIZE does on the GUI
+thread), without reapplying the theme."
+  (setf (cffi:foreign-slot-value (%imgui:get-style) '(:struct %imgui::im-gui-style)
+                                 '%imgui::font-size-base)
+        (float px 1.0)))
 
 (defun prime-and-drag (dx dy draw-fn)
   "Prime DRAW-FN (which must use IN-WINDOW) so its item has a rect, then drag

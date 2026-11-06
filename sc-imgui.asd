@@ -27,7 +27,9 @@
                              (:module "controls"
                               :serial t
                               :components ((:file "spec")
-                                           (:file "units")))))))
+                                           (:file "units")
+                                           (:file "core")
+                                           (:file "number-box")))))))
 
 (asdf:defsystem "sc-imgui/generator"
   :description "Generates CFFI bindings from cimgui/cimplot JSON definitions."
@@ -76,4 +78,5 @@
                (:file "test-draw")
                (:file "test-theme")
                (:file "test-control-spec")
+               (:file "test-controls")
                (:file "test-examples")))

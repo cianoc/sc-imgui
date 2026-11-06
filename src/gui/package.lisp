@@ -18,6 +18,7 @@
            #:slider #:slider-value #:drag #:drag-value #:checkbox #:checkbox-value
            #:combo #:combo-value #:input-text #:input-text-value #:selectable #:selectable-value
            #:list-box #:list-box-value #:button #:text
+           #:number-box #:number-box-value
            #:with-plot #:plot-lines #:plot-bars #:plot-scatter
            #:color #:window-draw-list #:draw-line #:draw-rect #:draw-circle
            #:draw-arc #:draw-polyline #:draw-text #:invisible-button
