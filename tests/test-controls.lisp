@@ -429,3 +429,59 @@ seen by the text field: Escape there would be lost.)"
     ;; Vertical: filled from the bottom (y 60) upward.
     (is (equal '(10 40.0 110 60) (rect t 0 0.5)))
     (is (equal '(10 36.0 110 48.0) (rect t 0.3 0.6)))))
+
+;;; Toggle and trigger
+
+(test toggle-flips
+  (with-controls-env ()
+    (let ((on nil))
+      (click-item (lambda () (in-window (gui:toggle "Mute" on))))
+      (is (eq t on))
+      (click-item (lambda () (in-window (gui:toggle "Mute" on))))
+      (is (eq nil on)))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test toggle-accepts-generalized-boolean
+  (with-controls-env ()
+    (let ((on :yes))
+      (click-item (lambda () (in-window (gui:toggle "Mute" on))))
+      (is (eq nil on)))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test toggle-disabled-ignores-click
+  (with-controls-env ()
+    (let ((on nil))
+      (click-item (lambda () (in-window (gui:with-disabled () (gui:toggle "Mute" on)))))
+      (is (eq nil on)))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test toggle-sizes
+  (with-controls-env ()
+    (with-test-frame ()
+      (in-window (gui:toggle-value "Mute" nil :width 6)))
+    (destructuring-bind (x1 y1 x2 y2) *item-rect*
+      (is (< (abs (- (- x2 x1) (gui::rem-px 6))) 0.01))
+      (is (= (- y2 y1) (%imgui:get-frame-height))))
+    (with-test-frame ()
+      (in-window (gui:toggle-value "Mute##x" nil)))
+    (is (< (abs (- (- (third *item-rect*) (first *item-rect*))
+                   (+ (gui::text-width "Mute") (gui::rem-px 1))))
+           0.01))
+    (with-test-frame ()
+      (in-window (gui:toggle-value "Mute" nil :width '(:px 50))))
+    (is (< (abs (- (- (third *item-rect*) (first *item-rect*)) 50.0)) 0.01))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test trigger-reports-press-hold-release
+  (with-controls-env ()
+    (let ((frames (click-item (lambda () (in-window (multiple-value-list (gui:trigger "Hit")))))))
+      (is (equal '((nil nil nil) (t t nil) (nil nil t) (nil nil nil)) frames)))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test trigger-disabled-reports-nothing
+  (with-controls-env ()
+    (let ((frames (click-item
+                   (lambda () (in-window (gui:with-disabled ()
+                                           (multiple-value-list (gui:trigger "Hit"))))))))
+      (is (every (lambda (f) (equal f '(nil nil nil))) frames)))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
