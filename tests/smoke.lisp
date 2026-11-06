@@ -86,6 +86,36 @@
   (smoke-window "counter A")
   (incf *count-a*))
 
+(defvar *font-sizes* nil
+  "Font sizes the SMOKE-FONTS panel saw: (default semibold regular-at-28).")
+
+(gui:define-gui smoke-fonts ()
+  (gui:with-window ("smoke fonts")
+    (let ((default (%imgui:get-font-size)) semibold big)
+      (gui:text "Inter Regular")
+      (gui:with-font (:semibold)
+        (gui:text "Inter SemiBold")
+        (setf semibold (%imgui:get-font-size)))
+      (gui:with-font (:regular :size 28)
+        (gui:text "Inter Regular at 28 px")
+        (setf big (%imgui:get-font-size)))
+      (setf *font-sizes* (list default semibold big)))))
+
+(defun gui-thread-value (function)
+  "FUNCTION's value, computed on the GUI thread."
+  (let ((result :pending))
+    (gui:call-in-gui-thread (lambda () (setf result (funcall function))))
+    (wait-until (lambda () (not (eq result :pending))))
+    result))
+
+(defun check-fonts (when)
+  (check (equal '((:regular . 0) (:semibold . 1)) gui.runtime::*font-table*)
+         "bundled fonts loaded ~A: ~S" when gui.runtime::*font-table*)
+  (setf *font-sizes* nil)
+  (wait-until (lambda () *font-sizes*))
+  (check (equal '(15.0 15.0 28.0) *font-sizes*)
+         "with-font panel drew ~A, sizes ~S" when *font-sizes*))
+
 (defun redefine (form)
   (handler-bind ((warning #'muffle-warning)) (eval form)))
 
@@ -140,6 +170,9 @@
       (check t "counter panel reached 300 frames in ~,2F s"
              (/ (- (get-internal-real-time) t0) internal-time-units-per-second)))
     (check (eql 1 (window-visible)) "window visible while running")
+    (check-fonts "at the first start")
+    (let ((report (get-output-stream-string out)))
+      (check (not (search "FONT failed" report)) "no font errors reported"))
     ;; 3. Redefinition takes effect within 60 frames.
     (let ((f0 *frames*))
       (redefine '(gui:define-gui smoke-counter ()
@@ -180,12 +213,17 @@
       (check (= -1 (%shim:window-visible)) "window destroyed after shutdown")
       (check (null (gui:shutdown)) "second (gui:shutdown) returned NIL")
       (check (null (gui:stop)) "(gui:stop) after shutdown returned NIL")
+      (check (null gui.runtime::*font-table*) "font table cleared after shutdown")
       (let ((free :pending))
         (gui.runtime::%run-on-main-thread (lambda () (setf free :free)))
         (wait-until (lambda () (not (eq free :pending))))
         (check (eq :free free) "main thread runs other work after shutdown")))
     ;; 9. start after shutdown creates a new window and loop.
     (check-showing-again "sc-imgui smoke (new loop)")
+    (check-fonts "in the new loop")
+    (let ((asserts (gui-thread-value #'%shim:assert-count)))
+      (check (zerop asserts) "no ImGui asserts (~D; last ~S)" asserts
+             (gui-thread-value #'%shim:last-assert)))
     (check (eq t (gui:stop)) "stop before final shutdown")
     (check (eq t (gui:shutdown)) "shutdown from hidden")
     (check (null gui.runtime::*state*) "loop ended after final shutdown")))

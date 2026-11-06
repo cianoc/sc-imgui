@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <mutex>
 #include <string>
+#include <vector>
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -22,6 +23,9 @@ static std::string g_ini_path;
 static GLFWwindow *g_window = nullptr;
 static bool g_backends = false;
 static bool g_headless = false;
+// Fonts added with shim_add_font, by index.  Lisp only ever sees the indexes.
+// Valid for the current ImGui context; cleared when it is destroyed.
+static std::vector<ImFont *> g_fonts;
 // Guards g_window against shim_wake, which other threads call: GLFW allows
 // glfwPostEmptyEvent from any thread, but not concurrently with glfwTerminate.
 static std::mutex g_wake_mutex;
@@ -69,6 +73,17 @@ static void create_contexts() {
 static void destroy_contexts() {
   if (ImPlot::GetCurrentContext()) ImPlot::DestroyContext();
   if (ImGui::GetCurrentContext()) ImGui::DestroyContext();
+  g_fonts.clear();
+}
+
+// Store FONT as the next index; the first becomes the default at SIZE.
+static int store_font(ImFont *font, float size) {
+  g_fonts.push_back(font);
+  if (g_fonts.size() == 1) {
+    ImGui::GetIO().FontDefault = font;
+    ImGui::GetStyle().FontSizeBase = size;
+  }
+  return (int)g_fonts.size() - 1;
 }
 
 static int fail(const char *msg) {
@@ -220,6 +235,51 @@ int shim_test_request_close(void) {
 }
 
 const char *shim_last_error(void) { return g_last_error.c_str(); }
+
+int shim_add_font(const char *path, float size) {
+  g_last_error.clear();
+  if (!ImGui::GetCurrentContext()) {
+    g_last_error = "no ImGui context";
+    return -1;
+  }
+  ImFontAtlas *atlas = ImGui::GetIO().Fonts;
+  ImFont *font = nullptr;
+  if (path) {
+    ImFontConfig cfg;
+    cfg.Flags |= ImFontFlags_NoLoadError;  // a missing file returns NULL, no assert
+    // A file that is not a font still trips an ImGui user-error assert (it
+    // then rolls the font back and returns NULL).  That is reported here, as
+    // a failed load, so take it back out of the assert record.
+    const int asserts = g_assert_count;
+    const std::string last_assert = g_last_assert;
+    font = atlas->AddFontFromFileTTF(path, size, &cfg);
+    if (!font) {
+      g_last_error = std::string("could not load font file ") + path;
+      if (g_assert_count != asserts) {
+        g_last_error += " (" + g_last_assert + ")";
+        g_assert_count = asserts;
+        g_last_assert = last_assert;
+      }
+    }
+  } else if (!g_fonts.empty()) {
+    g_last_error = "no font file given";
+    return -1;
+  }
+  if (font) return store_font(font, size);
+  if (g_fonts.empty()) {
+    // The default must be a font: ImGui's built-in scalable one.
+    ImFontConfig cfg;
+    cfg.SizePixels = size;
+    store_font(atlas->AddFontDefaultVector(&cfg), size);
+    return path ? -1 : 0;
+  }
+  return -1;
+}
+
+void shim_push_font(int index, float size) {
+  ImFont *font = (index >= 0 && index < (int)g_fonts.size()) ? g_fonts[index] : nullptr;
+  ImGui::PushFont(font, size);
+}
 
 int shim_headless_create(int width, int height) {
   g_last_error.clear();

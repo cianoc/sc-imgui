@@ -148,3 +148,65 @@
       (is (not (%imgui:tree-node-str "closed")))
       (%imgui:end))
     (is (= 0 (%shim:assert-count)))))
+
+;;; Fonts: the shim keeps the ImFont pointers; Lisp sees indexes.
+
+(defun frame-font-size ()
+  "ImGui's font size inside a fresh frame."
+  (let (size)
+    (with-test-frame () (setf size (%imgui:get-font-size)))
+    size))
+
+(test add-font-returns-indexes
+  (with-headless-imgui ()
+    (is (= 0 (%shim:add-font (bundled-font "Inter-Regular.ttf") 15.0)))
+    (is (= 1 (%shim:add-font (bundled-font "Inter-SemiBold.ttf") 15.0)))
+    (is (= 15.0 (frame-font-size)))
+    (draw-some-text)
+    (is (= 0 (%shim:assert-count)))))
+
+(test add-font-bad-path-fails-and-names-it
+  (with-headless-imgui ()
+    (is (= 0 (%shim:add-font (bundled-font "Inter-Regular.ttf") 15.0)))
+    (is (= -1 (%shim:add-font "/nonexistent/font.ttf" 15.0)))
+    (is (search "/nonexistent/font.ttf" (%shim:last-error)))
+    (is (= 1 (%shim:add-font (bundled-font "Inter-SemiBold.ttf") 15.0)) "no index used up")
+    (draw-some-text)
+    (is (= 0 (%shim:assert-count)))))
+
+(test failed-or-nil-first-font-gives-a-working-default
+  ;; A missing file, no path, and a file that is not a font.
+  (dolist (case (list (list "/nonexistent/font.ttf" -1)
+                      (list nil 0)
+                      (list (bundled-font "OFL.txt") -1)))
+    (destructuring-bind (path expected) case
+      (with-headless-imgui ()
+        (is (= expected (%shim:add-font path 15.0)) "first font ~S" path)
+        (when path (is (search path (%shim:last-error))))
+        ;; the built-in font took index 0
+        (is (= 1 (%shim:add-font (bundled-font "Inter-SemiBold.ttf") 15.0)))
+        (is (= 15.0 (frame-font-size)))
+        (draw-some-text)
+        (is (= 0 (%shim:assert-count)) "asserts after ~S: ~A" path (%shim:last-assert))))))
+
+(test push-font-balances-pop-font
+  (with-headless-imgui ()
+    (%shim:add-font (bundled-font "Inter-Regular.ttf") 15.0)
+    (%shim:add-font (bundled-font "Inter-SemiBold.ttf") 15.0)
+    (let (seen)
+      (flet ((note () (push (list (cffi:pointer-address (%imgui:get-font)) (%imgui:get-font-size))
+                            seen)))
+        (with-test-frame ()
+          (gui:with-window ("w")
+            (note)
+            (%shim:push-font -1 0.0) (note) (%imgui:pop-font)
+            (%shim:push-font 1 28.0) (note) (%imgui:pop-font)
+            (%shim:push-font 7 0.0) (note) (%imgui:pop-font)
+            (note))))
+      (destructuring-bind (before none semibold missing after) (reverse seen)
+        (is (equal before none) "index -1 changes nothing")
+        (is (/= (first before) (first semibold)) "index 1 is another font")
+        (is (= 28.0 (second semibold)))
+        (is (equal before missing) "an index with no font changes nothing")
+        (is (equal before after) "pop-font restores")))
+    (is (= 0 (%shim:assert-count)))))

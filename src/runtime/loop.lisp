@@ -19,6 +19,77 @@
   "Where ImGui saves window layout, merged with *DEFAULT-PATHNAME-DEFAULTS* at
 START.  NIL disables saving.  Changes take effect when the window is next created.")
 
+(defun %bundled-font (file)
+  (uiop:native-namestring
+   (asdf:system-relative-pathname :sc-imgui (format nil "assets/fonts/~A" file))))
+
+(defvar *fonts* (list :regular (%bundled-font "Inter-Regular.ttf")
+                      :semibold (%bundled-font "Inter-SemiBold.ttf"))
+  "Plist of font name (any keyword) to font file (a native namestring or a
+pathname), loaded when the window is created.  :REGULAR is the default font
+for all text; without it (or with a NIL path) ImGui's built-in scalable font
+is.  GUI:WITH-FONT selects the others by name.  Changes take effect when the
+window is next created.  Defaults to the bundled Inter Regular and SemiBold.")
+
+(defvar *font-size* 15
+  "Base font size in pixels.  Changes take effect when the window is next created.")
+
+(defvar *font-table* nil
+  "Alist of font name to the shim's font index, for the fonts loaded into the
+current window; NIL when none are loaded.  Written by LOAD-FONTS on the GUI
+thread.")
+
+(define-condition unknown-font (error)
+  ((name :initarg :name :reader unknown-font-name)
+   (loaded :initarg :loaded :reader unknown-font-loaded))
+  (:report (lambda (c stream)
+             (format stream "No font named ~S is loaded.  Loaded fonts: ~{~S~^, ~}.  ~
+Fonts come from *FONTS* when the window is created."
+                     (unknown-font-name c) (unknown-font-loaded c))))
+  (:documentation "Signalled by FONT-INDEX (so by GUI:WITH-FONT) for a font
+name that is not in the loaded font table."))
+
+(defun font-index (name)
+  "The shim's index of the loaded font NAME, NIL when no fonts are loaded (as
+in headless tests).  Signals UNKNOWN-FONT for a name that was not loaded."
+  (cond ((null *font-table*) nil)
+        ((cdr (assoc name *font-table*)))
+        (t (error 'unknown-font :name name :loaded (mapcar #'car *font-table*)))))
+
+(defun %font-namestring (path)
+  (and path (if (pathnamep path) (uiop:native-namestring path) path)))
+
+(defun load-fonts ()
+  "Add the fonts in *FONTS* to the current ImGui context, :REGULAR first (the
+default font, index 0), then the others in order, and set *FONT-TABLE*.  A
+font that fails is reported with source :FONT and its name maps to the
+regular font; unusable settings (a size that is not a number, a malformed
+plist) are reported the same way and leave no fonts loaded.  Never signals.
+Main thread, after the window opens."
+  (setf *font-table* nil)
+  (handler-case
+      (let ((size (float *font-size* 1.0f0))
+            (regular (getf *fonts* :regular))
+            (table (list (cons :regular 0))))
+        (flet ((add (name path)
+                 (let ((index (handler-case (%shim:add-font (%font-namestring path) size)
+                                (error (c)
+                                  (report-error :font (format nil "font ~S from ~S: ~A"
+                                                              name path c))
+                                  (return-from add 0)))))
+                   (cond ((not (minusp index)) index)
+                         (t (when (or path (not (eq name :regular)))
+                              (report-error :font (format nil "font ~S from ~A: ~A"
+                                                          name (or path "no file")
+                                                          (%shim:last-error))))
+                            0)))))
+          (add :regular regular)
+          (loop for (name path) on *fonts* by #'cddr
+                unless (or (eq name :regular) (assoc name table))
+                  do (push (cons name (add name path)) table)))
+        (setf *font-table* (nreverse table)))
+    (error (c) (report-error :font c))))
+
 (defvar *loop-lock* (bt2:make-lock :name "gui loop"))
 (defvar *state* nil
   "Requested loop state: NIL (no loop), :SHOWING, :HIDDEN or :SHUTTING-DOWN.
@@ -92,6 +163,7 @@ wait for events while :HIDDEN."
                  (return-from frames nil))
                (setf opened t
                      *shown* t)
+               (load-fonts)
                (loop
                  (run-queued-tasks)
                  (ecase *state*
@@ -118,6 +190,7 @@ wait for events while :HIDDEN."
       (when opened
         (sb-int:with-float-traps-masked (:invalid :divide-by-zero :overflow :inexact)
           (ignore-errors (%shim:shutdown))))
+      (setf *font-table* nil)
       (bt2:with-lock-held (*loop-lock*)
         (setf *state* nil
               *shown* nil)))))

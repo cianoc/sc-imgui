@@ -19,7 +19,7 @@ This directory is the only Lisp code that crosses into C. It loads the native li
 | --- | --- |
 | `%imgui` | Dear ImGui, through cimgui: functions, structs, and enum constants. Generated. |
 | `%implot` | ImPlot, through cimplot. Generated. |
-| `%shim` | The shim's own functions from `native/shim.h`: window, frames, headless mode, assertions. Hand-written. |
+| `%shim` | The shim's own functions from `native/shim.h`: window, frames, fonts, headless mode, assertions. Hand-written. |
 | `sc-imgui.bindings` | Library loading and the `optional-string` type. Hand-written. |
 
 The `%` prefix marks them as low level: they mirror the C APIs one-to-one and check nothing. Application code should use `gui` (`src/gui/README.md`), dropping into these only for something `gui` doesn't wrap yet.
@@ -54,7 +54,7 @@ Every `make bindings` rewrites them completely, so a hand edit is lost. They're 
 
 ### The hand-written files
 
-**`package.lisp`** — Defines `sc-imgui.bindings` (uses `CL`, exports the loading API and `optional-string`), `%shim` (uses nothing, exports its 17 functions), and `%imgui` and `%implot` (use nothing, export nothing here; the generated files export their own names).
+**`package.lisp`** — Defines `sc-imgui.bindings` (uses `CL`, exports the loading API and `optional-string`), `%shim` (uses nothing, exports its 19 functions), and `%imgui` and `%implot` (use nothing, export nothing here; the generated files export their own names).
 
 **`types.lisp`** — Defines `optional-string`, the type every generated `const char*` argument uses. It behaves like CFFI's `:string` (a Lisp string is copied to foreign memory for the call and freed afterwards; a foreign pointer passes through), except that `nil` passes NULL, which many optional ImGui arguments need. It subclasses CFFI's own string type rather than defining a new one, because calls that pass a struct by value go through cffi-libffi, which only knows how to translate CFFI's string type. Inheriting it keeps strings handled the same way on both call paths. Return values stay plain `:string`.
 
@@ -77,7 +77,7 @@ Counts and lists are from the current code. Use them to check an upgrade: everyt
 
 ### `%shim`
 
-All 17 functions are used outside this directory. All run on the GUI (main) thread unless marked otherwise.
+All 19 functions are used outside this directory. All run on the GUI (main) thread unless marked otherwise.
 
 | Function | Returns | Used by | Purpose |
 | --- | --- | --- | --- |
@@ -91,6 +91,8 @@ All 17 functions are used outside this directory. All run on the GUI (main) thre
 | `(shutdown)` | | runtime | Destroy everything, after letting the window leave the screen |
 | `(last-error)` | string | runtime, tests | Why the last call returned nonzero |
 | `(assert-count)`, `(last-assert)`, `(clear-asserts)` | count; `"expr @ file:line"`; | tests (and you, from the REPL) | Recorded ImGui assertions |
+| `(add-font path size)` | index, or -1 | runtime, tests | Add a font file at `size` pixels. The first font added is the default and sets the base size. `path` `nil` adds ImGui's built-in font as the first font (index 0). On -1, `(last-error)` says why and names the path. Call it right after `open-window`. |
+| `(push-font index size)` | | gui (`with-font`), tests | Push the font at `index` at `size` pixels (0 keeps the size). Balance with `%imgui:pop-font`. -1 or an unknown index changes nothing but still balances. |
 | `(headless-create width height)`, `(headless-destroy)` | 0 on success | tests | ImGui with no window |
 | `(window-visible)` | 1, 0, or -1 with no window | tests | |
 | `(test-request-close)` | | tests | **Any thread.** Simulate the close button |
@@ -248,6 +250,7 @@ There's no generator for the shim and no automatic check. Each `defcfun` must ma
 | --- | --- |
 | `int` | `:int` |
 | `double` | `:double` |
+| `float` | `:float` |
 | `void` | `:void` |
 | `const char *` argument | `sc-imgui.bindings:optional-string` |
 | `const char *` result | `:string` |
@@ -262,7 +265,7 @@ The generator writes `sc-imgui.bindings:optional-string` into every generated fu
 
 ## Tests
 
-The `bindings` suite (`tests/test-bindings.lisp`, 17 tests) checks the real library and generated code through actual calls:
+The `bindings` suite (`tests/test-bindings.lisp`, 21 tests) checks the real library and generated code through actual calls:
 
 | Test | Protects |
 | --- | --- |
@@ -275,6 +278,9 @@ The `bindings` suite (`tests/test-bindings.lisp`, 17 tests) checks the real libr
 | `window-visible-without-a-window`, `test-request-close-without-a-window`, `wake-and-wait-without-a-window-are-harmless` | Shim functions are safe with no window |
 | `nil-string-argument`, `string-arguments-with-struct-by-value`, `shim-accepts-nil-ini-path` | `optional-string` on both CFFI call paths |
 | `bool-arguments-with-struct-by-value`, `bool-argument-plain-call` | The `bool` wrappers on both call paths |
+| `add-font-returns-indexes`, `add-font-bad-path-fails-and-names-it` | `add-font` indexes, and a bad path failing with its name in `last-error` and no index used up |
+| `failed-or-nil-first-font-gives-a-working-default` | A missing file, a NIL path, or a non-font file as the first font leaves the built-in font as index 0 and no ImGui asserts |
+| `push-font-balances-pop-font` | `push-font` with a real, `-1`, or missing index, each balanced by `pop-font` |
 
 Which suites to run after each kind of change:
 

@@ -15,7 +15,8 @@
            #:last-error #:headless-create #:headless-destroy
            #:assert-count #:last-assert #:clear-asserts
            #:show-window #:hide-window #:wait-events #:wake
-           #:window-visible #:test-request-close))
+           #:window-visible #:test-request-close
+           #:add-font #:push-font))
 
 (defpackage #:%imgui (:use))
 

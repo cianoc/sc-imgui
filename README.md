@@ -106,6 +106,23 @@ hidden or destroyed window actually leave the screen on macOS.
   window layout.
 - Errors are reported to the `*standard-output*` of the thread that called
   `start` (the REPL), never to the main thread's own output.
+- `gui:*fonts*` (a plist of font name to file) and `gui:*font-size*` (default
+  15) choose the fonts, loaded when the window is created: change them, then
+  `(gui:shutdown)` and `(gui:start)`. `stop` and `start` do not reload fonts.
+
+## Fonts
+
+The default font is Inter 4.1 (released 2024-11-16,
+<https://github.com/rsms/inter/releases/tag/v4.1>, asset `Inter-4.1.zip`). The
+files `Inter-Regular.ttf` and `Inter-SemiBold.ttf` are the static TTFs from
+`extras/ttf/` in that release, kept in `assets/fonts/`. Inter is licensed under
+the SIL Open Font License 1.1, and the licence text is in `assets/fonts/OFL.txt`.
+It must stay with the font files.
+
+`gui:*fonts*` defaults to `(:regular Inter-Regular :semibold Inter-SemiBold)`.
+`:regular` is the default font for all text; use another with
+`(gui:with-font (:semibold) ...)` or `(gui:with-font (:regular :size 28) ...)`.
+Without a `:regular` font, ImGui's built-in font is used.
 
 ## API summary
 
@@ -114,7 +131,8 @@ Each item is demonstrated in [examples/](examples/README.md).
 - `gui:define-gui`: define or redefine a panel; `gui:show`, `gui:hide`, `gui:remove` control it by name.
 - `gui:call-in-gui-thread`: queue a function to run on the GUI thread before the next frame.
 - `gui:*debug-on-error*`: when true, panel errors enter the debugger with `retry-panel` and `disable-panel` restarts instead of showing a failed window.
-- Scope and layout macros: `with-window`, `with-child`, `with-row`, `with-grid`, `with-section` (see `examples/layout.lisp`).
+- `gui:*fonts*`, `gui:*font-size*`: the fonts loaded at window creation (bundled Inter by default).
+- Scope and layout macros: `with-window`, `with-child`, `with-row`, `with-grid`, `with-section` (see `examples/layout.lisp`); `with-font` picks a loaded font and size for its body.
 - Widgets: `text`, `button`, `checkbox`, `slider`, `input-text`, `combo`, `selectable`, `list-box`, ... each on a place, with functional `-value` variants (e.g. `slider-value`, `checkbox-value`) that take and return values.
 - Plots: `plot-lines`, `plot-bars`, `plot-scatter` from Lisp vectors (`examples/plots.lisp`).
 - Draw primitives and interaction helpers: `draw-circle`, `draw-arc`, `invisible-button`, `mouse-drag-delta` (`examples/custom-knob.lisp`).

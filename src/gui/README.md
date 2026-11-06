@@ -46,8 +46,10 @@ Re-evaluating the `define-gui` form changes the window on the next frame. `(gui:
 | | `call-in-gui-thread` | function | Run a function on the GUI thread between frames |
 | | `start`, `stop`, `shutdown`, `running-p` | functions | Show, hide, or end the GUI; is it showing? |
 | | `*ini-path*`, `*debug-on-error*` | variables | Layout file; debugger instead of failed window |
+| | `*fonts*`, `*font-size*` | variables | Fonts to load and the base size, read when the window is created |
 | | `main-thread-busy` | condition | `start` called on the main thread |
-| [Scopes](#scopes) | `with-window`, `with-group`, `with-child`, `with-section`, `with-id`, `with-disabled`, `with-style` | macros | Balanced ImGui begin/end and push/pop |
+| | `unknown-font` | condition | `with-font` got a name that isn't loaded |
+| [Scopes](#scopes) | `with-window`, `with-group`, `with-child`, `with-section`, `with-id`, `with-disabled`, `with-style`, `with-font` | macros | Balanced ImGui begin/end and push/pop |
 | [Layout](#layout) | `with-row`, `with-grid` | macros | Items on one line; items in a table |
 | | `same-line`, `new-line`, `separator`, `spacing`, `indent`, `unindent`, `set-next-item-width` | functions | Fine layout control |
 | [Widgets](#widgets) | `slider`, `drag`, `checkbox`, `combo`, `input-text`, `selectable`, `list-box` | macros | Edit a place; true when changed |
@@ -132,6 +134,12 @@ Arguments in `&key` lists show their defaults. "Place" means a `setf`-able form.
 
 **`*debug-on-error*`** — Default `nil`. When true, a panel error enters the debugger, with restarts `retry-panel` and `disable-panel`, instead of being shown in a failed window. Useful for hard bugs, but the window freezes while the debugger is open.
 
+**`*fonts*`** — Plist of font name (any keyword) to font file, as a native namestring or a pathname. Default `(:regular <assets/fonts/Inter-Regular.ttf> :semibold <assets/fonts/Inter-SemiBold.ttf>)`: the bundled Inter (see the top-level `README.md`). `:regular` is the default font for all text. Without it (or with a `nil` path), ImGui's built-in scalable font is the default. Takes effect when the window is next created, so after changing it call `(gui:shutdown)` and `(gui:start)`. `stop` and `start` don't reload fonts. A font file that fails to load is reported at the REPL, and that name uses the regular font.
+
+**`*font-size*`** — The base font size in pixels, default 15. Same timing as `*fonts*`.
+
+**`unknown-font`** — Error signalled by `with-font` for a name that isn't loaded. The message names it and lists the loaded names. Inside a panel it fails the panel like any other error. Readers: `unknown-font-name`, `unknown-font-loaded` (from `gui.runtime`).
+
 **`main-thread-busy`** — Condition signalled by `start` on the main thread. Its report explains the SLIME setting needed (`swank::*main-thread-used*`).
 
 ### Scopes
@@ -147,6 +155,8 @@ Arguments in `&key` lists show their defaults. "Place" means a `setf`-able form.
 **`(with-id (object) &body body)`** — Pushes an ID scope for `object`. Integers that fit in 32 bits and strings are used directly; any other object gets a stable number.
 
 **`(with-disabled (&optional (disabled t)) &body body)`** — Greys out the body's widgets and ignores input to them while `disabled` is true. `disabled` is evaluated each frame.
+
+**`(with-font (name &key size) &body body)`** — Text in the body uses the font loaded under `name`, a key of `*fonts*`, at `size` pixels if given, otherwise at the current size. `name` and `size` are evaluated. Nests, and pops afterwards, even after an error. A name that wasn't loaded signals `unknown-font`. With no fonts loaded at all (headless tests), the font is left unchanged, size included.
 
 **`(with-style (&rest specs) &body body)`** — Temporarily changes style colors and variables for the body. Each spec is one of:
 
@@ -263,7 +273,7 @@ The `sc-imgui` system loads these in this order (`sc-imgui.asd`); each may use t
 | `package.lisp` | The `gui` package: its exports, the re-exports from `gui.runtime`, and the shadowing of `cl:remove`. |
 | `define-gui.lisp` | `define-gui`, `show`, `hide`, `remove`, `call-in-gui-thread`: thin wrappers over the runtime registry and task queue. |
 | `foreign.lisp` | Shared helpers: `enum-flags` and the compile-time flag resolution used by the macros; `vec2` (internal), which builds the plist form of a by-value `ImVec2`; stable object IDs for `with-id`, from a weak, synchronized hash table; and the 64-byte scratch buffer that widgets use for out-values, allocated on first use and reallocated after an image is saved. |
-| `scopes.lisp` | `with-window`, `with-group`, `with-child`, `with-section`, `with-id`, `with-disabled`, `with-style`. |
+| `scopes.lisp` | `with-window`, `with-group`, `with-child`, `with-section`, `with-id`, `with-font`, `with-disabled`, `with-style`. |
 | `layout.lisp` | The layout functions, `with-row`, and `with-grid`. |
 | `widgets.lisp` | `widget-value-error`; the `-value` functions; `define-place-widget`, which generates each place macro from its `-value` function using `get-setf-expansion`; `button` and `text`. |
 | `plots.lisp` | `with-plot` and the plot functions. `plot-data` decides whether to copy; `plot-pair` matches `xs` and `ys`; `plot-spec` builds ImPlot's `ImPlotSpec` argument with ImPlot's defaults; vectors are pinned with `cffi:with-pointer-to-vector-data` during each call. |
@@ -345,6 +355,35 @@ Keep one specialized vector and update it in place. It's passed to ImPlot by poi
   (when (gui:button "PANIC" :width 120 :height 40)
     (stop-all-synths)))
 ```
+
+### Fonts: a heading, a big readout, and a bold weight
+
+Inter Regular and SemiBold are loaded by default, so `:semibold` works at once. `with-font` takes a size for a one-off big number:
+
+```lisp
+(gui:define-gui levels ()
+  (gui:with-window ("Levels")
+    (gui:with-font (:semibold)
+      (gui:text "Output"))
+    (gui:with-font (:regular :size 28)
+      (gui:text "~,1F dB" *level-db*))
+    (gui:text "Peak hold")))
+```
+
+For another weight, download `Inter-Bold.ttf` from the same Inter release (`Inter-4.1.zip`, in `extras/ttf/`), add it to `*fonts*`, then recreate the window:
+
+```lisp
+(setf (getf gui:*fonts* :bold) "/path/to/Inter-Bold.ttf")
+(gui:shutdown)
+(gui:start)
+
+(gui:define-gui title ()
+  (gui:with-window ("Title")
+    (gui:with-font (:bold :size 22)
+      (gui:text "Bold"))))
+```
+
+The panels stay registered through `shutdown`, so they come back on the new window.
 
 ### A fixed window
 
@@ -471,6 +510,10 @@ Lists and general vectors are copied into a new vector every frame. For large or
 
 After `define-gui` is re-evaluated, its windows resize to fit their contents on the next frame, discarding a manual resize. That's deliberate, so new widgets aren't hidden. A size set afterwards sticks.
 
+### Fonts load only when the window is created
+
+`*fonts*` and `*font-size*` are read once, when `start` creates a new window. `stop` and `start` only hide and show it, so changes don't show. Call `(gui:shutdown)` then `(gui:start)`. Until then, `with-font` with a name you just added fails the panel with `unknown-font`: an unknown name is an error, not a silent fallback.
+
 ### Raw calls aren't protected
 
 `%imgui` and `%implot` calls bypass everything here: no type checks, no balanced scopes, `bool` and string details left to you. An unbalanced raw begin/end usually shows up as a recorded ImGui assertion rather than a Lisp error; check `(%shim:assert-count)` and `(%shim:last-assert)` if a panel misbehaves.
@@ -479,13 +522,13 @@ After `define-gui` is re-evaluated, its windows resize to fit their contents on 
 
 | Suite | Covers |
 | --- | --- |
-| `scopes` | Every scope macro stays balanced after an error; `with-row` and `with-grid` placement; `with-id` stability across garbage collection; `enum-flags`; no variable capture |
+| `scopes` | Every scope macro, including `with-font`, stays balanced after an error; `with-font` sizes, nesting, the unknown-name error, and no fonts loaded; `with-row` and `with-grid` placement; `with-id` stability across garbage collection; `enum-flags`; no variable capture |
 | `widgets` | Every widget writing back through simulated input; number types preserved; `-value` variants; UTF-8 truncation; `widget-value-error`; places evaluated once |
 | `plots` | No copying for specialized vectors; coercion; length and type errors; every plot kind |
 | `draw` | `color` matches ImGui; every primitive adds vertices; polyline edge cases; invisible-button clicks and drags |
 | `examples` | Every file in `examples/` loads and draws without failures or assertions |
 
-Not directly tested (see "Known gaps" in `tests/README.md`): the `drag` macro, `with-section`, the layout functions, `item-hovered-p`, `mouse-pos`, `content-region-avail`, `set-cursor-screen-pos`, `reset-mouse-drag-delta`, and the visible effect of `with-style` and `with-disabled`. Some run indirectly through the examples.
+Not directly tested (see "Known gaps" in `tests/README.md`): the `drag` macro, `with-section`, the layout functions, `item-hovered-p`, `mouse-pos`, `content-region-avail`, `set-cursor-screen-pos`, `reset-mouse-drag-delta`, and the visible effect of `with-style`, `with-disabled`, and `with-font`. Some run indirectly through the examples.
 
 The examples, each loaded after `(gui:start)` with `(load "examples/<file>.lisp")`:
 

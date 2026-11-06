@@ -24,9 +24,9 @@ Contents:
 - the **task queue** behind `gui:call-in-gui-thread`;
 - **error reports**, sent to the REPL that started the GUI.
 
-It knows nothing about widgets, layout, or audio; those are in `src/gui/`. It talks to ImGui only to drive frames, to keep ImGui's state balanced around each panel, and to draw a failed panel's window.
+It knows nothing about widgets, layout, or audio; those are in `src/gui/`. It talks to ImGui only to drive frames, to load fonts when the window opens, to keep ImGui's state balanced around each panel, and to draw a failed panel's window.
 
-Users normally never type `gui.runtime:`. Its user-facing exports (`start`, `stop`, `shutdown`, `running-p`, `*ini-path*`, `*debug-on-error*`, `main-thread-busy`) are re-exported from `gui`. The rest exist for the `gui` layer and the tests. See `src/README.md` for how the directories fit together.
+Users normally never type `gui.runtime:`. Its user-facing exports (`start`, `stop`, `shutdown`, `running-p`, `*ini-path*`, `*fonts*`, `*font-size*`, `unknown-font`, `*debug-on-error*`, `main-thread-busy`) are re-exported from `gui`. The rest exist for the `gui` layer and the tests. See `src/README.md` for how the directories fit together.
 
 ## Quick reference
 
@@ -37,6 +37,9 @@ Users normally never type `gui.runtime:`. Its user-facing exports (`start`, `sto
 | [Lifecycle](#lifecycle) | `start`, `stop`, `shutdown`, `running-p` | functions | user | any |
 | | `*ini-path*` | variable | user | set before `start` |
 | | `main-thread-busy` | condition | user | |
+| [Fonts](#fonts) | `*fonts*`, `*font-size*` | variables | user | set before the window is created |
+| | `unknown-font`, `unknown-font-name`, `unknown-font-loaded` | condition and readers | user | |
+| | `font-index` | function | gui | main |
 | | `wake-loop` | function | gui | any |
 | [Registry](#registry) | `gui-entry`, `make-gui-entry`, `gui-entry-p`, `gui-entry-name`, `gui-entry-function-name`, `gui-entry-visible`, `gui-entry-failure`, `gui-entry-refit` | struct | gui, tests | read only outside the registry |
 | | `register-gui`, `unregister-gui`, `find-gui`, `set-gui-visible`, `mark-gui-failed`, `clear-gui-failure`, `registry-snapshot` | functions | gui | any |
@@ -122,6 +125,22 @@ The registry stores each panel's **function name**, not the function. Each frame
 
 **`(wake-loop)`** — Wakes the loop if it's waiting for events. Safe from any thread, and does nothing when there's no window. `gui:call-in-gui-thread` calls it after queueing a task.
 
+### Fonts
+
+The window's fonts come from two variables, read when the window is created. `gui:with-font` (in `src/gui/`) selects a font by name inside a panel. The default is the bundled Inter; see the top-level `README.md` for its licence.
+
+**`*fonts*`** — A plist of font name (any keyword) to font file, as a native namestring or a pathname. Default `(:regular <assets/fonts/Inter-Regular.ttf> :semibold <assets/fonts/Inter-SemiBold.ttf>)`, with the paths resolved through `asdf:system-relative-pathname` into native strings. `:regular` is the default font for all text. If it is missing or `nil`, ImGui's built-in scalable font is the default instead. Changing it has no effect until the window is next created: `gui:stop` and `gui:start` only hide and show the window, so call `(gui:shutdown)` and then `(gui:start)`.
+
+**`*font-size*`** — The base size in pixels, default 15. Same timing as `*fonts*`.
+
+**`(font-index name)`** — The shim's index for the loaded font `name`. Returns `nil` when no fonts are loaded (headless tests), and signals `unknown-font` for a name that isn't in the table. `gui:with-font` calls it.
+
+**`unknown-font`** — Error signalled by `font-index`. Its message names the font and lists the loaded names. Readers: `unknown-font-name` and `unknown-font-loaded`. Inside a panel it fails the panel like any other error.
+
+**`*font-table*`** (internal) — Alist of font name to shim index for the current window, or `nil` when none are loaded. Set by `load-fonts` after the window opens, and set back to `nil` when the loop ends, so `shutdown` clears it.
+
+**`(load-fonts)`** (internal) — Called by `%frame-loop` on the main thread right after `open-window` succeeds. It adds `:regular` first, so it is index 0 and the default, then the other entries in plist order, and builds `*font-table*`. A font that fails to load is reported with source `:font`, naming the font and its path, and its name maps to index 0, so the panel still draws in the regular font. If `:regular` itself fails, the built-in font is index 0. It never signals.
+
 ### Registry
 
 The registry is an ordered list of entries plus an `equal` hash table from name to entry, both guarded by `*registry-lock*`. Every registry function takes the lock and is safe from any thread.
@@ -176,7 +195,7 @@ The debugger runs on the main thread, so the window freezes until you choose a r
 
 **`*report-stream*`** — Where error reports go. Initially the `*standard-output*` at load time; each `start` that shows the window sets it, globally, to the caller's `*standard-output*`. Under SLIME that's the REPL, which is why reports appear there and not in `*inferior-lisp*`.
 
-**`(report-error source condition &optional backtrace-string)`** — Writes `[gui] <source> failed: <condition>`, then the backtrace if given, and flushes. `source` is a panel name, `:task`, or `:loop`. Never signals: anything unprintable is replaced by a description, and if `*report-stream*` fails it tries `*error-output*`, then gives up silently. Panel reports include a 30-frame backtrace.
+**`(report-error source condition &optional backtrace-string)`** — Writes `[gui] <source> failed: <condition>`, then the backtrace if given, and flushes. `source` is a panel name, `:task`, `:font`, or `:loop`. Never signals: anything unprintable is replaced by a description, and if `*report-stream*` fails it tries `*error-output*`, then gives up silently. Panel reports include a 30-frame backtrace.
 
 ### Test hooks
 
@@ -195,7 +214,7 @@ The `sc-imgui` system loads these first, before `src/gui/`, in this order:
 | `tasks.lisp` | The task queue: `enqueue-task`, `run-queued-tasks`, `%reset-tasks`. Tasks are kept newest-first and reversed when run. | `*task-lock*` |
 | `report.lisp` | `*report-stream*`, `report-error`, and `%safe-princ`, which prints anything without signalling. | |
 | `frame.lisp` | `*debug-on-error*`, `*refit-windows*`, `draw-registered-guis`. `%call-panel` calls one panel with error isolation and ImGui state recovery; `%draw-failed-window` draws a failed panel's window; `%backtrace-string` captures a backtrace. | |
-| `loop.lisp` | The requested state and `start`, `stop`, `shutdown`, `running-p`, `main-thread-busy`, `wake-loop`. `%frame-loop` is the loop itself; `%run-on-main-thread` does the handoff; `%wait-while` is the bounded wait used by `start`, `stop`, and `shutdown`. | `*loop-lock*` |
+| `loop.lisp` | The requested state and `start`, `stop`, `shutdown`, `running-p`, `main-thread-busy`, `wake-loop`; the font variables, `unknown-font`, `font-index`, and `load-fonts`. `%frame-loop` is the loop itself; `%run-on-main-thread` does the handoff; `%wait-while` is the bounded wait used by `start`, `stop`, and `shutdown`. | `*loop-lock*` |
 
 No function holds two of the locks at once, so they can't deadlock against each other.
 
@@ -205,7 +224,7 @@ No function holds two of the locks at once, so they can't deadlock against each 
 
 1. **REPL thread:** `start` takes `*loop-lock*`, sees no loop, checks it isn't on the main thread, sets `*state*` to `:showing`, and sets `*report-stream*`.
 2. **REPL thread:** it interrupts the main thread with the loop function, and returns `t`.
-3. **Main thread:** when it next accepts interrupts, it enters `%frame-loop`, opens the window through `%shim:open-window` (which also creates the ImGui and ImPlot contexts and loads the layout from `*ini-path*`), sets `*shown*`, and starts drawing frames.
+3. **Main thread:** when it next accepts interrupts, it enters `%frame-loop`, opens the window through `%shim:open-window` (which also creates the ImGui and ImPlot contexts and loads the layout from `*ini-path*`), sets `*shown*`, loads the fonts in `*fonts*` with `load-fonts`, and starts drawing frames.
 
 The main thread stays inside the loop until `shutdown`. Whatever it was doing before, typically sleeping in SLIME, resumes afterwards.
 
@@ -217,7 +236,7 @@ The main thread stays inside the loop until `shutdown`. Whatever it was doing be
 ### `start` after `stop`
 
 1. **Any thread:** `start` changes `*state*` to `:showing`, records the title, sets `*report-stream*`, and wakes the loop.
-2. **Main thread:** the loop calls `%shim:show-window` and resumes drawing frames. The same window comes back; no new window or context is created.
+2. **Main thread:** the loop calls `%shim:show-window` and resumes drawing frames. The same window comes back; no new window, context, or fonts are created.
 
 ### The close button
 
@@ -227,7 +246,7 @@ The main thread stays inside the loop until `shutdown`. Whatever it was doing be
 ### `shutdown`
 
 1. **REPL thread:** `shutdown` changes `*state*` to `:shutting-down`, wakes the loop, and waits until `*state*` is `nil`.
-2. **Main thread:** the loop sees `:shutting-down` and leaves. Its cleanup calls `%shim:shutdown`, which hides the window, keeps processing events until macOS has removed it, then destroys the window and contexts and terminates GLFW. It sets `*state*` to `nil`.
+2. **Main thread:** the loop sees `:shutting-down` and leaves. Its cleanup calls `%shim:shutdown`, which hides the window, keeps processing events until macOS has removed it, then destroys the window and contexts and terminates GLFW. It also sets `*font-table*` to `nil` and sets `*state*` to `nil`.
 3. The main thread returns from the interrupt and is free again. The registry still holds every panel, so the next `start` shows them all.
 
 ### A panel error
@@ -376,6 +395,10 @@ Because panels are looked up by name, redefining a panel's function with `defun`
 
 Any object can be a name, but two `equal` names are the same panel: registering the second replaces the first. Names that are fresh objects each time, such as `(list 'a)`, still match each other.
 
+### Fonts load only when the window is created
+
+`*fonts*` and `*font-size*` are read once, in `load-fonts`, when `start` creates a new window. `stop` and `start` reuse the window and its fonts, so changes don't show. Call `shutdown` and then `start`. A panel that names a font that wasn't in `*fonts*` when the window was created fails with `unknown-font`.
+
 ### The registry outlives the loop
 
 `shutdown` doesn't clear the registry. Every panel reappears on the next `start`, including failed ones, which come back still failed. Use `gui:remove` to drop a panel for good.
@@ -390,8 +413,8 @@ Panels draw in the order they were first registered, and redefinition keeps thei
 | --- | --- |
 | `registry` | Registration, in-place redefinition, failure clearing, show and hide, concurrent registration from 8 threads, the task queue surviving errors (including unprintable ones), refit tokens |
 | `frame` | Healthy and hidden panels, error isolation (including unbalanced ImGui state and runaway recursion), reports to the captured stream, the Retry button, `*debug-on-error*` and its restarts, refits, reporting that never signals |
-| `loop` | `stop` and `shutdown` with no loop, state transitions (set by hand, without a window), `main-thread-busy`, a failed window open, `start` from a panel, and the main-thread handoff surviving deferred interrupts |
-| smoke test | The real window: start, redefinition, errors, stop and start, the close button, shutdown and restart |
+| `loop` | `stop` and `shutdown` with no loop, state transitions (set by hand, without a window), `main-thread-busy`, a failed window open, `start` from a panel, the main-thread handoff surviving deferred interrupts, and font loading (defaults, order, failures, base size) |
+| smoke test | The real window: start, redefinition, errors, stop and start, the close button, shutdown and restart, and the bundled fonts loading at each window creation |
 
 Which tests cover each walkthrough:
 
@@ -404,5 +427,6 @@ Which tests cover each walkthrough:
 | Panel error | `frame`: `failing-panel-is-isolated`, `unbalanced-panel-does-not-break-next-frame`, `runaway-recursion-is-isolated`, `report-goes-to-captured-stream`, `retry-button-clears-failure`; smoke check 4 |
 | Redefinition and refit | `registry`: `redefine-marks-refit`; `frame`: `redefinition-refits-windows`, `fixed-failed-panel-refits`; smoke check 3 |
 | Window fails to open | `loop`: `frame-loop-reports-open-failure` |
+| Fonts at window creation | `loop`: `default-fonts-are-the-bundled-inter-files`, `fonts-load-in-order-and-are-usable-by-name`, `bad-font-is-reported-and-falls-back-to-regular`, `bad-or-missing-regular-uses-the-built-in-font`, `font-size-sets-the-base-size`; smoke checks for the font table |
 
 Two `loop` tests, `start-from-panel-while-running-returns-nil` and `main-thread-handoff-survives-deferred-interrupts`, need the run to be on the main thread, as `make test` is. From the SLIME REPL they're skipped. See `tests/README.md`.

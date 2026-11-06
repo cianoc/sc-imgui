@@ -2,11 +2,13 @@
   (:use #:cl)
   (:shadow #:remove)
   (:import-from #:gui.runtime #:*debug-on-error*
-                #:*ini-path* #:start #:stop #:shutdown #:running-p
+                #:*ini-path* #:*fonts* #:*font-size* #:unknown-font
+                #:start #:stop #:shutdown #:running-p
                 #:main-thread-busy)
   (:export #:define-gui #:show #:hide #:remove #:call-in-gui-thread
            #:*debug-on-error*
            #:start #:stop #:shutdown #:running-p #:*ini-path* #:main-thread-busy
+           #:*fonts* #:*font-size* #:with-font #:unknown-font
            #:enum-flags #:with-window #:with-group #:with-child #:with-section
            #:with-id #:with-disabled #:with-style #:with-row #:with-grid
            #:same-line #:new-line #:separator #:spacing #:indent #:unindent

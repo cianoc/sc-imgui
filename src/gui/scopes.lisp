@@ -33,6 +33,20 @@ first frame after its panel is redefined, the window refits to its contents."
   `(progn (push-object-id ,object)
           (unwind-protect (progn ,@body) (%imgui:pop-id))))
 
+(defmacro with-font ((name &key size) &body body)
+  "Text in BODY uses the font loaded under NAME (a key of *FONTS*), at SIZE
+pixels if given, else at the current size.  NAME and SIZE are evaluated.  A
+name that was not loaded signals UNKNOWN-FONT.  With no fonts loaded at all
+(headless) the font is left unchanged."
+  (let ((index (gensym "INDEX")) (px (gensym "SIZE")))
+    `(let* ((,index (gui.runtime:font-index ,name))
+            (,px ,size))
+       (if ,index
+           (%shim:push-font ,index (float (or ,px 0) 1.0f0))
+           (%shim:push-font -1 0.0f0))
+       (unwind-protect (progn ,@body)
+         (%imgui:pop-font)))))
+
 (defmacro with-disabled ((&optional (disabled t)) &body body)
   `(progn (%imgui:begin-disabled (and ,disabled t))
           (unwind-protect (progn ,@body) (%imgui:end-disabled))))

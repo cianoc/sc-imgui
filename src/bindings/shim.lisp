@@ -23,3 +23,7 @@
 (cffi:defcfun ("shim_wake" wake) :void)                        ; any thread
 (cffi:defcfun ("shim_window_visible" window-visible) :int)     ; main thread
 (cffi:defcfun ("shim_test_request_close" test-request-close) :int) ; tests only
+(cffi:defcfun ("shim_add_font" add-font) :int   ; main thread; index, or -1
+  (path sc-imgui.bindings:optional-string) (size :float))
+(cffi:defcfun ("shim_push_font" push-font) :void ; main thread; balance with %imgui:pop-font
+  (index :int) (size :float))

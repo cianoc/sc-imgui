@@ -18,7 +18,7 @@ Contents:
 
 There are two kinds of tests:
 
-- **`make test`** runs 95 [FiveAM](https://github.com/lispci/fiveam) tests in ten suites. They run **headless**: ImGui runs with no window and no GPU, and each test draws frames itself by calling `NewFrame` and `Render`. They're fast, need no display, and run anywhere, including CI.
+- **`make test`** runs 125 [FiveAM](https://github.com/lispci/fiveam) tests in ten suites. They run **headless**: ImGui runs with no window and no GPU, and each test draws frames itself by calling `NewFrame` and `Render`. They're fast, need no display, and run anywhere, including CI.
 - **`make smoke`** opens a **real window** and drives the real frame loop on SBCL's main thread: starting, live redefinition, error recovery, hiding, showing, closing, and shutting down. It needs a display. On Linux CI it runs under Xvfb, a virtual display.
 
 A third test lives outside this folder: `native/test_assert.c`, run by `make native`, checks that ImGui misuse is recorded rather than aborting the process. See `native/README.md`.
@@ -88,6 +88,10 @@ Shared helpers for tests that run ImGui without a window. Most tests are built f
 | `frames-with-drag`, `prime-and-drag` | Press, move by (dx, dy) while held, release | Used for drag interactions, such as the knob in the examples. |
 | `type-text` | Queues typed characters and runs two frames | Text input needs a frame to receive the characters and one to apply them. |
 | `with-clean-registry` | Empties the panel registry and task queue before and after the body | The registry is global, so without this, panels from one test would leak into the next. |
+| `bundled-font` | The native path of a file in `assets/fonts/` | The shim takes native namestrings, and the tests shouldn't depend on the working directory. |
+| `draw-some-text` | One frame drawing a window with text | Fonts build lazily, so a font has to be used in a frame before a bad one can show up as an assertion. |
+| `with-loaded-fonts` | Calls `load-fonts` on the current headless context with a `*fonts*` plist (the bundled Inter by default), and runs the body with that font table | Headless contexts have no window, so nothing else loads fonts. Without it, `with-font` finds no fonts and changes nothing. |
+| `current-font` | The current font and size, as `(address size)` | Lets a test see which font a scope selected, and that it was restored. |
 | `vtx-count` | Number of vertices in a draw list | Reads ImGui's own structs directly (`im-draw-list`, `im-vector-im-draw-vert`) to show that drawing functions added something. |
 
 ### `fixtures/`
@@ -117,7 +121,7 @@ Tests the binding generator against the fixtures, without loading ImGui:
 - **Unused overrides:** `generate-bindings` warns with `unused-name-override` for an override that matches nothing in either library, and doesn't warn for overrides that are used.
 - **All or nothing:** `generate-bindings` run on temporary JSON writes neither file when cimplot has a collision.
 
-### `test-bindings.lisp` (suite `bindings`, 17 tests)
+### `test-bindings.lisp` (suite `bindings`, 21 tests)
 
 Tests the loaded native library and the generated bindings, through real calls:
 
@@ -127,6 +131,7 @@ Tests the loaded native library and the generated bindings, through real calls:
 - Structs returned by value work, and simulated clicks land (`frames-with-click-clicks-a-button`) or miss (`mouse-over-nothing-does-not-click`).
 - The window-related shim functions are harmless when there's no window.
 - `nil` and string arguments, and `t`/`nil` booleans, reach C correctly on both CFFI call paths: plain calls, and cffi-libffi calls used when a struct is passed by value.
+- **Fonts:** `add-font` returns consecutive indexes, a bad path returns -1 with the path in `last-error` and uses up no index, and a missing file, a NIL path, or a file that isn't a font as the first font all leave a working built-in default at index 0 with no ImGui assertion. `push-font` with a real, `-1`, or missing index is balanced by `pop-font`.
 
 ### `test-registry.lisp` (suite `registry`, 9 tests)
 
@@ -150,7 +155,7 @@ Drawing registered panels and recovering from their errors, headless:
 - Reporting never signals: an unprintable condition, or a closed report stream (which falls back to `*error-output*`), doesn't break the frame.
 - Runaway recursion fails only its own panel, and works again the second time, which shows the stack guard is restored.
 
-### `test-loop.lisp` (suite `loop`, 10 tests)
+### `test-loop.lisp` (suite `loop`, 16 tests)
 
 `start`, `stop`, and `shutdown` without opening a window. A real window is the smoke test's job.
 
@@ -159,9 +164,10 @@ Drawing registered panels and recovering from their errors, headless:
 - `start` called on the main thread signals `main-thread-busy`, with instructions for SLIME.
 - A failure to open the window is reported, and doesn't destroy the headless context.
 - A panel calling `start` while the loop runs gets `nil`. *Main thread only; skipped otherwise.*
+- **Fonts** are loaded on a headless context with `with-loaded-fonts`, standing in for the loop's call to `load-fonts`. The defaults are the two bundled Inter files and a base size of 15. `:regular` loads first as index 0 whatever its place in the plist, and the rest follow in order. A font that fails is reported with source `:font`, naming the font and path, and its name maps to the regular font. A bad or missing `:regular` falls back to the built-in font. Having no `:regular` isn't an error. `*font-size*` sets the base size. Unusable settings (a size that isn't a number, an odd-length plist, a path that isn't a string) are each reported once with source `:font`, and `load-fonts` never signals, so the GUI keeps drawing.
 - **Regression:** a handoff to the main thread survives the main thread deferring interrupts for a second. That's the case where the earlier `trivial-main-thread` version lost the request. *Main thread only; skipped otherwise.*
 
-### `test-scopes.lisp` (suite `scopes`, 8 tests)
+### `test-scopes.lisp` (suite `scopes`, 13 tests)
 
 The scope and layout macros, headless:
 
@@ -171,6 +177,7 @@ The scope and layout macros, headless:
 - `enum-flags` resolves keywords and rejects unknown ones.
 - The macros don't capture a user variable named `open`.
 - `with-grid`'s default ID tells apart bodies that differ deep inside, and stays the same for identical bodies.
+- **`with-font`** stays balanced after an error, with and without fonts loaded, and restores the font and size. `:size` applies inside and restores, nested uses work, and no `:size` keeps the current size. An unknown name signals `unknown-font`, with the message listing the loaded fonts. With no fonts loaded, it changes nothing. `errors-keep-scopes-balanced` also covers `with-font`, without fonts loaded.
 
 ### `test-widgets.lisp` (suite `widgets`, 15 tests)
 
@@ -218,6 +225,8 @@ This keeps the examples working as the code changes.
 4. A panel that signals an error doesn't stop other panels, and the error report reaches the stream captured by `start`.
 5. `stop` hides the window while the loop keeps running, saves the layout to `*ini-path*`, and `start` shows the same window again.
 6. A simulated close-button press hides the window, and `start` brings it back. `shutdown` ends the loop, `start` afterwards opens a fresh window that draws frames, and a final `shutdown` ends cleanly.
+
+It also checks fonts. The `smoke-fonts` panel draws text with `with-font` (`:semibold`, and `:regular` at 28 px). At the first start and again in the new loop after `shutdown`, the font table must be `((:regular . 0) (:semibold . 1))` and the panel must see sizes 15, 15, and 28. No font errors may be reported, the font table must be `nil` after `shutdown`, and there must be no ImGui assertions (read on the GUI thread) after the new loop's fonts.
 
 How it runs:
 
@@ -380,7 +389,11 @@ Which tests protect each key behavior. Check these before changing the related c
 | `start` refuses to run on the main thread | `loop`: `start-on-main-thread-signals` |
 | Main-thread handoff is never lost | `loop`: `main-thread-handoff-survives-deferred-interrupts`; smoke check 1 |
 | The layout is saved to `*ini-path*` | smoke check 5 |
-| Scope macros stay balanced after errors | `scopes`: `errors-keep-scopes-balanced` |
+| Scope macros stay balanced after errors | `scopes`: `errors-keep-scopes-balanced`, `with-font-keeps-scopes-balanced-on-error` |
+| The bundled fonts are the defaults, and load in order | `loop`: `default-fonts-are-the-bundled-inter-files`, `fonts-load-in-order-and-are-usable-by-name`, `font-size-sets-the-base-size`; smoke fonts checks |
+| A bad font is reported and falls back | `loop`: `bad-font-is-reported-and-falls-back-to-regular`, `bad-or-missing-regular-uses-the-built-in-font`, `bad-font-settings-are-reported-not-signalled`; `bindings`: `add-font-bad-path-fails-and-names-it`, `failed-or-nil-first-font-gives-a-working-default` |
+| `with-font` selects a font and size, and restores | `scopes`: `with-font-size-applies-inside-and-restores`, `with-font-nests`, `with-font-unknown-name-lists-loaded-fonts`, `with-font-without-loaded-fonts-changes-nothing` |
+| The shim's font indexes and push/pop | `bindings`: `add-font-returns-indexes`, `push-font-balances-pop-font` |
 | Row and grid layout | `scopes`: `with-row-places-items-on-one-line`, `with-grid-fills-columns-in-order` |
 | Widgets write back to their places | `widgets` suite |
 | Plots take Lisp vectors without copying | `plots`: `specialized-vectors-are-not-copied` |
@@ -404,6 +417,6 @@ What isn't tested, and why:
 - **Rendered pixels.** No test checks what's actually drawn on screen. That's a deliberate choice: comparing images is high effort for a personal tool. The draw tests check only that vertices were added.
 - **Windows.** The code should work there, but neither CI nor the tests run on Windows.
 - **Live reporting of ImGui assertions.** The frame loop doesn't report recorded assertions during a live session (see `native/README.md`), so there's nothing to test yet. If that's added, it should get a `frame` test.
-- **Some exported functions have no direct test:** the `drag` macro (only `drag-value` is used), `with-section`, the layout functions (`same-line`, `new-line`, `separator`, `spacing`, `indent`, `unindent`, `set-next-item-width`), and the interaction helpers `item-hovered-p`, `mouse-pos`, `content-region-avail`, `set-cursor-screen-pos`, and `reset-mouse-drag-delta`. Some of these run indirectly when the examples are loaded, but nothing checks what they do. `with-style` and `with-disabled` are tested only for staying balanced, not for their effect.
+- **Some exported functions have no direct test:** the `drag` macro (only `drag-value` is used), `with-section`, the layout functions (`same-line`, `new-line`, `separator`, `spacing`, `indent`, `unindent`, `set-next-item-width`), and the interaction helpers `item-hovered-p`, `mouse-pos`, `content-region-avail`, `set-cursor-screen-pos`, and `reset-mouse-drag-delta`. Some of these run indirectly when the examples are loaded, but nothing checks what they do. `with-style` and `with-disabled` are tested only for staying balanced, not for their effect. `with-font` is tested for the font and size it selects, but not for how the glyphs look.
 - **Docking.** Docking is enabled, but no test docks a window.
 - **`with-section`'s collapsed state** and other behavior that needs a click on a header.

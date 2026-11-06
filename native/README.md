@@ -112,7 +112,7 @@ Notable settings:
 
 ### `shim.h`
 
-The contract between Lisp and the shim: seventeen C functions, all declared `extern "C"`. `src/bindings/shim.lisp` binds exactly these. Each declaration's comment states its return values and which thread may call it.
+The contract between Lisp and the shim: nineteen C functions, all declared `extern "C"`. `src/bindings/shim.lisp` binds exactly these. Each declaration's comment states its return values and which thread may call it.
 
 ### `shim.cpp`
 
@@ -132,6 +132,8 @@ The implementation. It does four jobs.
 | `shim_wake` | Wakes `shim_wait_events`. Callable from **any** thread. |
 | `shim_shutdown` | Full teardown for `gui:shutdown`: hides the window if visible, keeps processing events until 0.5 s after the hide (see [Gotchas](#macos-the-window-must-leave-the-screen-before-it-is-destroyed)), then destroys the backends, contexts, and window, and terminates GLFW. |
 | `shim_last_error` | Message for the last nonzero return, or `""`. |
+| `shim_add_font` | Adds a font file at a size in pixels and returns its index, or -1 with the reason, including the path, in `shim_last_error`. The first font added becomes ImGui's default font and sets the base size. If the first call fails, or the path is NULL, ImGui's built-in scalable font takes index 0 instead: the call returns -1 for a failed path and 0 for NULL. A later NULL path returns -1. A missing file records no ImGui assert. A file that isn't a font does trip an ImGui assert, which the shim removes from the assert record and reports through `shim_last_error`. Call it after `shim_open_window` and before the first frame. |
+| `shim_push_font` | `PushFont` for the font at an index, at a size in pixels (0 keeps the current size). An index of -1, or one with no font, pushes NULL, so the matching `PopFont` still balances. |
 
 **2. Headless mode for tests.** `shim_headless_create` sets up ImGui with no window or GPU: a fixed display size, a frame time of 1/60 s, no `.ini` file, and two backend flags (see [Gotchas](#headless-mode-depends-on-two-backend-flags)). `make test` runs with this, so it works on CI with no display. `shim_headless_destroy` undoes it.
 
@@ -142,6 +144,7 @@ The implementation. It does four jobs.
 Internal details worth knowing:
 
 - `g_wake_mutex` guards the window pointer, because `shim_wake` and `shim_test_request_close` can run on other threads while the main thread destroys the window. GLFW allows `glfwPostEmptyEvent` from any thread, but not at the same time as `glfwTerminate`.
+- The `ImFont` pointers stay in the shim, in `g_fonts`, so Lisp only sees indexes. The list is cleared when the contexts are destroyed, which is on `shim_shutdown` and `shim_headless_destroy`.
 - `g_last_assert`, `g_last_error`, and `g_ini_path` are static `std::string`s, so the `const char *` values returned to Lisp stay valid after the call.
 
 ### `sc_imgui_config.h`

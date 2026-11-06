@@ -11,5 +11,7 @@
            #:*report-stream* #:report-error
            #:*debug-on-error* #:draw-registered-guis
            #:retry-panel #:disable-panel
-           #:*ini-path* #:start #:stop #:shutdown #:running-p #:wake-loop
+           #:*ini-path* #:*fonts* #:*font-size* #:font-index
+           #:unknown-font #:unknown-font-name #:unknown-font-loaded
+           #:start #:stop #:shutdown #:running-p #:wake-loop
            #:main-thread-busy))

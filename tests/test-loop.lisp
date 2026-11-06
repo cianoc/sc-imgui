@@ -150,3 +150,97 @@ NIL) and the output it wrote."
         (loop repeat 300 until ran do (sleep 0.01))
         (is (eq :main ran)))
       (skip "not on the main thread")))
+
+;;; Fonts: *FONTS* is loaded when the window is created.  LOAD-FONTS is what
+;;; the loop calls after opening the window; here it runs on a headless context.
+
+(test default-fonts-are-the-bundled-inter-files
+  (is (= 15 gui:*font-size*))
+  (is (equal '(:regular :semibold) (loop for (name) on gui:*fonts* by #'cddr collect name)))
+  (loop for (nil path) on gui:*fonts* by #'cddr
+        do (is (stringp path))
+           (is (probe-file path) "~A exists" path)))
+
+(test fonts-load-in-order-and-are-usable-by-name
+  (with-headless-imgui ()
+    (with-loaded-fonts ((list :semibold (bundled-font "Inter-SemiBold.ttf")
+                              :regular (bundled-font "Inter-Regular.ttf")
+                              :heavy (bundled-font "Inter-SemiBold.ttf")))
+      ;; :regular first, whatever its place in the plist
+      (is (equal '((:regular . 0) (:semibold . 1) (:heavy . 2)) gui.runtime::*font-table*))
+      (is (= 2 (gui.runtime:font-index :heavy)))
+      (let (size)
+        (with-test-frame ()
+          (gui:with-window ("w")
+            (gui:with-font (:heavy :size 20) (setf size (%imgui:get-font-size)))))
+        (is (= 20.0 size)))
+      (is (= 0 (%shim:assert-count))))))
+
+(defun load-fonts-reporting (fonts)
+  "Load FONTS headless; return the font table and what was reported."
+  (let ((out (make-string-output-stream)) table)
+    (with-headless-imgui ()
+      (let ((gui.runtime:*report-stream* out))
+        (with-loaded-fonts (fonts)
+          (setf table gui.runtime::*font-table*)
+          ;; the GUI carries on, drawing with every name
+          (dotimes (i 3)
+            (with-test-frame ()
+              (gui:with-window ("w")
+                (loop for (name) in table
+                      do (gui:with-font (name) (%imgui:text-unformatted "x" (cffi:null-pointer)))))))
+          (is (= 0 (%shim:assert-count))))))
+    (values table (get-output-stream-string out))))
+
+(test bad-font-is-reported-and-falls-back-to-regular
+  (multiple-value-bind (table report)
+      (load-fonts-reporting (list :regular (bundled-font "Inter-Regular.ttf")
+                                  :bold "/nonexistent/Inter-Bold.ttf"
+                                  :semibold (bundled-font "Inter-SemiBold.ttf")))
+    (is (equal '((:regular . 0) (:bold . 0) (:semibold . 1)) table))
+    (is (search "[gui] FONT failed" report))
+    (is (search ":BOLD" report))
+    (is (search "/nonexistent/Inter-Bold.ttf" report))))
+
+(test bad-or-missing-regular-uses-the-built-in-font
+  (multiple-value-bind (table report)
+      (load-fonts-reporting (list :regular "/nonexistent/Inter-Regular.ttf"
+                                  :semibold (bundled-font "Inter-SemiBold.ttf")))
+    (is (equal '((:regular . 0) (:semibold . 1)) table))
+    (is (search "/nonexistent/Inter-Regular.ttf" report)))
+  (dolist (fonts (list (list :semibold (bundled-font "Inter-SemiBold.ttf"))
+                       (list :regular nil :semibold (bundled-font "Inter-SemiBold.ttf"))))
+    (multiple-value-bind (table report) (load-fonts-reporting fonts)
+      (is (equal '((:regular . 0) (:semibold . 1)) table))
+      (is (string= "" report) "no :regular is not an error"))))
+
+(test font-size-sets-the-base-size
+  (with-headless-imgui ()
+    (let ((gui:*font-size* 18))
+      (with-loaded-fonts ()
+        (let (size)
+          (with-test-frame () (setf size (%imgui:get-font-size)))
+          (is (= 18.0 size)))))))
+
+(test bad-font-settings-are-reported-not-signalled
+  ;; A non-number size, an odd-length plist, a path of the wrong type: each is
+  ;; reported once with source :font, and the GUI goes on drawing.
+  (dolist (case (list (list :size :big)
+                      (list :fonts (list :regular))
+                      (list :fonts (list :regular (bundled-font "Inter-Regular.ttf") :bold 42))))
+    (let ((out (make-string-output-stream)))
+      (with-headless-imgui ()
+        (let ((gui.runtime:*report-stream* out)
+              (gui:*font-size* (getf case :size 15))
+              (gui:*fonts* (getf case :fonts gui:*fonts*))
+              (gui.runtime::*font-table* nil))
+          (finishes (gui.runtime::load-fonts))
+          (draw-some-text)
+          (is (= 0 (%shim:assert-count)))))
+      (let ((report (get-output-stream-string out)))
+        (is (= 1 (count-matches "[gui] FONT failed" report)) "~S reported once: ~S" case report)))))
+
+(defun count-matches (needle haystack)
+  (loop for start = 0 then (+ pos (length needle))
+        for pos = (search needle haystack :start2 start)
+        while pos count t))

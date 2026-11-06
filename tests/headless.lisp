@@ -125,3 +125,26 @@ from the item's center by (DX, DY).  Returns DRAW-FN's values per frame."
   (let ((r *item-rect*))
     (frames-with-drag (/ (+ (first r) (third r)) 2) (/ (+ (second r) (fourth r)) 2)
                       dx dy draw-fn)))
+
+(defun bundled-font (file)
+  "Native path of FILE in assets/fonts/."
+  (uiop:native-namestring
+   (asdf:system-relative-pathname :sc-imgui (format nil "assets/fonts/~A" file))))
+
+(defun draw-some-text ()
+  "One frame drawing a window with text, so the current font is used."
+  (with-test-frame ()
+    (gui:with-window ("w") (%imgui:text-unformatted "Inter 0123 Ag" (cffi:null-pointer)))))
+
+(defmacro with-loaded-fonts ((&optional (fonts 'gui:*fonts*)) &body body)
+  "Load FONTS (a *FONTS* plist, by default the bundled Inter fonts) into the
+current headless context as the loop does at window creation, and run BODY
+with that font table.  Without this, no fonts are loaded."
+  `(let ((gui:*fonts* ,fonts)
+         (gui.runtime::*font-table* nil))
+     (gui.runtime::load-fonts)
+     ,@body))
+
+(defun current-font ()
+  "The current font and size, as (address size)."
+  (list (cffi:pointer-address (%imgui:get-font)) (%imgui:get-font-size)))
