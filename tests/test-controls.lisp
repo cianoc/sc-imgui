@@ -487,16 +487,21 @@ accessed by PLACE-GET/PLACE-SET, recording its bar rect in *FADER-BAR*."
      (dotimes (i 2) (with-test-frame () (funcall ,draw)))
      ,@body))
 
-(test fader-press-jumps-to-the-point
-  ;; Clicking a point on a fader's bar makes that point the value.
+(test fader-click-jumps-to-the-point-after-the-double-click-time
+  ;; Clicking a point on a fader's bar makes that point the value -- but only
+  ;; once the double-click time has passed, so a double-click can still reset.
   (with-controls-env ()
     (dolist (vertical '(nil t))
       (dolist (fraction '(0.25 0.9))
         (with-fader (v draw 0.0 :vertical vertical)
           (multiple-value-bind (x y) (fader-point fraction vertical)
             (frames-with-click x y draw))
+          (is (= 0.0 v) "~:[horizontal~;vertical~] click: no jump before the double-click time"
+              vertical)
+          (idle-frames (double-click-frames) draw)
           (is (< (abs (- v fraction)) 0.02) "~:[horizontal~;vertical~] click at ~A gives ~A"
-              vertical fraction v))))
+              vertical fraction v)
+          (is (= 0 (hash-table-count gui::*control-states*))))))
     (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
 
 (test fader-drag-tracks-the-mouse
@@ -530,7 +535,8 @@ accessed by PLACE-GET/PLACE-SET, recording its bar rect in *FADER-BAR*."
     (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
 
 (test fader-drags-only-along-its-axis
-  ;; The press jumps to the point; a drag across the axis then changes nothing.
+  ;; A drag across the axis moves nothing, so the press counts as a click: it
+  ;; jumps to the pressed point after the double-click time, and no further.
   (with-controls-env ()
     (dolist (vertical '(nil t))
       (with-fader (v draw 0.0 :vertical vertical)
@@ -538,6 +544,7 @@ accessed by PLACE-GET/PLACE-SET, recording its bar rect in *FADER-BAR*."
           (if vertical
               (frames-with-drag x y 50 0 draw)
               (frames-with-drag x y 0 -50 draw)))
+        (idle-frames (double-click-frames) draw)
         (is (< (abs (- v 0.5)) 0.02) "~:[horizontal~;vertical~] across-axis drag: ~A" vertical v)))
     (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
 
@@ -547,7 +554,9 @@ accessed by PLACE-GET/PLACE-SET, recording its bar rect in *FADER-BAR*."
       (with-fader (v draw 0.8 :vertical vertical :default 0.2)
         (multiple-value-bind (x y) (fader-point 0.6 vertical)
           (frames-with-double-click x y draw))
-        (is (< (abs (- v 0.2)) 1e-6) "~:[horizontal~;vertical~] double-click: ~A" vertical v)))
+        (idle-frames (double-click-frames) draw)
+        (is (< (abs (- v 0.2)) 1e-6) "~:[horizontal~;vertical~] double-click: ~A" vertical v)
+        (is (= 0 (hash-table-count gui::*control-states*)))))
     (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
 
 (test fader-fills-width-and-bipolar-draws

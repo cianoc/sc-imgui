@@ -66,7 +66,9 @@ by ImGui's style alpha (so it fades inside WITH-DISABLED as stock widgets do)."
                ; failed Enter) or :active (field focused)
   moved        ; true once the current drag has moved the value
   double-click ; true when the current press was the second of a double-click
-  click-at     ; ImGui time of a click that will open the text field, or NIL
+  click-at     ; ImGui time of a click whose action waits out the double-click
+               ; time (open the text field, or jump), or NIL
+  jump         ; position a press or pending click jumps to, or NIL
   (frame -1))  ; ImGui frame count when the control last drew
 
 (defconstant +edit-buffer-size+ 64)
@@ -241,6 +243,12 @@ the range."
                          (+ (value->position spec value) (* notches (if shift 0.001 0.01)))
                          like))))
 
+(defun %press-point (press-position mx my)
+  "PRESS-POSITION's position for the screen point MX MY, clamped to [0, 1], or
+NIL when it gives none."
+  (let ((p (funcall press-position mx my)))
+    (and p (finite-p p) (max 0.0 (min 1.0 (float p 1.0))))))
+
 (defun control-behavior (label spec value
                          &key width height (axis :vertical) value-rect travel click-edits
                            press-position)
@@ -252,8 +260,9 @@ pixels, default 10 rem), then the wheel.  With CLICK-EDITS, a plain click
 (press and release without moving the value) also opens the text field, once
 ImGui's double-click time has passed without a second click.  With
 PRESS-POSITION, a function of the mouse's screen x and y returning a position
-in [0, 1] (or NIL), a press without Shift (and not a double-click) first jumps
-the value to that position.  Returns a
+in [0, 1] (or NIL), a press without Shift marks the pressed point: a drag
+starts by jumping there, and a plain click jumps there once the double-click
+time has passed (a double-click resets instead).  Returns a
 CONTROL-FRAME whose value is the new value, or VALUE clamped for display when
 unchanged; CHANGED-P is true only when input changed it.  Never writes
 anything."
@@ -296,16 +305,23 @@ anything."
                  (when double-click
                    (setf new (clamp-to-spec spec (control-spec-default spec) value)
                          input t))
-                 ;; A pending click-to-edit opens the field once the
-                 ;; double-click time has passed; a second click cancels it.
+                 ;; A pending click acts once the double-click time has
+                 ;; passed -- jumping to its point, or opening the text field
+                 ;; -- and a second click cancels it.
                  (when (and state (control-state-click-at state))
                    (cond (double-click
-                          (setf (control-state-click-at state) nil))
+                          (setf (control-state-click-at state) nil
+                                (control-state-jump state) nil))
                          ((> (- (%imgui:get-time) (control-state-click-at state))
                              (%io-value %imgui::mouse-double-click-time))
-                          (setf (control-state-click-at state) nil)
-                          (when value-rect
-                            (start-text-entry state (format-control-value spec new))))))
+                          (let ((jump (control-state-jump state)))
+                            (setf (control-state-click-at state) nil
+                                  (control-state-jump state) nil)
+                            (cond (jump
+                                   (setf new (position->value spec jump value)
+                                         input t))
+                                  (value-rect
+                                   (start-text-entry state (format-control-value spec new))))))))
                  (when (and double-click state)
                    (setf (control-state-double-click state) t)))
                ;; A press starts a drag, or with Ctrl/Cmd held opens the text
@@ -317,17 +333,15 @@ anything."
                               (control-state-moved state) nil)
                         (if (%imgui:is-mouse-double-clicked-nil 0)
                             (setf (control-state-double-click state) t
-                                  (control-state-click-at state) nil)
-                            ;; Jump to the pressed point (not with Shift, which
-                            ;; keeps fine relative movement).
-                            (let ((p (and press-position (not shift)
-                                          (multiple-value-call press-position (mouse-pos)))))
-                              (when (and p (finite-p p))
-                                (let ((p (max 0.0 (min 1.0 (float p 1.0)))))
-                                  (setf (control-state-position state) p
-                                        (control-state-moved state) t
-                                        new (position->value spec p value)
-                                        input t))))))
+                                  (control-state-click-at state) nil
+                                  (control-state-jump state) nil)
+                            ;; Mark the pressed point (not with Shift, which
+                            ;; keeps fine relative movement); nothing jumps yet.
+                            (setf (control-state-click-at state) nil
+                                  (control-state-jump state)
+                                  (and press-position (not shift)
+                                       (multiple-value-call #'%press-point press-position
+                                         (mouse-pos))))))
                        (value-rect
                         (setf state (ensure-control-state id))
                         (start-text-entry state (format-control-value spec new)))))
@@ -337,9 +351,17 @@ anything."
                       (let ((delta (drag-delta axis))
                             (range (or travel (rem-px 10))))
                         (when (and (/= 0 delta) (finite-p delta) (plusp range) (finite-p range))
-                          (let ((position (max 0.0 (min 1.0 (+ (control-state-position state)
-                                                               (/ (* delta (if shift 0.1 1.0))
-                                                                  range))))))
+                          (let ((position
+                                  (if (control-state-jump state)
+                                      ;; A moving press can't be a double-click:
+                                      ;; jump to the point under the cursor now.
+                                      (or (multiple-value-call #'%press-point press-position
+                                            (mouse-pos))
+                                          (control-state-jump state))
+                                      (max 0.0 (min 1.0 (+ (control-state-position state)
+                                                           (/ (* delta (if shift 0.1 1.0))
+                                                              range)))))))
+                            (setf (control-state-jump state) nil)
                             (setf (control-state-position state) position
                                   (control-state-moved state) t
                                   new (position->value spec position value)
@@ -349,12 +371,13 @@ anything."
                       ;; a double-click is a click: with CLICK-EDITS it opens
                       ;; the text field after the double-click time.
                       (setf (control-state-position state) nil)
-                      (if (and click-edits value-rect
-                               (not (control-state-moved state))
-                               (not (control-state-double-click state)))
+                      (if (and (not (control-state-moved state))
+                               (not (control-state-double-click state))
+                               (or (control-state-jump state) (and click-edits value-rect)))
                           (setf (control-state-click-at state) (%imgui:get-time))
-                          (unless (control-state-edit-text state)
-                            (remove-control-state id)))
+                          (progn (setf (control-state-jump state) nil)
+                                 (unless (control-state-edit-text state)
+                                   (remove-control-state id))))
                       (setf (control-state-double-click state) nil)))
                ;; A finished click that opened nothing leaves no state.
                (when (and state (not active) (not (control-state-position state))
