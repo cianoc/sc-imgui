@@ -307,6 +307,7 @@ The palette gives each role a colour. A colour is `"#rrggbb"`, `"#rrggbbaa"`, or
 | `:accent` | Check marks, slider grabs, pressed controls, selections |
 | `:accent-text` | Text drawn on the accent. For custom controls; the ImGui mapping doesn't use it |
 | `:series` | A list of colours for plot lines, bars and markers |
+| `:error` | Outline of an invalid typed entry in a control; not used by ImGui's stock widgets. `#b3261e` in `:mid-light`, `#e5534b` in `:dark` |
 
 The palette maps onto all of ImGui's colours (`*imgui-color-map*` in `theme.lisp`) and all of ImPlot's (`*implot-color-map*`). Some mappings use a role at part opacity, such as the accent at 35% for text selection.
 

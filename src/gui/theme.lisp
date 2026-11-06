@@ -19,7 +19,7 @@ SET-THEME, which also applies it to a window that exists.")
 
 (defparameter *palette-roles*
   '(:background :panel :title :frame :frame-hover :control :control-hover
-    :border :text :text-dim :accent :accent-text :series)
+    :border :text :text-dim :accent :accent-text :series :error)
   "Every palette role a theme must define.")
 
 ;;; Colours
@@ -302,12 +302,14 @@ thread, between frames."
   :palette '(:background "#9e9e9e" :panel "#c4c4c4" :title "#b0b0b0" :frame "#a9a9a9"
              :frame-hover "#b5b5b5" :control "#d6d6d6" :control-hover "#e0e0e0"
              :border "#8a8a8a" :text "#141414" :text-dim "#4a4a4a" :accent "#ff9a2e"
-             :accent-text "#141414" :series ("#1c5f7a" "#b8450f" "#3f7d20" "#6b3fa0"))
+             :accent-text "#141414" :series ("#1c5f7a" "#b8450f" "#3f7d20" "#6b3fa0")
+             :error "#b3261e")
   :style *shipped-style*)
 
 (define-theme :dark
   :palette '(:background "#1e1e1e" :panel "#2f2f2f" :title "#3d3d3d" :frame "#1d1d1d"
              :frame-hover "#262626" :control "#3d3d3d" :control-hover "#484848"
              :border "#191919" :text "#d4d4d4" :text-dim "#8a8a8a" :accent "#e8a23a"
-             :accent-text "#1a1a1a" :series ("#5cc0e0" "#e8a23a" "#8fd16a" "#c58af0"))
+             :accent-text "#1a1a1a" :series ("#5cc0e0" "#e8a23a" "#8fd16a" "#c58af0")
+             :error "#e5534b")
   :style *shipped-style*)

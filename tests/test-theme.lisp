@@ -244,3 +244,21 @@
           (is (= 1 (queued-task-count)))
           (gui.runtime:run-queued-tasks)
           (is (equal (rgba "#123456") (imgui-color :window-bg))))))))
+
+(test shipped-themes-define-error
+  (dolist (name '(:mid-light :dark))
+    (let ((gui:*theme* name))
+      (is (integerp (gui:theme-color :error)))))
+  (is (equal (rgba "#b3261e") (getf (gui::theme-palette (gui::find-theme :mid-light)) :error)))
+  (is (equal (rgba "#e5534b") (getf (gui::theme-palette (gui::find-theme :dark)) :error))))
+
+(test theme-without-base-needs-error
+  (with-test-themes (:test-no-error)
+    (let ((palette (loop for (k v) on (gui::theme-palette (gui::find-theme :dark)) by #'cddr
+                         unless (eq k :error) append (list k v))))
+      (signals error (gui:define-theme :test-no-error :palette palette)))))
+
+(test derived-theme-inherits-error
+  (with-test-themes (:test-derived)
+    (gui:define-theme :test-derived :base :dark :palette '(:accent "#4fb3d9"))
+    (is (equal (rgba "#e5534b") (getf (gui::theme-palette (gui::find-theme :test-derived)) :error)))))
