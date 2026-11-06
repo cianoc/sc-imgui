@@ -7,13 +7,18 @@ First set up your REPL so `gui:start` can work: see "Running from SLIME or Sly"
 in the [top-level README](../README.md) (SLIME needs
 `(setf swank::*main-thread-used* t)` in `~/.swank.lisp`).
 
-For each example, run these three steps from the repository root:
+For each example, run these three steps:
 
 ```lisp
 (ql:quickload :sc-imgui)
 (gui:start)
-(load "examples/<file>.lisp")
+(load (asdf:system-relative-pathname :sc-imgui "examples/<file>.lisp"))
 ```
+
+`asdf:system-relative-pathname` finds the file in the repository wherever
+the REPL started.  A plain `(load "examples/<file>.lisp")` also works, but
+only when `*default-pathname-defaults*` is the repository root (in SLIME,
+`,cd` to it first).
 
 You only need the first two once per session. Loading several examples gives
 several windows, and loading one again simply redefines it.

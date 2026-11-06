@@ -1,7 +1,8 @@
 ;;;; layout.lisp -- with-row, with-grid, with-section, a scrolling with-child
 ;;;; of selectable rows, and a list-box.
 ;;;;
-;;;; Run:  (ql:quickload :sc-imgui)  (gui:start)  (load "examples/layout.lisp")
+;;;; Run:  (ql:quickload :sc-imgui)  (gui:start)
+;;;;       (load (asdf:system-relative-pathname :sc-imgui "examples/layout.lisp"))
 
 (in-package #:cl-user)
 

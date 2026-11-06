@@ -1,6 +1,7 @@
 ;;;; hello.lisp -- the smallest useful panel: text, a button, a slider, a checkbox.
 ;;;;
-;;;; Run:  (ql:quickload :sc-imgui)  (gui:start)  (load "examples/hello.lisp")
+;;;; Run:  (ql:quickload :sc-imgui)  (gui:start)
+;;;;       (load (asdf:system-relative-pathname :sc-imgui "examples/hello.lisp"))
 ;;;; Then edit the panel below and re-evaluate it (C-c C-c): the window updates.
 
 (in-package #:cl-user)

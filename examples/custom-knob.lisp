@@ -1,6 +1,7 @@
 ;;;; custom-knob.lisp -- a custom widget built from draw-list primitives.
 ;;;;
-;;;; Run:  (ql:quickload :sc-imgui)  (gui:start)  (load "examples/custom-knob.lisp")
+;;;; Run:  (ql:quickload :sc-imgui)  (gui:start)
+;;;;       (load (asdf:system-relative-pathname :sc-imgui "examples/custom-knob.lisp"))
 ;;;; Drag a knob up or down.  This previews how widgets are built in part 3.
 
 (in-package #:cl-user)

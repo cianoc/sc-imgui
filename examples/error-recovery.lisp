@@ -1,6 +1,7 @@
 ;;;; error-recovery.lisp -- a failing panel does not take the others down.
 ;;;;
-;;;; Run:  (ql:quickload :sc-imgui)  (gui:start)  (load "examples/error-recovery.lisp")
+;;;; Run:  (ql:quickload :sc-imgui)  (gui:start)
+;;;;       (load (asdf:system-relative-pathname :sc-imgui "examples/error-recovery.lisp"))
 ;;;;
 ;;;; 1. Two windows appear: "Healthy", which keeps running, and
 ;;;;    "EXAMPLE-BROKEN (failed)".  The broken panel (example-broken) signals

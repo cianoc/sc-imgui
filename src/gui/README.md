@@ -639,7 +639,7 @@ After `define-gui` is re-evaluated, its windows resize to fit their contents on 
 
 Not directly tested (see "Known gaps" in `tests/README.md`): the `drag` macro, `with-section`, the layout functions, `item-hovered-p`, `mouse-pos`, `content-region-avail`, `set-cursor-screen-pos`, `reset-mouse-drag-delta`, and the visible effect of `with-style`, `with-disabled`, and `with-font`. Some run indirectly through the examples.
 
-The examples, each loaded after `(gui:start)` with `(load "examples/<file>.lisp")`:
+The examples, each loaded after `(gui:start)` with `(load (asdf:system-relative-pathname :sc-imgui "examples/<file>.lisp"))`:
 
 - `hello.lisp`: text, a button, a slider, a checkbox.
 - `layout.lisp`: rows, a grid, a section, a scrolling child.

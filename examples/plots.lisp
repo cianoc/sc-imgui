@@ -1,6 +1,7 @@
 ;;;; plots.lisp -- ImPlot from Lisp vectors: a live sine, bars and a scatter.
 ;;;;
-;;;; Run:  (ql:quickload :sc-imgui)  (gui:start)  (load "examples/plots.lisp")
+;;;; Run:  (ql:quickload :sc-imgui)  (gui:start)
+;;;;       (load (asdf:system-relative-pathname :sc-imgui "examples/plots.lisp"))
 ;;;; Simple single-float vectors go to ImPlot without copying; lists are copied.
 
 (in-package #:cl-user)
