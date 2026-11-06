@@ -283,7 +283,7 @@ The same for every value control, except where a control says otherwise:
 
 #### Controls
 
-**`knob`**, **`(knob-value label value &rest spec &key (size 2.5))`** — A 270° arc open at the bottom, with the label above in `:text-dim` and the formatted value below. The track is `:frame`, the value arc is `:accent` (from `min`, or from the origin when bipolar), and a short pointer marks the position. `size` is the arc's diameter in rem. The knob is its diameter plus 0.5 rem wide.
+**`knob`**, **`(knob-value label value &rest spec &key (size 2.5))`** — A 270° arc open at the bottom, with the label above in `:text` and the formatted value below. The track is `:frame`, the value arc is `:accent` (from `min`, or from the origin when bipolar), and a short pointer marks the position. `size` is the arc's diameter in rem. The knob is its diameter plus 0.5 rem wide.
 
 **`fader`**, **`(fader-value label value &rest spec &key vertical length thickness)`** — Horizontal by default, like Live's bar slider: a flat bar in `:frame`, filled in `:accent` up to the value, with the label left-aligned and the value right-aligned inside it. It fills the available width unless `length` (in rem) is given. With `:vertical t` it is a mixer fader, filled from the bottom, with the label above and the value below. `thickness` is the bar's width across its axis and defaults to the frame height in both orientations, so a horizontal fader is as tall as other controls on its row. A vertical fader's item is 3.5 rem wide (or `thickness`, if wider), with the bar centred in it, so the label and value have room; its `length` defaults to 8 rem. A bipolar fill grows out from the origin. Clicking a point on the bar makes that point the value once the double-click time (0.3 s) has passed, so a double-click still resets to the default without a jump first. Pressing and dragging jumps at once to the point under the cursor and then tracks the mouse 1:1 along the fader's own axis (a full sweep is the bar's length), so the fill edge stays under the cursor. Shift doesn't jump: Shift-drag moves 10 times finer from the current value. Everything else is as above.
 
@@ -405,7 +405,7 @@ The palette gives each role a colour. A colour is `"#rrggbb"`, `"#rrggbbaa"`, or
 | `:control-hover` | The same, hovered |
 | `:border` | Borders, separators, plot grid |
 | `:text` | Text |
-| `:text-dim` | Disabled text |
+| `:text-dim` | Disabled text; a control's value text while it isn't being used |
 | `:accent` | Check marks, slider grabs, pressed controls, selections |
 | `:accent-text` | Text drawn on the accent. For custom controls; the ImGui mapping doesn't use it |
 | `:series` | A list of colours for plot lines, bars and markers |

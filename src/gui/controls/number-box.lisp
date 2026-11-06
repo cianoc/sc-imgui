@@ -99,7 +99,7 @@ return (values new-value changed-p).  WIDTH is the box's width in rem or
                             text)
               (%imgui:pop-clip-rect))))
         (when (plusp label-width)
-          (draw-text (+ x box-width gap) text-y (control-color :text-dim) label-text))
+          (draw-text (+ x box-width gap) text-y (control-color :text) label-text))
         (if (control-frame-changed-p frame)
             (values (control-frame-value frame) t)
             (values value nil))))))

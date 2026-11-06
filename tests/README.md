@@ -18,7 +18,7 @@ Contents:
 
 There are two kinds of tests:
 
-- **`make test`** runs 232 [FiveAM](https://github.com/lispci/fiveam) tests in twelve suites. They run **headless**: ImGui runs with no window and no GPU, and each test draws frames itself by calling `NewFrame` and `Render`. They're fast, need no display, and run anywhere, including CI.
+- **`make test`** runs 233 [FiveAM](https://github.com/lispci/fiveam) tests in twelve suites. They run **headless**: ImGui runs with no window and no GPU, and each test draws frames itself by calling `NewFrame` and `Render`. They're fast, need no display, and run anywhere, including CI.
 - **`make smoke`** opens a **real window** and drives the real frame loop on SBCL's main thread: starting, live redefinition, error recovery, hiding, showing, closing, and shutting down. It needs a display. On Linux CI it runs under Xvfb, a virtual display.
 
 A third test lives outside this folder: `native/test_assert.c`, run by `make native`, checks that ImGui misuse is recorded rather than aborting the process. See `native/README.md`.
@@ -239,7 +239,7 @@ The pure-Lisp part of the controls: no ImGui. The file's local `spec` helper bui
 - Unit formatting at the boundaries (`999 Hz` and `1.00 kHz`, `-inf dB`, `C` for pan, `0 st`), plain-number precision, choice names and custom `:format` functions.
 - Parsing typed text (`2k`, `2.4 kHz`, `-6 dB`, `25R`), bare numbers following the display scale for `:percent` and `:pan`, rejecting garbage, and never signalling on huge numbers.
 
-### `test-controls.lisp` (suite `controls`, 72 tests)
+### `test-controls.lisp` (suite `controls`, 73 tests)
 
 The controls on a headless context, through the harness helpers above. `with-controls-env` sets up a headless context with the `:mid-light` theme and a base font size of 15; each test checks that no ImGui assertion was recorded. Comments mark the tests that guard a specific review risk.
 

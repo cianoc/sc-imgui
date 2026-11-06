@@ -1005,3 +1005,25 @@ accessed by PLACE-GET/PLACE-SET, recording its bar rect in *FADER-BAR*."
                 (+ field-left padding) expected-text-left)
             (is (<= field-right (+ (third rect) 0.5)) "the field stays inside the fader"))))
       (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert)))))
+
+(test control-labels-use-the-text-colour
+  ;; Labels are drawn in the theme's :text, like other text; only values are
+  ;; :text-dim when idle.  The value is formatted as "" so the label is the
+  ;; only text drawn.
+  (with-controls-env ()
+    (flet ((blank (v) (declare (ignore v)) ""))
+      (dolist (case (list (list "knob" (lambda () (gui:knob-value "Cutoff" 0.5 :format #'blank)))
+                          (list "vertical fader"
+                                (lambda () (gui:fader-value "Send" 0.5 :vertical t :format #'blank)))
+                          (list "number box" (lambda () (gui:number-box-value "Tune" 0.5 :format #'blank)))
+                          (list "xy pad"
+                                (lambda () (gui:xy-pad-value "Filter" 0.5 0.5
+                                                             :x (list :format #'blank)
+                                                             :y (list :format #'blank))))))
+        (destructuring-bind (name draw) case
+          (let (colours)
+            (with-test-frame () (in-window (setf colours (control-colors (funcall draw)))))
+            (is (member (gui::control-color :text) colours) "~A label in :text" name)
+            (is (not (member (gui::control-color :text-dim) colours)) "~A draws nothing in :text-dim"
+                name))))))
+  (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert)))

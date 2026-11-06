@@ -126,7 +126,7 @@ at SQ-Y, showing the in-range X-VALUE and Y-VALUE."
          (line (%imgui:get-font-size))
          (label-text (visible-label label)))
     (when (plusp (length label-text))
-      (draw-clipped-centered-text x0 y0 side (control-color :text-dim) label-text))
+      (draw-clipped-centered-text x0 y0 side (control-color :text) label-text))
     (draw-rect x0 sq-y x1 y1 (control-color (if hot :frame-hover :frame)) :filled t)
     (loop for i from 1 to 3
           for f = (* side (/ i 4))

@@ -49,7 +49,7 @@ clipped to them."
              (origin-angle (knob-angle origin))
              (label-text (visible-label label)))
         (when (plusp (length label-text))
-          (draw-clipped-centered-text x y width (control-color :text-dim) label-text))
+          (draw-clipped-centered-text x y width (control-color :text) label-text))
         (draw-arc cx cy radius +knob-start-angle+ (+ +knob-start-angle+ +knob-sweep+)
                   (control-color (if (or (control-frame-hovered-p frame)
                                          (control-frame-active-p frame))

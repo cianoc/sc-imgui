@@ -111,7 +111,7 @@ centred in it."
           (if vertical
               (progn
                 (when (plusp (length label-text))
-                  (draw-clipped-centered-text x y width (control-color :text-dim) label-text))
+                  (draw-clipped-centered-text x y width (control-color :text) label-text))
                 (unless (control-frame-editing-p frame)
                   (draw-clipped-centered-text
                    x (+ (second value-rect) (/ (- frame-height line) 2)) width value-color
