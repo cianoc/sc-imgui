@@ -67,6 +67,101 @@ frames (a fresh context has base 0 until its first NewFrame)."
       (is (eql 4 v)))
     (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
 
+(test shift-wheel-is-ten-times-finer
+  (with-controls-env ()
+    (let ((v 0.5))
+      (click-item (lambda () (in-window (gui:number-box "n" v)))
+                  :clicker (lambda (x y f) (frames-with-wheel x y 2 f :shift t)))
+      (is (< (abs (- v 0.502)) 1e-5) "v = ~A" v))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test shift-horizontal-wheel-fallback
+  ;; macOS turns Shift+wheel into a horizontal wheel: with Shift held and only
+  ;; io.MouseWheelH moving, the control still takes 0.1% per notch.  Without
+  ;; Shift the horizontal wheel is ignored.
+  (with-controls-env ()
+    (let ((v 0.5))
+      (click-item (lambda () (in-window (gui:number-box "n" v)))
+                  :clicker (lambda (x y f) (frames-with-wheel x y 2 f :shift t :horizontal t)))
+      (is (< (abs (- v 0.502)) 1e-5) "v = ~A" v))
+    (let ((v 0.5))
+      (click-item (lambda () (in-window (gui:number-box "n" v)))
+                  :clicker (lambda (x y f) (frames-with-wheel x y 2 f :horizontal t)))
+      (is (= 0.5 v)))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test number-box-default-width-fits-interior-values
+  ;; The ends of -70..6 dB format as "-inf dB" and "6.0 dB", narrower than
+  ;; interior values like "-12.5 dB"; 10..1000 ms ends as "10 ms" and
+  ;; "1.00 s", narrower than "999 ms".  The label is hidden, so the item is
+  ;; the box.
+  (with-controls-env ()
+    (let ((db -12.5) (ms 999.0) pad db-text ms-text db-rect)
+      (with-test-frame ()
+        (in-window (setf pad (* 2 (gui::%style-x %imgui::frame-padding))
+                         db-text (gui::text-width "-12.5 dB")
+                         ms-text (gui::text-width "999 ms"))
+                   (gui:number-box "##db" db :min -70 :max 6 :unit :db)
+                   (setf db-rect (last-item-rect))
+                   (gui:number-box "##ms" ms :min 10 :max 1000 :unit :ms)))
+      (is (>= (- (third db-rect) (first db-rect)) (+ pad db-text)) "~S" db-rect)
+      (is (>= (- (third *item-rect*) (first *item-rect*)) (+ pad ms-text)) "~S" *item-rect*))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test number-box-frame-stays-hovered-while-dragging
+  ;; drag-path frames: move, press, step 0 (dy 0), step 1 (8 rem up, off the
+  ;; box: active but not hovered), release.
+  (with-controls-env ()
+    (let* ((v 0.0)
+           (frames (drag-path (list 0 (- (gui::rem-px 8)))
+                              (lambda () (in-window (control-colors (gui:number-box "##n" v))))))
+           (dragging (nth 3 frames)))
+      (is (member (gui::control-color :frame-hover) dragging))
+      (is (not (member (gui::control-color :frame) dragging))))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test control-states-cleared-by-save-hook
+  ;; A saved image must not keep foreign buffers: the hook empties the table
+  ;; without freeing (the pointers are stale after a restart).
+  (is (member 'gui::%reset-control-states sb-ext:*save-hooks*))
+  (let ((gui::*control-states* (make-hash-table :test 'equal))
+        (gui::*control-states-swept* 5)
+        (buffer (cffi:foreign-alloc :uint8 :count 64)))
+    (unwind-protect
+         (let ((state (gui::make-control-state :edit-buffer buffer :edit-text "x")))
+           (setf (gethash 1 gui::*control-states*) state)
+           (funcall 'gui::%reset-control-states)
+           (is (= 0 (hash-table-count gui::*control-states*)))
+           (is (null gui::*control-states-swept*))
+           (is (eq buffer (gui::control-state-edit-buffer state))))
+      (cffi:foreign-free buffer))))
+
+(test controls-reject-unknown-keys-and-bad-sizes
+  ;; Each signals CONTROL-SPEC-ERROR naming the label, not SBCL's unknown
+  ;; &KEY error or a bare size error.
+  (with-controls-env ()
+    (dolist (call (list (lambda () (gui:knob-value "Lbl" 0.5 :length 3))
+                        (lambda () (gui:knob-value "Lbl" 0.5 :thickness 3))
+                        (lambda () (gui:fader-value "Lbl" 0.5 :size 3))
+                        (lambda () (gui:number-box-value "Lbl" 0.5 :size 3))
+                        (lambda () (gui:knob-value "Lbl" 0.5 :format "%.2f"))
+                        (lambda () (gui:knob-value "Lbl" 0.5 :size 0))
+                        (lambda () (gui:knob-value "Lbl" 0.5 :size "big"))
+                        (lambda () (gui:fader-value "Lbl" 0.5 :length -1))
+                        (lambda () (gui:fader-value "Lbl" 0.5 :thickness '(:px)))
+                        (lambda () (gui:fader-value "Lbl" 0.5 :vertical t :thickness '(:px -2)))
+                        (lambda () (gui:number-box-value "Lbl" 0.5 :width '(:em 3)))
+                        (lambda () (gui:xy-pad-value "Lbl" 0.5 0.5 :size 0))
+                        (lambda () (gui:toggle-value "Lbl" t :width -2))
+                        (lambda () (gui:trigger "Lbl" :width "x"))))
+      (handler-case (progn (with-test-frame () (in-window (funcall call)))
+                           (fail "no control-spec-error from ~S" call))
+        (gui:control-spec-error (e)
+          (is (equal "Lbl" (gui::control-spec-error-label e)))
+          (is (search "\"Lbl\"" (princ-to-string e))))
+        (error (e) (fail "~S signalled ~A: ~A" call (type-of e) e))))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
 (test drawing-never-writes
   (with-controls-env ()
     (let ((v 7.5) (writes 0))
@@ -408,8 +503,60 @@ seen by the text field: Escape there would be lost.)"
         (in-window (setf fh (%imgui:get-frame-height))
                    (gui:fader-value "v" 0.5 :vertical t)))
       (destructuring-bind (x1 y1 x2 y2) *item-rect*
-        (is (= (- x2 x1) fh))
+        ;; The item is 3.5 rem wide; the bar inside it is FH wide.
+        (is (< (abs (- (- x2 x1) (gui::rem-px 3.5))) 0.01))
+        (is (< fh (gui::rem-px 3.5)))
         (is (> (- y2 y1) (gui::rem-px 8)))))
+    ;; A thickness wider than 3.5 rem widens the item to match.
+    (with-test-frame ()
+      (in-window (gui:fader-value "v" 0.5 :vertical t :thickness 5)))
+    (destructuring-bind (x1 y1 x2 y2) *item-rect*
+      (declare (ignore y1 y2))
+      (is (< (abs (- (- x2 x1) (gui::rem-px 5))) 0.01)))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test vertical-fader-fits-its-value
+  ;; Measured in the bundled font (the default bitmap font is wider).
+  (with-controls-env ()
+    (with-loaded-fonts ()
+      (dolist (px '(13.0 15.0 20.0))
+        (set-base-font-size px)
+        (let (text)
+          (dotimes (i 2)
+            (with-test-frame ()
+              (in-window (setf text (gui::text-width "-12.0 dB"))
+                         (gui:fader-value "Vol" -12.0 :vertical t :min -70 :max 6 :unit :db))))
+          (is (>= (- (third *item-rect*) (first *item-rect*)) text)
+              "~S: ~S ~S" px *item-rect* text))))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test fader-bar-rect-geometry
+  ;; (fader-bar-rect vertical x y item-width len thickness line spacing)
+  ;; Horizontal: the bar is the item.
+  (is (equal '(10 20 200 18) (gui::fader-bar-rect nil 10 20 200 200 18 15 4)))
+  ;; Vertical: the bar is THICKNESS wide, centred in the item, below the
+  ;; label line and its spacing.
+  (is (equal '(26 39 20 120) (gui::fader-bar-rect t 10 20 52 120 20 15 4))))
+
+(test fader-value-text-dims-when-inactive
+  ;; Hidden labels, so the only text drawn is the value.
+  (with-controls-env ()
+    (let (h vt)
+      ;; A new window's first frame clips all text (and sizes the window to
+      ;; fit), so record the second.
+      (dotimes (i 2)
+        (with-test-frame ()
+          (in-window (setf h (control-colors (gui:fader-value "##h" 0.5 :length 10))
+                           vt (control-colors (gui:fader-value "##v" 0.5 :vertical t))))))
+      (dolist (colors (list h vt))
+        (is (member (gui::control-color :text-dim) colors))
+        (is (not (member (gui::control-color :text) colors)))))
+    ;; prime-and-drag frames: move, press, move (active), release.
+    (let* ((v 0.5)
+           (frames (prime-and-drag 20 0 (lambda ()
+                                          (in-window (control-colors
+                                                      (gui:fader "##h" v :length 10)))))))
+      (is (member (gui::control-color :text) (nth 2 frames))))
     (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
 
 (test fader-wrong-type-signals

@@ -5,6 +5,7 @@
 
 (defun button-width (label width)
   "Pixels: WIDTH rem (or (:px n)), else the label's width plus 1 rem."
+  (check-control-sizes label :width width)
   (max 1.0 (if width
                (rem-px width)
                (+ (text-width label) (rem-px 1)))))

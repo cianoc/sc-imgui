@@ -12,6 +12,40 @@
 
 (defparameter *control-units* '(:hz :db :ms :percent :semitones :pan))
 
+(defparameter *value-control-keys*
+  '(:min :max :scale :step :choices :bipolar :default :unit :format)
+  "The value specification keywords every value control accepts.")
+
+(defun check-control-keys (label plist &rest extra-keys)
+  "Signal CONTROL-SPEC-ERROR naming LABEL unless PLIST is a property list of
+value specification keywords and EXTRA-KEYS (the control's own)."
+  (unless (and (alexandria:proper-list-p plist) (evenp (length plist)))
+    (error 'control-spec-error :label label
+                               :problem (format nil "malformed arguments ~S: expected a property list"
+                                                plist)))
+  (loop for key in plist by #'cddr
+        unless (or (member key *value-control-keys*) (member key extra-keys))
+          do (error 'control-spec-error
+                    :label label
+                    :problem (format nil "unknown keyword ~S (expected one of ~{~S~^ ~})"
+                                     key (append *value-control-keys* extra-keys)))))
+
+(defun size-p (size)
+  "True when SIZE is a positive real (rem) or (:px n) with N a positive real."
+  (or (and (realp size) (plusp size))
+      (and (alexandria:proper-list-p size) (= 2 (length size)) (eq :px (first size))
+           (realp (second size)) (plusp (second size)))))
+
+(defun check-control-sizes (label &rest keys-and-sizes)
+  "Signal CONTROL-SPEC-ERROR naming LABEL unless each non-NIL size in
+KEYS-AND-SIZES, a plist of size keyword and value, is valid for REM-PX."
+  (loop for (key size) on keys-and-sizes by #'cddr
+        unless (or (null size) (size-p size))
+          do (error 'control-spec-error
+                    :label label
+                    :problem (format nil "~S must be a positive number of rem or (:px n), got ~S"
+                                     key size))))
+
 (defstruct control-spec
   min max scale step choices origin default unit format)
 
@@ -30,6 +64,8 @@ CONTROL-SPEC.  Signals CONTROL-SPEC-ERROR, naming LABEL, for an invalid one."
       (fail "unknown :scale ~S (expected :linear or :log)" scale))
     (when (and unit (not (member unit *control-units*)))
       (fail "unknown :unit ~S (expected one of ~{~S~^ ~})" unit *control-units*))
+    (unless (or (null format) (functionp format) (and (symbolp format) (fboundp format)))
+      (fail ":format must be a function of the value returning a string, got ~S" format))
     (cond
       (choices-p
        (unless (and choices (listp choices) (every #'stringp choices))

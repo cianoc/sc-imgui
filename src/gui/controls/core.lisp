@@ -74,6 +74,13 @@ by ImGui's style alpha (so it fades inside WITH-DISABLED as stock widgets do)."
 (defvar *control-states-swept* nil
   "ImGui frame count of the last sweep of *CONTROL-STATES*.")
 
+;;; Text field buffers are meaningless in a saved image: forget them (without
+;;; freeing) so the sweep never frees a stale pointer after a restart.
+(defun %reset-control-states ()
+  (setf *control-states* (make-hash-table :test 'equal)
+        *control-states-swept* nil))
+(pushnew '%reset-control-states sb-ext:*save-hooks*)
+
 (defun sweep-control-states ()
   "Once per ImGui frame, with the left button up, drop every state not touched
 in the previous frame or this one: its control vanished mid-interaction."

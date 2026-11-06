@@ -23,6 +23,8 @@ clipped to them."
 (defun knob-value (label value &rest spec &key (size 2.5) &allow-other-keys)
   "Draw a knob for VALUE under SPEC (the value control keywords) and return
 (values new-value changed-p).  SIZE is the arc's diameter in rem or (:px n)."
+  (check-control-keys label spec :size)
+  (check-control-sizes label :size size)
   (%check label value (if (get-properties spec '(:choices)) 'integer 'real))
   (let* ((spec (apply #'parse-control-spec label value
                       (alexandria:remove-from-plist spec :size)))

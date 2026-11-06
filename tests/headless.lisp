@@ -107,6 +107,28 @@ covers the label, so the frame's edge is min-x plus the item width."
    (cffi:foreign-slot-pointer draw-list '(:struct %imgui::im-draw-list) '%imgui::vtx-buffer)
    '(:struct %imgui::im-vector-im-draw-vert) '%imgui::size))
 
+(defun vtx-colors (draw-list &optional (start 0))
+  "The packed colours of DRAW-LIST's vertices from index START to the end."
+  (let* ((vector (cffi:foreign-slot-pointer draw-list '(:struct %imgui::im-draw-list)
+                                            '%imgui::vtx-buffer))
+         (size (cffi:foreign-slot-value vector '(:struct %imgui::im-vector-im-draw-vert)
+                                        '%imgui::size))
+         (data (cffi:foreign-slot-value vector '(:struct %imgui::im-vector-im-draw-vert)
+                                        '%imgui::data))
+         (stride (cffi:foreign-type-size '(:struct %imgui::im-draw-vert))))
+    (loop for i from start below size
+          collect (cffi:foreign-slot-value (cffi:inc-pointer data (* i stride))
+                                           '(:struct %imgui::im-draw-vert) '%imgui::col))))
+
+(defmacro control-colors (&body body)
+  "Run BODY (drawing inside a window) and return the packed colours of the
+vertices it added to the window's draw list."
+  (let ((dl (gensym "DL")) (start (gensym "START")))
+    `(let* ((,dl (gui:window-draw-list))
+            (,start (vtx-count ,dl)))
+       ,@body
+       (vtx-colors ,dl ,start))))
+
 (defun %modifier-key (modifier)
   "The key to queue for MODIFIER.  :CTRL is whatever ImGui reports as
 io.KeyCtrl: with io.ConfigMacOSXBehaviors (the macOS default) AddKeyEvent
@@ -144,20 +166,25 @@ SHIFT holds Shift throughout."
               collect (progn (funcall event)
                              (with-test-frame () (funcall draw-fn)))))))
 
-(defun frames-with-wheel (x y notches draw-fn &key shift)
+(defun frames-with-wheel (x y notches draw-fn &key shift horizontal)
   "Move to (X, Y) (one frame), then queue a vertical wheel of NOTCHES and run
 two more frames (the first sees it in io.MouseWheel).  NOTCHES may also be a
 list, one wheel event per frame (as a trackpad sends), followed by one idle
-frame.  SHIFT holds Shift.  Returns the list of DRAW-FN's values per frame."
+frame.  SHIFT holds Shift.  HORIZONTAL queues the notches on the horizontal
+wheel instead (io.MouseWheelH), as macOS sends Shift+wheel.  Returns the list
+of DRAW-FN's values per frame."
   (if shift
-      (with-keys-held (:shift) (frames-with-wheel x y notches draw-fn))
+      (with-keys-held (:shift) (frames-with-wheel x y notches draw-fn :horizontal horizontal))
       (let ((io (%imgui:get-io-nil)))
         (loop for event in (append
                             (list (lambda () (%imgui:im-gui-io-add-mouse-pos-event
                                               io (float x 1.0f0) (float y 1.0f0))))
                             (mapcar (lambda (n)
-                                      (lambda () (%imgui:im-gui-io-add-mouse-wheel-event
-                                                  io 0.0f0 (float n 1.0f0))))
+                                      (lambda () (if horizontal
+                                                     (%imgui:im-gui-io-add-mouse-wheel-event
+                                                      io (float n 1.0f0) 0.0f0)
+                                                     (%imgui:im-gui-io-add-mouse-wheel-event
+                                                      io 0.0f0 (float n 1.0f0)))))
                                     (if (listp notches) notches (list notches)))
                             (list nil))
               collect (progn (when event (funcall event))

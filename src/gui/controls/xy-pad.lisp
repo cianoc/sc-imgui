@@ -8,8 +8,7 @@
 ;;;; wheel or typed entry.  Uses the core's state table (so the stale sweep
 ;;;; covers it) but not CONTROL-BEHAVIOR's drag.
 
-(defparameter *xy-spec-keys*
-  '(:min :max :scale :step :choices :bipolar :default :unit :format)
+(defparameter *xy-spec-keys* *value-control-keys*
   "The keywords allowed in an :x or :y specification.")
 
 (defstruct (xy-state (:include control-state))
@@ -46,6 +45,7 @@ specification, is a proper plist of known value control keywords."
 under Y, and return (values new-x new-y changed-p).  An axis the user did not
 change comes back as given (not clamped).  SIZE is the square's side in rem
 or (:px n)."
+  (check-control-sizes label :size size)
   (check-xy-spec-shape label :x x)
   (check-xy-spec-shape label :y y)
   (%check label x-value (if (getf x :choices) 'integer 'real))

@@ -46,9 +46,20 @@
 (test spec-errors
   (dolist (args '((:min 1 :max 1) (:min 0 :max 10 :scale :log) (:step 0)
                   (:choices ()) (:choices ("a" 2)) (:choices ("a") :min 0)
-                  (:default 5) (:unit :furlongs) (:scale :exp)))
+                  (:default 5) (:unit :furlongs) (:scale :exp)
+                  (:format "%.2f") (:format 3) (:format no-such-function-anywhere)))
     (handler-case (progn (apply #'spec args) (fail "no error for ~S" args))
       (gui:control-spec-error (e) (is (search "\"t\"" (princ-to-string e)))))))
+
+(test format-must-be-a-function
+  (handler-case (progn (spec :format "%.2f") (fail "no error for a format string"))
+    (gui:control-spec-error (e)
+      (is (equal "t" (gui::control-spec-error-label e)))
+      (is (search ":format must be a function" (princ-to-string e)))))
+  ;; nil, a function and an fbound symbol are all accepted.
+  (is (null (gui::control-spec-format (spec :format nil))))
+  (is (functionp (gui::control-spec-format (spec :format #'princ-to-string))))
+  (is (string= "0.5" (gui::format-control-value (spec :format 'princ-to-string) 0.5))))
 
 (test unit-formatting
   (flet ((f (unit v &rest args) (gui::format-control-value (apply #'spec :unit unit args) v)))
