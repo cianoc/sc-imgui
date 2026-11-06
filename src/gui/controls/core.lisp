@@ -53,7 +53,12 @@ by ImGui's style alpha (so it fades inside WITH-DISABLED as stock widgets do)."
   position     ; accumulated drag position in [0, 1], or NIL when not dragging
   edit-text    ; text of an open text field, or NIL
   edit-error   ; true when the field's text failed to parse
+  edit-buffer  ; foreign buffer of +EDIT-BUFFER-SIZE+ bytes behind the field
+  edit-phase   ; :focus (asking for keyboard focus), :refocus (asked, after a
+               ; failed Enter) or :active (field focused)
   (frame -1))  ; ImGui frame count when the control last drew
+
+(defconstant +edit-buffer-size+ 64)
 
 (defvar *control-states* (make-hash-table :test 'equal)
   "ImGui item ID to CONTROL-STATE, for controls mid-drag or mid-edit.")
@@ -70,18 +75,99 @@ in the previous frame or this one: its control vanished mid-interaction."
       (unless (%imgui:is-mouse-down-nil 0)
         (loop for id being the hash-keys of *control-states* using (hash-value state)
               unless (<= (1- frame) (control-state-frame state) frame)
-                do (remhash id *control-states*))))))
+                do (remove-control-state id))))))
+
+(defun remove-control-state (id)
+  "Drop ID's state, freeing its text field's buffer."
+  (let ((state (gethash id *control-states*)))
+    (when state
+      (end-text-entry state)
+      (remhash id *control-states*))))
 
 (defun ensure-control-state (id)
   (or (gethash id *control-states*)
       (setf (gethash id *control-states*)
             (make-control-state :frame (%imgui:get-frame-count)))))
 
-(defun start-text-entry (id spec value)
-  "Ctrl/Cmd-click on control ID showing VALUE under SPEC.  Typed entry is not
-implemented yet, so the click does nothing; it never starts a drag."
-  (declare (ignore id spec value))
-  nil)
+;;; Typed entry
+
+(defun set-edit-buffer (state text)
+  "Copy TEXT into STATE's buffer as UTF-8, dropping whole characters from the
+end until it fits with its NUL."
+  (let ((text (loop with octets = 0
+                    for char across text
+                    for code = (char-code char)
+                    do (incf octets (cond ((< code #x80) 1) ((< code #x800) 2)
+                                          ((< code #x10000) 3) (t 4)))
+                    while (< octets +edit-buffer-size+)
+                    count t into chars
+                    finally (return (subseq text 0 chars)))))
+    (cffi:lisp-string-to-foreign text (control-state-edit-buffer state) +edit-buffer-size+
+                                 :encoding :utf-8)))
+
+(defun start-text-entry (state text)
+  "Open a text field on STATE showing TEXT."
+  (unless (control-state-edit-buffer state)
+    (setf (control-state-edit-buffer state) (cffi:foreign-alloc :uint8 :count +edit-buffer-size+)))
+  (set-edit-buffer state text)
+  (setf (control-state-edit-text state) (cffi:foreign-string-to-lisp
+                                         (control-state-edit-buffer state) :encoding :utf-8)
+        (control-state-edit-error state) nil
+        (control-state-edit-phase state) :focus))
+
+(defun end-text-entry (state)
+  "Close STATE's text field, if any, and free its buffer."
+  (let ((buffer (control-state-edit-buffer state)))
+    (when buffer
+      (cffi:foreign-free buffer)))
+  (setf (control-state-edit-buffer state) nil
+        (control-state-edit-text state) nil
+        (control-state-edit-error state) nil
+        (control-state-edit-phase state) nil))
+
+(defun text-entry (id state spec like value-rect)
+  "Draw STATE's open text field over VALUE-RECT, (x y w h), for control ID and
+handle its keys.  Returns :COMMIT and the parsed value (clamped and snapped
+under SPEC, as LIKE's type) on a successful Enter, :CANCEL when the field
+lost focus without one (Escape or a click elsewhere), else NIL."
+  (destructuring-bind (x y w h) value-rect
+    (set-cursor-screen-pos x y)
+    (when (eq (control-state-edit-phase state) :focus)
+      (%imgui:set-keyboard-focus-here 0))
+    (%imgui:set-next-item-width (max 1.0 w))
+    (let* ((buffer (control-state-edit-buffer state))
+           (entered (%imgui:input-text (format nil "##edit~D" id) buffer +edit-buffer-size+
+                                       ;; Select all on opening, but not on
+                                       ;; refocusing after a failed Enter.
+                                       (logior %imgui:+input-text-flags-enter-returns-true+
+                                               (if (eq (control-state-edit-phase state) :refocus)
+                                                   0
+                                                   %imgui:+input-text-flags-auto-select-all+))
+                                       (cffi:null-pointer) (cffi:null-pointer)))
+           (active (%imgui:is-item-active))
+           (text (cffi:foreign-string-to-lisp buffer :encoding :utf-8)))
+      ;; Editing the text clears the error.
+      (unless (string= text (control-state-edit-text state))
+        (setf (control-state-edit-text state) text
+              (control-state-edit-error state) nil))
+      (cond (entered
+             (multiple-value-bind (parsed ok) (parse-control-text spec text)
+               (when ok
+                 (return-from text-entry
+                   (values :commit (clamp-to-spec spec (snap-to-step spec parsed) like))))
+               ;; Enter deactivated the field: keep it open, refocusing it
+               ;; (-1 targets the field just drawn) so it is active again
+               ;; next frame.
+               (%imgui:set-keyboard-focus-here -1)
+               (setf (control-state-edit-error state) t
+                     (control-state-edit-phase state) :refocus)))
+            (active
+             (setf (control-state-edit-phase state) :active))
+            ((eq (control-state-edit-phase state) :active)
+             (return-from text-entry :cancel)))
+      (when (control-state-edit-error state)
+        (draw-rect x y (+ x w) (+ y h) (control-color :error)))
+      nil)))
 
 ;;; Interaction
 
@@ -134,69 +220,94 @@ the range."
 (defun control-behavior (label spec value &key width height (axis :vertical) value-rect)
   "Reserve WIDTH x HEIGHT pixels at the cursor as one item named LABEL and
 apply the shared interaction to VALUE under SPEC: double-click reset,
-Ctrl/Cmd-click text entry (drawn in VALUE-RECT, (x y w h)), drag along AXIS,
-then the wheel.  Returns a CONTROL-FRAME whose value is the new value, or VALUE
-clamped for display when unchanged; CHANGED-P is true only when input changed
-it.  Never writes anything."
-  (declare (ignore value-rect))
+Ctrl/Cmd-click text entry (drawn over VALUE-RECT, (x y w h); without one,
+Ctrl/Cmd-click does nothing), drag along AXIS, then the wheel.  Returns a
+CONTROL-FRAME whose value is the new value, or VALUE clamped for display when
+unchanged; CHANGED-P is true only when input changed it.  Never writes
+anything."
   (sweep-control-states)
   (multiple-value-bind (x y) (cursor-screen-pos)
-    (invisible-button label (max 1.0 width) (max 1.0 height))
-    (let* ((id (%imgui:get-item-id))
-           (frame-count (%imgui:get-frame-count))
-           (hovered (item-hovered-p))
-           (active (item-active-p))
-           (shift (%io-value %imgui::key-shift))
+    (let* ((id (%imgui:get-id-str label))
            (state (gethash id *control-states*))
+           (editing (and state (control-state-edit-text state)))
            (new (clamp-to-spec spec value))
            (input nil))
-      (when state (setf (control-state-frame state) frame-count))
-      ;; Double-click resets to the default.
-      (when (and hovered (%imgui:is-mouse-double-clicked-nil 0))
-        (setf new (clamp-to-spec spec (control-spec-default spec) value)
-              input t))
-      ;; A press starts text entry (Ctrl/Cmd held) or a drag.
-      (when (%imgui:is-item-activated)
-        (if (%io-value %imgui::key-ctrl)
-            (start-text-entry id spec new)
-            (setf state (ensure-control-state id)
-                  (control-state-position state) (value->position spec new))))
-      ;; Drag: accumulate the clamped, unsnapped position.
-      (cond ((and active state (control-state-position state))
-             (%imgui:set-mouse-cursor %imgui:+mouse-cursor-none+)
-             (let ((delta (drag-delta axis))
-                   (range (rem-px 10)))
-               (when (and (/= 0 delta) (finite-p delta) (plusp range) (finite-p range))
-                 (let ((position (max 0.0 (min 1.0 (+ (control-state-position state)
-                                                      (/ (* delta (if shift 0.1 1.0))
-                                                         range))))))
-                   (setf (control-state-position state) position
-                         new (position->value spec position value)
-                         input t)))))
-            ((and state (control-state-position state))
-             ;; The drag ended.
-             (setf (control-state-position state) nil)
-             (unless (control-state-edit-text state)
-               (remhash id *control-states*))))
-      ;; Wheel while hovered; claim it so the window doesn't scroll.
-      (when hovered
-        (unless (eql (car *wheel-residue*) id)
-          (setf *wheel-residue* (cons id 0)))
-        (%imgui:set-item-key-owner-nil %imgui:+key-mouse-wheel-y+)
-        (%imgui:set-item-key-owner-nil %imgui:+key-mouse-wheel-x+)
-        (let ((notches (%io-value %imgui::mouse-wheel)))
-          ;; Shift+wheel arrives as horizontal on macOS.
-          (when (and shift (zerop notches))
-            (setf notches (%io-value %imgui::mouse-wheel-h)))
-          (when (and (/= 0 notches) (finite-p notches))
-            (setf new (wheel-value id spec new notches shift value)
-                  input t))))
-      (make-control-frame
-       :x x :y y :width width :height height
-       :value new
-       :changed-p (and input (/= new value))
-       :hovered-p hovered :active-p active
-       :editing-p (and state (control-state-edit-text state) t)))))
+      (when editing
+        ;; The text field is submitted inside a group with the control's own
+        ;; item, so the layout sees one item of the control's size.  It comes
+        ;; first so it takes the mouse over the value.
+        (%imgui:begin-group))
+      (unwind-protect
+           (progn
+             (when editing
+               (multiple-value-bind (outcome parsed)
+                   (if value-rect (text-entry id state spec value value-rect) :cancel)
+                 (when outcome
+                   (end-text-entry state)
+                   (unless (control-state-position state)
+                     (remhash id *control-states*)
+                     (setf state nil)))
+                 (when (eq outcome :commit)
+                   (setf new parsed input t)))
+               (set-cursor-screen-pos x y))
+             (invisible-button label (max 1.0 width) (max 1.0 height))
+             (let ((frame-count (%imgui:get-frame-count))
+                   (hovered (item-hovered-p))
+                   (active (item-active-p))
+                   (shift (%io-value %imgui::key-shift))
+                   (ctrl (%io-value %imgui::key-ctrl)))
+               (when state (setf (control-state-frame state) frame-count))
+               ;; Double-click resets to the default; with Ctrl/Cmd held it
+               ;; only opens the text field.
+               (when (and hovered (not ctrl) (%imgui:is-mouse-double-clicked-nil 0))
+                 (setf new (clamp-to-spec spec (control-spec-default spec) value)
+                       input t))
+               ;; A press starts a drag, or with Ctrl/Cmd held opens the text
+               ;; field (never a drag).
+               (when (%imgui:is-item-activated)
+                 (cond ((not ctrl)
+                        (setf state (ensure-control-state id)
+                              (control-state-position state) (value->position spec new)))
+                       (value-rect
+                        (setf state (ensure-control-state id))
+                        (start-text-entry state (format-control-value spec new)))))
+               ;; Drag: accumulate the clamped, unsnapped position.
+               (cond ((and active state (control-state-position state))
+                      (%imgui:set-mouse-cursor %imgui:+mouse-cursor-none+)
+                      (let ((delta (drag-delta axis))
+                            (range (rem-px 10)))
+                        (when (and (/= 0 delta) (finite-p delta) (plusp range) (finite-p range))
+                          (let ((position (max 0.0 (min 1.0 (+ (control-state-position state)
+                                                               (/ (* delta (if shift 0.1 1.0))
+                                                                  range))))))
+                            (setf (control-state-position state) position
+                                  new (position->value spec position value)
+                                  input t)))))
+                     ((and state (control-state-position state))
+                      ;; The drag ended.
+                      (setf (control-state-position state) nil)
+                      (unless (control-state-edit-text state)
+                        (remove-control-state id))))
+               ;; Wheel while hovered; claim it so the window doesn't scroll.
+               (when hovered
+                 (unless (eql (car *wheel-residue*) id)
+                   (setf *wheel-residue* (cons id 0)))
+                 (%imgui:set-item-key-owner-nil %imgui:+key-mouse-wheel-y+)
+                 (%imgui:set-item-key-owner-nil %imgui:+key-mouse-wheel-x+)
+                 (let ((notches (%io-value %imgui::mouse-wheel)))
+                   ;; Shift+wheel arrives as horizontal on macOS.
+                   (when (and shift (zerop notches))
+                     (setf notches (%io-value %imgui::mouse-wheel-h)))
+                   (when (and (/= 0 notches) (finite-p notches))
+                     (setf new (wheel-value id spec new notches shift value)
+                           input t))))
+               (make-control-frame
+                :x x :y y :width width :height height
+                :value new
+                :changed-p (and input (/= new value))
+                :hovered-p hovered :active-p active
+                :editing-p (and state (control-state-edit-text state) t))))
+        (when editing (%imgui:end-group))))))
 
 ;;; Defining controls
 

@@ -108,9 +108,15 @@ covers the label, so the frame's edge is min-x plus the item width."
    '(:struct %imgui::im-vector-im-draw-vert) '%imgui::size))
 
 (defun %modifier-key (modifier)
+  "The key to queue for MODIFIER.  :CTRL is whatever ImGui reports as
+io.KeyCtrl: with io.ConfigMacOSXBehaviors (the macOS default) AddKeyEvent
+swaps Ctrl and Super, so Cmd (Super) arrives as Ctrl."
   (ecase modifier
     (:shift %imgui:+mod-shift+)
-    (:ctrl %imgui:+mod-ctrl+)))
+    (:ctrl (if (cffi:foreign-slot-value (%imgui:get-io-nil) '(:struct %imgui::im-gui-io)
+                                        '%imgui::config-mac-osx-behaviors)
+               %imgui:+mod-super+
+               %imgui:+mod-ctrl+))))
 
 (defmacro with-keys-held ((&rest modifiers) &body body)
   "Queue key-down events for MODIFIERS (:shift, :ctrl) before BODY and key-up
@@ -232,3 +238,12 @@ with that font table.  Without this, no fonts are loaded."
 (defun current-font ()
   "The current font and size, as (address size)."
   (list (cffi:pointer-address (%imgui:get-font)) (%imgui:get-font-size)))
+
+(defun press-key (key draw-fn)
+  "Queue a key-down for KEY (an %IMGUI:+KEY-...+ constant), run a frame of
+DRAW-FN, then queue its key-up and run another."
+  (let ((io (%imgui:get-io-nil)))
+    (%imgui:im-gui-io-add-key-event io key t)
+    (with-test-frame () (funcall draw-fn))
+    (%imgui:im-gui-io-add-key-event io key nil)
+    (with-test-frame () (funcall draw-fn))))

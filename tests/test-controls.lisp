@@ -152,3 +152,102 @@ frames (a fresh context has base 0 until its first NewFrame)."
                       (lambda () (in-window (gui:number-box "i" i :min 0 :max 10))))
       (is (eql 5 i)))
     (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+;;; Typed entry (Ctrl/Cmd-click)
+
+(defun ctrl-click (draw)
+  (with-keys-held (:ctrl) (click-item draw)))
+
+(test typed-entry-commits
+  (with-controls-env ()
+    (let* ((v 440.0)
+           (draw (lambda () (in-window (gui:number-box "f" v :min 20 :max 20000 :scale :log :unit :hz)))))
+      (ctrl-click draw)
+      (type-text "2k" draw)                 ; replaces the auto-selected text
+      (press-key %imgui:+key-enter+ draw)
+      (is (= 2000.0 v))
+      (is (= 0 (hash-table-count gui::*control-states*))))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test typed-entry-clamps-and-snaps
+  (with-controls-env ()
+    (let* ((v 3)
+           (draw (lambda () (in-window (gui:number-box "n" v :min 0 :max 10)))))
+      (ctrl-click draw)
+      (type-text "99" draw)
+      (press-key %imgui:+key-enter+ draw)
+      (is (eql 10 v))
+      (ctrl-click draw)
+      (type-text "6.4" draw)
+      (press-key %imgui:+key-enter+ draw)
+      (is (eql 6 v)))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test bad-entry-stays-open-then-corrects
+  (with-controls-env ()
+    (let* ((v 440.0)
+           (draw (lambda () (in-window (gui:number-box "f" v :min 20 :max 20000 :unit :hz)))))
+      (ctrl-click draw)
+      (type-text "abc" draw)
+      (press-key %imgui:+key-enter+ draw)
+      (is (= 440.0 v))
+      (let ((state (first (alexandria:hash-table-values gui::*control-states*))))
+        (is (gui::control-state-edit-error state))
+        (is (string= "abc" (gui::control-state-edit-text state)))
+        (press-key %imgui:+key-backspace+ draw)
+        (is (string= "ab" (gui::control-state-edit-text state)))
+        (is (not (gui::control-state-edit-error state))))
+      (dotimes (i 2) (press-key %imgui:+key-backspace+ draw))
+      (type-text "500" draw)
+      (press-key %imgui:+key-enter+ draw)
+      (is (= 500.0 v))
+      (is (= 0 (hash-table-count gui::*control-states*))))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test escape-cancels
+  (with-controls-env ()
+    (let* ((v 440.0)
+           (draw (lambda () (in-window (gui:number-box "f" v :min 20 :max 20000 :unit :hz)))))
+      (ctrl-click draw)
+      (type-text "900" draw)
+      (press-key %imgui:+key-escape+ draw)
+      (is (= 440.0 v))
+      (is (= 0 (hash-table-count gui::*control-states*))))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test escape-keeps-code-change                        ; Review Focus 4
+  (with-controls-env ()
+    (let* ((v 440.0)
+           (draw (lambda () (in-window (gui:number-box "f" v :min 20 :max 20000 :unit :hz)))))
+      (ctrl-click draw)
+      (setf v 880.0)                         ; a pattern changes the value meanwhile
+      (press-key %imgui:+key-escape+ draw)
+      (is (= 880.0 v)))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test clicking-elsewhere-cancels
+  (with-controls-env ()
+    (let* ((v 440.0) (w 0.5)
+           (draw-v (lambda () (gui:number-box "f" v :min 20 :max 20000 :unit :hz)))
+           (draw (lambda () (in-window (funcall draw-v)))))
+      (ctrl-click draw)
+      (type-text "900" draw)
+      ;; Click a second control drawn below the first.
+      (click-item (lambda () (in-window (funcall draw-v) (gui:number-box "other" w))))
+      (is (= 440.0 v))
+      (is (= 0 (hash-table-count gui::*control-states*))))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test ctrl-double-click-does-not-reset
+  (with-controls-env ()
+    (let* ((v 0.7)
+           (draw (lambda () (in-window (gui:number-box "n" v :default 0.25)))))
+      (with-keys-held (:ctrl)
+        (click-item draw :clicker #'frames-with-double-click))
+      (is (= 0.7 v))
+      (let ((state (first (alexandria:hash-table-values gui::*control-states*))))
+        (is (and state (gui::control-state-edit-text state)))
+        (is (and state (null (gui::control-state-position state)))))
+      (press-key %imgui:+key-escape+ draw)
+      (is (= 0.7 v)))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))

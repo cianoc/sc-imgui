@@ -30,10 +30,11 @@ return (values new-value changed-p).  WIDTH is the box's width in rem or
                                       :width (+ box-width gap label-width) :height height
                                       :value-rect (list x y box-width height)))
              (text-y (+ y (/ (- height (%imgui:get-font-size)) 2))))
-        (draw-rect x y (+ x box-width) (+ y height)
-                   (control-color (if (control-frame-hovered-p frame) :frame-hover :frame))
-                   :filled t :rounding (%style-value %imgui::frame-rounding))
+        ;; While editing, the core's text field (already drawn) is the box.
         (unless (control-frame-editing-p frame)
+          (draw-rect x y (+ x box-width) (+ y height)
+                     (control-color (if (control-frame-hovered-p frame) :frame-hover :frame))
+                     :filled t :rounding (%style-value %imgui::frame-rounding))
           (let* ((text (format-control-value spec (control-frame-value frame)))
                  (slack (- box-width (text-width text)))
                  (text-x (+ x (if (minusp slack)
