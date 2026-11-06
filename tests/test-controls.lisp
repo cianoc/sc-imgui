@@ -416,3 +416,16 @@ seen by the text field: Escape there would be lost.)"
   (with-controls-env ()
     (signals gui:widget-value-error (gui:fader-value "v" nil))
     (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test fader-fill-rect-geometry
+  ;; Bar at (10, 20), 100 wide, 40 tall.
+  (flet ((rect (v lo hi) (gui::fader-fill-rect v lo hi 10 20 100 40)))
+    ;; Horizontal unipolar: origin 0 to 0.25.
+    (is (equal '(10 20 35.0 60) (rect nil 0 0.25)))
+    ;; Horizontal bipolar, value below the origin (0.5): 0.2..0.5.
+    (is (equal '(30.0 20 60.0 60) (rect nil 0.2 0.5)))
+    ;; Horizontal bipolar, value above the origin: 0.5..0.8.
+    (is (equal '(60.0 20 90.0 60) (rect nil 0.5 0.8)))
+    ;; Vertical: filled from the bottom (y 60) upward.
+    (is (equal '(10 40.0 110 60) (rect t 0 0.5)))
+    (is (equal '(10 36.0 110 48.0) (rect t 0.3 0.6)))))

@@ -30,10 +30,7 @@ clipped to them."
          (width (+ diameter (rem-px 0.5)))
          (line (%imgui:get-font-size))
          (value-height (%imgui:get-frame-height))
-         (spacing (cffi:foreign-slot-value
-                   (cffi:foreign-slot-pointer (%imgui:get-style) '(:struct %imgui::im-gui-style)
-                                              '%imgui::item-spacing)
-                   '(:struct %imgui::im-vec2) '%imgui::y))
+         (spacing (item-spacing-y))
          (height (+ line spacing diameter spacing value-height)))
     (multiple-value-bind (x y) (cursor-screen-pos)
       (let* ((value-y (+ y line spacing diameter spacing))

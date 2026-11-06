@@ -16,6 +16,13 @@
     (cffi:foreign-slot-pointer (%imgui:get-style) '(:struct %imgui::im-gui-style) ',slot)
     '(:struct %imgui::im-vec2) '%imgui::x))
 
+;; Y of ImGui's ItemSpacing.
+(defun item-spacing-y ()
+  (cffi:foreign-slot-value
+   (cffi:foreign-slot-pointer (%imgui:get-style) '(:struct %imgui::im-gui-style)
+                              '%imgui::item-spacing)
+   '(:struct %imgui::im-vec2) '%imgui::y))
+
 (defmacro %io-value (slot)
   `(cffi:foreign-slot-value (%imgui:get-io-nil) '(:struct %imgui::im-gui-io) ',slot))
 

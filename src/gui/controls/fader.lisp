@@ -5,6 +5,14 @@
 ;;;; bar, filling the available width.  Vertical: label above, value below.
 ;;;; A fader drags along its own axis.
 
+(defun fader-fill-rect (vertical lo hi x y w h)
+  "Fill rectangle (x1 y1 x2 y2) of a fader whose bar is the rect at X Y of W x H,
+spanning positions LO..HI in [0, 1] (LO <= HI): left to right when horizontal,
+from the bottom up when VERTICAL."
+  (if vertical
+      (list x (- (+ y h) (* hi h)) (+ x w) (- (+ y h) (* lo h)))
+      (list (+ x (* lo w)) y (+ x (* hi w)) (+ y h))))
+
 (defun fader-value (label value &rest spec &key vertical ((:length len)) thickness
                     &allow-other-keys)
   "Draw a fader for VALUE under SPEC (the value control keywords) and return
@@ -22,11 +30,7 @@ or (:px n); THICKNESS defaults to the frame height, LEN to the available width
          (line (%imgui:get-font-size))
          (label-text (visible-label label)))
     (multiple-value-bind (x y) (cursor-screen-pos)
-      (let* ((spacing-y (cffi:foreign-slot-value
-                         (cffi:foreign-slot-pointer (%imgui:get-style)
-                                                    '(:struct %imgui::im-gui-style)
-                                                    '%imgui::item-spacing)
-                         '(:struct %imgui::im-vec2) '%imgui::y))
+      (let* ((spacing-y (item-spacing-y))
              (width (if vertical thickness len))
              (height (if vertical
                          (+ line spacing-y len spacing-y frame-height)
@@ -53,11 +57,8 @@ or (:px n); THICKNESS defaults to the frame height, LEN to the available width
                                       :frame-hover :frame))
                    :filled t)
         (when (> hi lo)
-          (if vertical
-              (draw-rect x (- (+ bar-y bar-h) (* hi bar-h)) (+ x bar-w) (- (+ bar-y bar-h) (* lo bar-h))
-                         (control-color :accent) :filled t)
-              (draw-rect (+ x (* lo bar-w)) bar-y (+ x (* hi bar-w)) (+ bar-y bar-h)
-                         (control-color :accent) :filled t)))
+          (destructuring-bind (x1 y1 x2 y2) (fader-fill-rect vertical lo hi x bar-y bar-w bar-h)
+            (draw-rect x1 y1 x2 y2 (control-color :accent) :filled t)))
         (if vertical
             (progn
               (when (plusp (length label-text))
