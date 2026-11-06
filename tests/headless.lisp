@@ -140,16 +140,20 @@ SHIFT holds Shift throughout."
 
 (defun frames-with-wheel (x y notches draw-fn &key shift)
   "Move to (X, Y) (one frame), then queue a vertical wheel of NOTCHES and run
-two more frames (the first sees it in io.MouseWheel).  SHIFT holds Shift.
-Returns the list of DRAW-FN's values per frame."
+two more frames (the first sees it in io.MouseWheel).  NOTCHES may also be a
+list, one wheel event per frame (as a trackpad sends), followed by one idle
+frame.  SHIFT holds Shift.  Returns the list of DRAW-FN's values per frame."
   (if shift
       (with-keys-held (:shift) (frames-with-wheel x y notches draw-fn))
       (let ((io (%imgui:get-io-nil)))
-        (loop for event in (list (lambda () (%imgui:im-gui-io-add-mouse-pos-event
-                                             io (float x 1.0f0) (float y 1.0f0)))
-                                 (lambda () (%imgui:im-gui-io-add-mouse-wheel-event
-                                             io 0.0f0 (float notches 1.0f0)))
-                                 nil)
+        (loop for event in (append
+                            (list (lambda () (%imgui:im-gui-io-add-mouse-pos-event
+                                              io (float x 1.0f0) (float y 1.0f0))))
+                            (mapcar (lambda (n)
+                                      (lambda () (%imgui:im-gui-io-add-mouse-wheel-event
+                                                  io 0.0f0 (float n 1.0f0))))
+                                    (if (listp notches) notches (list notches)))
+                            (list nil))
               collect (progn (when event (funcall event))
                              (with-test-frame () (funcall draw-fn)))))))
 

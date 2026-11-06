@@ -105,12 +105,28 @@ or right); 0 until the drag passes ImGui's threshold."
             (:vertical (- dy))
             (:horizontal dx))))))
 
-(defun wheel-value (spec value notches shift like)
-  "VALUE moved by NOTCHES of the wheel: one step per notch for stepped specs,
-otherwise 1% (0.1% with SHIFT) of the range."
+(defvar *wheel-residue* (cons nil 0)
+  "(item-id . notches): wheel travel not yet turned into a step by the stepped
+control last hovered.  Trackpads send fractions of a notch.")
+
+(defun wheel-steps (id notches)
+  "Whole steps for NOTCHES of wheel on stepped control ID, carrying the
+fraction over to its next wheel event."
+  (unless (eql (car *wheel-residue*) id)
+    (setf *wheel-residue* (cons id 0)))
+  (let ((total (+ (cdr *wheel-residue*) notches)))
+    (multiple-value-bind (steps residue) (truncate total)
+      (setf (cdr *wheel-residue*) residue)
+      steps)))
+
+(defun wheel-value (id spec value notches shift like)
+  "VALUE moved by NOTCHES of the wheel on control ID: one step per whole notch
+(fractions accumulate) for stepped specs, otherwise 1% (0.1% with SHIFT) of
+the range."
   (let ((step (control-spec-step spec)))
     (if step
-        (clamp-to-spec spec (snap-to-step spec (+ value (* (round notches) step))) like)
+        (clamp-to-spec spec (snap-to-step spec (+ value (* (wheel-steps id notches) step)))
+                       like)
         (position->value spec
                          (+ (value->position spec value) (* notches (if shift 0.001 0.01)))
                          like))))
@@ -164,6 +180,8 @@ it.  Never writes anything."
                (remhash id *control-states*))))
       ;; Wheel while hovered; claim it so the window doesn't scroll.
       (when hovered
+        (unless (eql (car *wheel-residue*) id)
+          (setf *wheel-residue* (cons id 0)))
         (%imgui:set-item-key-owner-nil %imgui:+key-mouse-wheel-y+)
         (%imgui:set-item-key-owner-nil %imgui:+key-mouse-wheel-x+)
         (let ((notches (%io-value %imgui::mouse-wheel)))
@@ -171,7 +189,7 @@ it.  Never writes anything."
           (when (and shift (zerop notches))
             (setf notches (%io-value %imgui::mouse-wheel-h)))
           (when (and (/= 0 notches) (finite-p notches))
-            (setf new (wheel-value spec new notches shift value)
+            (setf new (wheel-value id spec new notches shift value)
                   input t))))
       (make-control-frame
        :x x :y y :width width :height height
