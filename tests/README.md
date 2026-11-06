@@ -18,7 +18,7 @@ Contents:
 
 There are two kinds of tests:
 
-- **`make test`** runs 212 [FiveAM](https://github.com/lispci/fiveam) tests in twelve suites. They run **headless**: ImGui runs with no window and no GPU, and each test draws frames itself by calling `NewFrame` and `Render`. They're fast, need no display, and run anywhere, including CI.
+- **`make test`** runs 222 [FiveAM](https://github.com/lispci/fiveam) tests in twelve suites. They run **headless**: ImGui runs with no window and no GPU, and each test draws frames itself by calling `NewFrame` and `Render`. They're fast, need no display, and run anywhere, including CI.
 - **`make smoke`** opens a **real window** and drives the real frame loop on SBCL's main thread: starting, live redefinition, error recovery, hiding, showing, closing, and shutting down. It needs a display. On Linux CI it runs under Xvfb, a virtual display.
 
 A third test lives outside this folder: `native/test_assert.c`, run by `make native`, checks that ImGui misuse is recorded rather than aborting the process. See `native/README.md`.
@@ -87,8 +87,9 @@ Shared helpers for tests that run ImGui without a window. Most tests are built f
 | `click-item-at-right-edge` | Clicks 2 pixels inside the right edge of the item's *frame* | An item's rectangle includes its label, so the frame's right edge is calculated from the item width, not the rectangle. |
 | `frames-with-drag`, `prime-and-drag` | Press, move by (dx, dy) while held, release; `:shift t` holds Shift throughout | Used for drag interactions, such as the knob in the examples and the controls. |
 | `drag-path` | Prime a drawing function, press on its item, then move by each dy of a list, one frame per step, with an optional `:between` function called before each | Lets a test watch a value frame by frame, such as overshoot then reverse. |
-| `frames-with-wheel` | Move to (x, y), then send mouse-wheel notches (a number, or a list with one event per frame as a trackpad sends); `:shift t` holds Shift | Uses `im-gui-io-add-mouse-wheel-event`. The first frame after the event sees it in `io.MouseWheel`. |
+| `frames-with-wheel` | Move to (x, y), then send mouse-wheel notches (a number, or a list with one event per frame as a trackpad sends); `:shift t` holds Shift; `:horizontal t` sends the notches on the horizontal wheel, as macOS sends Shift+wheel | Uses `im-gui-io-add-mouse-wheel-event`. The first frame after the event sees it in `io.MouseWheel`. |
 | `frames-with-double-click` | Press and release twice at (x, y), one frame each | Double-click needs two presses within ImGui's double-click time. |
+| `vtx-colors`, `control-colors` | The packed colours of a draw list's vertices from an index; `control-colors` returns those its body added to the window's draw list | Lets a test check which theme colours a control drew, such as `:text-dim` for an idle value. Record the second frame of a new window: the first clips all text. |
 | `with-keys-held` | Queues key-down events for `:shift` or `:ctrl` before the body and key-up events after it, even if the body unwinds | Uses `im-gui-io-add-key-event`. `:ctrl` is what ImGui reports as `io.KeyCtrl`, which is Cmd on macOS, so one test works on every platform. |
 | `press-key` | Queues a key-down for a key, runs a frame, queues the key-up and runs another | For Enter and Escape in typed entry. |
 | `set-base-font-size` | Sets ImGui's base font size in its style, without reapplying the theme | Tests of controls at font sizes 13 and 15, and a size change mid-drag. |
@@ -227,25 +228,25 @@ Themes, on a headless context. The tests apply a theme directly with `gui::apply
 - Redefining the current theme reapplies it.
 - Both shipped themes define `:error`, a theme without `:base` and without `:error` is rejected, and a derived theme inherits it.
 
-### `test-control-spec.lisp` (suite `controls`, 15 tests)
+### `test-control-spec.lisp` (suite `controls`, 16 tests)
 
 The pure-Lisp part of the controls: no ImGui. The file's local `spec` helper builds a normalized specification from keywords.
 
 - Mapping between value and position round-trips for linear, log, stepped and bipolar specs, and choices clamp their index. A non-positive value on a log scale maps to position 0 instead of signalling.
 - Integer places snap to 1, and a `double-float` stays a `double-float`.
 - Bipolar origins and defaults: `t` picks 0 or the midpoint; a number sets the origin.
-- Every specification error names the label and the problem.
+- Every specification error names the label and the problem, including a `:format` that isn't a function (a printf string, a number, an unbound symbol).
 - Unit formatting at the boundaries (`999 Hz` and `1.00 kHz`, `-inf dB`, `C` for pan, `0 st`), plain-number precision, choice names and custom `:format` functions.
 - Parsing typed text (`2k`, `2.4 kHz`, `-6 dB`, `25R`), bare numbers following the display scale for `:percent` and `:pan`, rejecting garbage, and never signalling on huge numbers.
 
-### `test-controls.lisp` (suite `controls`, 54 tests)
+### `test-controls.lisp` (suite `controls`, 63 tests)
 
 The controls on a headless context, through the harness helpers above. `with-controls-env` sets up a headless context with the `:mid-light` theme and a base font size of 15; each test checks that no ImGui assertion was recorded. Comments mark the tests that guard a specific review risk.
 
-- **The core, through `number-box`:** a drag up raises the value by the expected amount, Shift is ten times finer, and overshooting then reversing doesn't stick. Double-click resets; wheel notches move 1% or one step, 0.1% with Shift, and trackpad fractions add up to a step. Drawing never writes. Disabled controls ignore input. Per-control state is removed after release and when the control vanishes mid-drag. A font-size change mid-drag is safe. A signalling `:format` propagates, wrong value types signal before drawing, and types are preserved.
+- **The core, through `number-box`:** a drag up raises the value by the expected amount, Shift is ten times finer, and overshooting then reversing doesn't stick. Double-click resets; wheel notches move 1% or one step, 0.1% with Shift (also when only the horizontal wheel moves, as on macOS), and trackpad fractions add up to a step. The number box's default width fits interior values wider than its ends, and its frame stays `:frame-hover` while dragged off it. The control-state table is emptied, without freeing, by a save hook. Drawing never writes. Disabled controls ignore input. Per-control state is removed after release and when the control vanishes mid-drag. A font-size change mid-drag is safe. A signalling `:format` propagates, wrong value types signal before drawing, and types are preserved. Unknown keywords and bad sizes on every control signal `control-spec-error` naming the label.
 - **Typed entry:** Ctrl-click (Cmd on macOS) opens the field; Enter commits, clamped and snapped; garbage and Enter keeps it open with the error flag and the value unchanged, and correcting it commits; Escape and clicking elsewhere cancel; a value changed by code survives Escape and an unedited Enter; Ctrl-double-click doesn't reset.
 - **Knob:** drags and keeps its type, draws a non-positive log value, aligns in a row at two font sizes, draws bipolar and choice knobs, and signals on the wrong type.
-- **Fader:** a horizontal fader follows a horizontal drag and a vertical one a vertical drag; fill, bipolar fill and width; thickness and length defaults; the fill rectangle's geometry.
+- **Fader:** a horizontal fader follows a horizontal drag and a vertical one a vertical drag; fill, bipolar fill and width; thickness and length defaults, including the vertical fader's 3.5 rem item, wide enough for `-12.0 dB` at three font sizes; the bar and fill rectangles' geometry; the value drawn in `:text-dim`, or `:text` while dragged.
 - **Toggle and trigger:** a toggle flips and accepts any boolean; a trigger reports pressed, held and released on the right frames; both ignore input when disabled; widths.
 - **XY pad:** a click jumps to the point and Shift-drag moves finely; each axis has its own specification; double-click resets both; y up increases; an absolute drag follows the mouse; pressing Shift doesn't jump; types are kept; out-of-range values aren't written; the macro evaluates its subforms once; size and a single item; malformed specifications and wrong value types signal.
 

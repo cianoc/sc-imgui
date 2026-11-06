@@ -274,7 +274,7 @@ The same for every value control, except where a control says otherwise:
 
 - **Drag vertically,** up to increase. A full sweep of the range takes 10 rem of travel. Shift makes it 10 times finer. The control accumulates the unsnapped position during a drag, so stepped and choice controls don't stick between steps. The cursor is hidden while dragging.
 - **Double-click** resets to `:default`.
-- **Mouse wheel,** while hovered, moves 1% of the range per notch, or one step for stepped controls and choices. Shift makes it 0.1%. Trackpad fractions add up, and a stepped or choice control steps once per whole notch. The control claims the wheel, so the window doesn't scroll under it.
+- **Mouse wheel,** while hovered, moves 1% of the range per notch, or one step for stepped controls and choices. Shift makes it 0.1% (on macOS, where Shift turns the wheel horizontal, the horizontal wheel is read instead). Trackpad fractions add up, and a stepped or choice control steps once per whole notch. The control claims the wheel, so the window doesn't scroll under it. An integer place with no `:step` steps by 1, so the wheel moves it 1 per notch whatever the range: an integer 20 to 20000 Hz knob moves 1 Hz per notch. This is a known limitation; use a float place, or give a `:step`, for a wide range.
 - **Cmd-click** on macOS (Ctrl-click on Linux and Windows) opens a text field in place of the value:
     - Enter parses the text with the control's unit. `2k`, `2.4 kHz`, `1.2 s`, `-6`, `-6 dB` and `25R` all work. The result is clamped and snapped, and the field closes.
     - If the text can't be parsed, the field stays open with the text unchanged, outlined in the theme's `:error` colour, and the value is unchanged. The outline clears when you edit the text.
@@ -285,7 +285,7 @@ The same for every value control, except where a control says otherwise:
 
 **`knob`**, **`(knob-value label value &rest spec &key (size 2.5))`** — A 270° arc open at the bottom, with the label above in `:text-dim` and the formatted value below. The track is `:frame`, the value arc is `:accent` (from `min`, or from the origin when bipolar), and a short pointer marks the position. `size` is the arc's diameter in rem. The knob is its diameter plus 0.5 rem wide.
 
-**`fader`**, **`(fader-value label value &rest spec &key vertical length thickness)`** — Horizontal by default, like Live's bar slider: a flat bar in `:frame`, filled in `:accent` up to the value, with the label left-aligned and the value right-aligned inside it. It fills the available width unless `length` (in rem) is given. With `:vertical t` it is a mixer fader, filled from the bottom, with the label above and the value below. `thickness` defaults to the frame height in both orientations, so a horizontal fader is as tall as other controls on its row. A vertical fader's `length` defaults to 8 rem. A bipolar fill grows out from the origin. A fader drags along its own axis, so a horizontal fader follows horizontal drags; everything else is as above.
+**`fader`**, **`(fader-value label value &rest spec &key vertical length thickness)`** — Horizontal by default, like Live's bar slider: a flat bar in `:frame`, filled in `:accent` up to the value, with the label left-aligned and the value right-aligned inside it. It fills the available width unless `length` (in rem) is given. With `:vertical t` it is a mixer fader, filled from the bottom, with the label above and the value below. `thickness` is the bar's width across its axis and defaults to the frame height in both orientations, so a horizontal fader is as tall as other controls on its row. A vertical fader's item is 3.5 rem wide (or `thickness`, if wider), with the bar centred in it, so the label and value have room; its `length` defaults to 8 rem. A bipolar fill grows out from the origin. A fader drags along its own axis, so a horizontal fader follows horizontal drags; everything else is as above.
 
 **`toggle`**, **`(toggle-value label value &key width)`** — A rectangular button showing the label: lit in `:accent` when on, `:control` when off. A click flips the boolean in the place, which holds `t` or `nil`. It has no value specification, wheel or typed entry. `width` is in rem; the default fits the label plus 1 rem.
 
@@ -312,14 +312,14 @@ The macro writes whichever places changed and returns true if either did. `xy-pa
 
 - **All sizes are in rem,** multiples of the base font size: knob diameters, fader lengths and thickness, box and button widths, and the XY pad's size. They scale with `set-font-size`. A size given as `(:px n)` is fixed.
 - **One control, one ImGui item.** Each control reserves one rectangle that covers everything it draws, label and value text included, so `with-row`, `with-grid` and `with-group` treat it as a unit, and a row of controls shares a top edge.
-- **Widths don't depend on the text.** Text wider than its control is clipped at the edge, so rows stay aligned as values change.
+- **Widths don't change as the value changes.** Text wider than its control is clipped at the edge, so rows stay aligned as values change.
 - **Feedback follows the theme.** A hovered control's track changes from `:frame` to `:frame-hover`. While you drag or edit, the value text is drawn in full-strength `:text`. Inside `with-disabled`, input is ignored and every colour fades with ImGui's style alpha, like the stock widgets.
 - **IDs** follow the usual rules: the label is the ID, `##` hides a suffix, and `with-id` separates repeated controls.
 
 #### Errors
 
 - **A value of the wrong type**, such as a `nil` place or a string where a number belongs, signals `widget-value-error` naming the label, before any foreign call.
-- **An invalid specification** signals **`control-spec-error`**, a subclass of `error` whose report names the label and the problem. `control-spec-error-label` and `control-spec-error-problem` read the two parts. The problems are: `min` not below `max`; `:log` with `min` of 0 or less; a non-positive `:step`; empty or non-string `:choices`, or `:choices` with `:min`, `:max`, `:step` or `:scale`; a `:default` outside the range; an unknown `:unit`; a malformed `:x` or `:y`.
+- **An invalid specification** signals **`control-spec-error`**, a subclass of `error` whose report names the label and the problem. `control-spec-error-label` and `control-spec-error-problem` read the two parts. The problems include, for example: `min` not below `max`; `:log` with `min` of 0 or less; a non-positive `:step`; empty or non-string `:choices`, or `:choices` with `:min`, `:max`, `:step` or `:scale`; a `:default` outside the range; an unknown `:unit`; a `:format` that isn't a function (such as a printf string like `"%.2f"`); a keyword the control doesn't take (such as `:length` on a knob); a size that isn't a positive number of rem or `(:px n)`; a malformed `:x` or `:y`. These are signalled before any foreign call.
 - **A value outside the range**, for example set from code, is displayed clamped but not written back unless the user changes the control. Drawing a control never changes its value.
 - **Types are preserved.** A `double-float` stays a `double-float`; integers and choice indexes stay integers.
 - **A `:format` function that signals** fails the panel, like any other error in panel code.
@@ -462,6 +462,7 @@ The `sc-imgui` system loads these in this order (`sc-imgui.asd`); each may use t
 
 `examples/custom-knob.lisp` builds a knob from the pieces above. `gui:knob` now exists (see [Controls](#controls)), and this walkthrough shows how the controls are built: each reserves an invisible button, reads interaction, and draws with the primitives and `theme-color`. The real controls add one shared layer for mapping, display and typed entry (`src/gui/controls/`).
 
+Here is the knob, with the five steps marked:
 
 ```lisp
 (defun example-knob (label value min max &key (size 48))
@@ -646,7 +647,7 @@ Add new wrappers here rather than calling `%imgui` throughout your own code, so 
 
 Use gensyms for any variable the expansion binds; a test checks that the macros don't capture a user variable named `open`. Resolve flags with `%flags-form` so literal keywords are checked at compile time.
 
-**Then:** export the new names in `package.lisp`, add the file to `sc-imgui.asd` if it's a new file, and add tests to the matching suite (`widgets`, `scopes`, `plots`, or `draw`). Test widgets through simulated input with `click-item`, and scope macros with the error-balance pattern in `tests/test-scopes.lisp`. See `tests/README.md`.
+**Then:** export the new names in `package.lisp`, add the file to `sc-imgui.asd` if it's a new file, and add tests to the matching suite (`widgets`, `scopes`, `plots`, `draw`, or `controls` for the audio controls). Test widgets through simulated input with `click-item`, and scope macros with the error-balance pattern in `tests/test-scopes.lisp`. See `tests/README.md`.
 
 ## Not yet wrapped
 
