@@ -54,8 +54,8 @@ centred in it."
              (frame (control-behavior label spec value
                                       :width width :height height
                                       :axis (if vertical :vertical :horizontal)
-                                      ;; A horizontal fader tracks the mouse 1:1.
-                                      :travel (unless vertical len)
+                                      ;; A fader tracks the mouse 1:1 along its bar.
+                                      :travel len
                                       :value-rect value-rect))
              (position (value->position spec (control-frame-value frame)))
              (origin (value->position spec (control-spec-origin spec)))

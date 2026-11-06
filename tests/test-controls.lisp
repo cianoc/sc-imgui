@@ -483,10 +483,19 @@ seen by the text field: Escape there would be lost.)"
     (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
 
 (test vertical-fader-follows-vertical-drag
+  ;; A vertical fader also tracks the mouse 1:1: a full sweep is the bar's
+  ;; length (8 rem by default; 6 rem here), so the fill edge stays under the cursor.
   (with-controls-env ()
     (let ((v 0.0))
-      (prime-and-drag 0 (- (gui::rem-px 5)) (lambda () (in-window (gui:fader "Vol" v :vertical t))))
-      (is (< (abs (- v 0.5)) 0.02)))
+      (prime-and-drag 0 (- (gui::rem-px 3)) (lambda () (in-window (gui:fader "Vol" v :vertical t :length 6))))
+      (is (< (abs (- v 0.5)) 0.02) "half the bar gives ~A" v))
+    (let ((v 0.0))
+      (prime-and-drag 0 (- (gui::rem-px 4)) (lambda () (in-window (gui:fader "Vol" v :vertical t))))
+      (is (< (abs (- v 0.5)) 0.02) "half the default 8 rem bar gives ~A" v))
+    (let ((v 0.0))
+      (with-keys-held (:shift)
+        (prime-and-drag 0 (- (gui::rem-px 4)) (lambda () (in-window (gui:fader "Vol" v :vertical t)))))
+      (is (< (abs (- v 0.05)) 0.01) "Shift: half the bar gives ~A" v))
     (let ((v 0.0))
       (prime-and-drag (gui::rem-px 5) 0 (lambda () (in-window (gui:fader "Vol" v :vertical t))))
       (is (= 0.0 v)))
