@@ -20,6 +20,7 @@
            #:list-box #:list-box-value #:button #:text
            #:number-box #:number-box-value
            #:knob #:knob-value #:fader #:fader-value #:toggle #:toggle-value #:trigger
+           #:xy-pad #:xy-pad-value
            #:with-plot #:plot-lines #:plot-bars #:plot-scatter
            #:color #:window-draw-list #:draw-line #:draw-rect #:draw-circle
            #:draw-arc #:draw-polyline #:draw-text #:invisible-button

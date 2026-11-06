@@ -485,3 +485,143 @@ seen by the text field: Escape there would be lost.)"
                                            (multiple-value-list (gui:trigger "Hit"))))))))
       (is (every (lambda (f) (equal f '(nil nil nil))) frames)))
     (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+;;; gui:xy-pad
+
+(test xy-click-jumps-and-shift-drags-finely
+  (with-controls-env ()
+    (let ((x 0.0) (y 0.0))
+      ;; click the pad's center: both go to 0.5
+      (click-item (lambda () (in-window (gui:xy-pad "xy" x y))))
+      (is (< (abs (- x 0.5)) 0.02)) (is (< (abs (- y 0.5)) 0.02))
+      ;; Idle past ImGui's 0.3 s double-click time (frames are 1/60 s), so
+      ;; the next press is not a double-click (which would reset both).
+      (dotimes (i 30) (with-test-frame () (in-window (gui:xy-pad "xy" x y))))
+      (let ((x0 x))
+        (with-keys-held (:shift)
+          (prime-and-drag (gui::rem-px 4) 0 (lambda () (in-window (gui:xy-pad "xy" x y)))))
+        (is (< (abs (- (- x x0) 0.05)) 0.01))))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test xy-axes-have-own-specs
+  (with-controls-env ()
+    (let ((f 440.0) (q 0.5))
+      (with-test-frame ()
+        (in-window (gui:xy-pad "Filter" f q :x '(:min 20 :max 20000 :scale :log :unit :hz)
+                                            :y '(:unit :percent))))
+      (is (= 440.0 f)) (is (= 0 (%shim:assert-count))))))
+
+(test xy-double-click-resets-both
+  (with-controls-env ()
+    (let ((x 0.9) (y 0.9))
+      (click-item (lambda () (in-window (gui:xy-pad "xy" x y :x '(:default 0.1) :y '(:default 0.2))))
+                  :clicker #'frames-with-double-click)
+      (is (= 0.1 x)) (is (= 0.2 y)))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test xy-click-y-up-increases
+  ;; A click a quarter of the pad above its center raises y by 0.25; x is
+  ;; unchanged at the center.
+  (with-controls-env ()
+    (let ((x 0.0) (y 0.0))
+      (click-item (lambda () (in-window (gui:xy-pad "xy" x y)))
+                  :clicker (lambda (cx cy f) (frames-with-click cx (- cy (gui::rem-px 2)) f)))
+      (is (< (abs (- x 0.5)) 0.02)) (is (< (abs (- y 0.75)) 0.02)))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test xy-absolute-drag-follows-mouse
+  (with-controls-env ()
+    (let ((x 0.0) (y 0.0))
+      ;; from the center, 2 rem right and 2 rem down: (0.75, 0.25)
+      (prime-and-drag (gui::rem-px 2) (gui::rem-px 2) (lambda () (in-window (gui:xy-pad "xy" x y))))
+      (is (< (abs (- x 0.75)) 0.02)) (is (< (abs (- y 0.25)) 0.02))
+      (is (= 0 (hash-table-count gui::*control-states*))))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test xy-shift-press-does-not-jump
+  (with-controls-env ()
+    (let ((x 0.2) (y 0.3) (writes 0))
+      (with-keys-held (:shift)
+        (click-item (lambda () (in-window (when (gui:xy-pad "xy" x y) (incf writes))))))
+      (is (= 0.2 x)) (is (= 0.3 y)) (is (= 0 writes)))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test xy-keeps-types
+  (with-controls-env ()
+    (let ((x 0.0d0) (y 0))
+      (click-item (lambda () (in-window (gui:xy-pad "xy" x y :y '(:max 10)))))
+      (is (typep x 'double-float)) (is (< (abs (- x 0.5d0)) 0.02d0))
+      (is (eql 5 y)))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test xy-out-of-range-not-written
+  (with-controls-env ()
+    ;; Drawing alone never writes or reports a change.
+    (let ((x 5.0) (y -3.0) (writes 0))
+      (dotimes (i 3)
+        (with-test-frame ()
+          (in-window (multiple-value-bind (nx ny changed) (gui:xy-pad-value "xy" x y)
+                       (is (eql 5.0 nx)) (is (eql -3.0 ny))
+                       (when changed (incf writes))))))
+      (is (= 0 writes))
+      ;; A Shift-drag straight up moves only y: x is neither clamped nor written.
+      (with-keys-held (:shift)
+        (prime-and-drag 0 (- (gui::rem-px 4)) (lambda () (in-window (gui:xy-pad "xy" x y)))))
+      (is (eql 5.0 x)) (is (< (abs (- y 0.05)) 0.01)))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test xy-macro-evaluates-subforms-once
+  (with-controls-env ()
+    (let ((v (vector 0.0 0.0)) (n 0))
+      (with-test-frame ()
+        (in-window (gui:xy-pad "xy" (aref v (progn (incf n) 0)) (aref v (progn (incf n) 1)))))
+      (is (= 2 n))
+      (click-item (lambda () (in-window (gui:xy-pad "xy" (aref v (progn (incf n) 0))
+                                                         (aref v (progn (incf n) 1))))))
+      (is (< (abs (- (aref v 0) 0.5)) 0.02)) (is (< (abs (- (aref v 1) 0.5)) 0.02)))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test xy-disabled-ignores-input
+  (with-controls-env ()
+    (let ((x 0.0) (y 0.0))
+      (click-item (lambda () (in-window (gui:with-disabled () (gui:xy-pad "xy" x y)))))
+      (prime-and-drag 20 -20 (lambda () (in-window (gui:with-disabled () (gui:xy-pad "xy" x y)))))
+      (click-item (lambda () (in-window (gui:with-disabled () (gui:xy-pad "xy" x y))))
+                  :clicker #'frames-with-double-click)
+      (is (= 0.0 x)) (is (= 0.0 y)))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test xy-size-and-one-item
+  (with-controls-env ()
+    (let ((x 0.0) (y 0.0))
+      (with-test-frame () (in-window (gui:xy-pad "xy" x y)))
+      (is (< (abs (- (- (third *item-rect*) (first *item-rect*)) (gui::rem-px 8))) 0.01))
+      (with-test-frame () (in-window (gui:xy-pad "xy" x y :size '(:px 50))))
+      (is (< (abs (- (- (third *item-rect*) (first *item-rect*)) 50.0)) 0.01))
+      ;; label line, spacing, square, spacing, value line
+      (is (< (abs (- (- (fourth *item-rect*) (second *item-rect*))
+                     (+ 50.0 (* 2 (+ (gui::rem-px 1) (gui::item-spacing-y))))))
+             0.01)))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test xy-malformed-specs-signal
+  (with-controls-env ()
+    (let ((x 0.0) (y 0.0))
+      (dolist (args '((:x (:min)) (:x (:min 1 :max 1)) (:y (:min 1 :max 1))
+                      (:x 5) (:y (:min 0 . 1)) (:x (:bogus 1))))
+        (let ((args args))
+          (signals gui:control-spec-error
+            (with-test-frame () (in-window (apply #'gui:xy-pad-value "xy" x y args))))))
+      (handler-case (with-test-frame () (in-window (gui:xy-pad "Pad" x y :x '(:min))))
+        (gui:control-spec-error (e) (is (equal "Pad" (gui::control-spec-error-label e))))))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test xy-wrong-value-types-signal
+  (with-controls-env ()
+    (dolist (pair '((nil 0.0) (0.0 "a") ("a" nil)))
+      (let ((x (first pair)) (y (second pair)))
+        (handler-case
+            (progn (with-test-frame () (in-window (gui:xy-pad "Pad" x y)))
+                   (fail "no error for ~S" pair))
+          (gui:widget-value-error (e) (is (equal "Pad" (gui::widget-value-error-label e)))))))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
