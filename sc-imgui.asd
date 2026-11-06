@@ -26,7 +26,8 @@
                              (:file "draw")
                              (:module "controls"
                               :serial t
-                              :components ((:file "spec")))))))
+                              :components ((:file "spec")
+                                           (:file "units")))))))
 
 (asdf:defsystem "sc-imgui/generator"
   :description "Generates CFFI bindings from cimgui/cimplot JSON definitions."
