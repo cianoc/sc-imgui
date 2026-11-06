@@ -120,6 +120,22 @@ covers the label, so the frame's edge is min-x plus the item width."
           collect (cffi:foreign-slot-value (cffi:inc-pointer data (* i stride))
                                            '(:struct %imgui::im-draw-vert) '%imgui::col))))
 
+(defun vtx-points (draw-list &optional (start 0))
+  "(x y colour) of DRAW-LIST's vertices from index START to the end."
+  (let* ((vector (cffi:foreign-slot-pointer draw-list '(:struct %imgui::im-draw-list)
+                                            '%imgui::vtx-buffer))
+         (size (cffi:foreign-slot-value vector '(:struct %imgui::im-vector-im-draw-vert)
+                                        '%imgui::size))
+         (data (cffi:foreign-slot-value vector '(:struct %imgui::im-vector-im-draw-vert)
+                                        '%imgui::data))
+         (stride (cffi:foreign-type-size '(:struct %imgui::im-draw-vert))))
+    (loop for i from start below size
+          for v = (cffi:inc-pointer data (* i stride))
+          for pos = (cffi:foreign-slot-pointer v '(:struct %imgui::im-draw-vert) '%imgui::pos)
+          collect (list (cffi:foreign-slot-value pos '(:struct %imgui::im-vec2) '%imgui::x)
+                        (cffi:foreign-slot-value pos '(:struct %imgui::im-vec2) '%imgui::y)
+                        (cffi:foreign-slot-value v '(:struct %imgui::im-draw-vert) '%imgui::col)))))
+
 (defmacro control-colors (&body body)
   "Run BODY (drawing inside a window) and return the packed colours of the
 vertices it added to the window's draw list."

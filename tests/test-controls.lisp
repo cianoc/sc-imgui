@@ -916,3 +916,45 @@ accessed by PLACE-GET/PLACE-SET, recording its bar rect in *FADER-BAR*."
       (is (not (open-field-p)))
       (is (= 0 (hash-table-count gui::*control-states*))))
     (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test horizontal-fader-keeps-its-text-field-visible
+  ;; Cmd/Ctrl-click opens the field over the right half of a horizontal
+  ;; fader's bar.  The fader must not then draw its bar or fill over the
+  ;; field.  ImGui draws the field with the theme's :frame colour too, so a
+  ;; test theme gives ImGui's own field colours distinct values: any :frame
+  ;; or :accent vertex inside the field's area is the fader drawing over it.
+  (with-test-themes (:test-field)
+    (gui:define-theme :test-field :base :mid-light
+                      :colors '(:frame-bg "#010203" :frame-bg-hovered "#010204"
+                                :frame-bg-active "#010205" :input-text-cursor "#010206"
+                                :text-selected-bg "#010207"))
+    (with-headless-imgui ()
+      (set-base-font-size 15)
+      (gui::apply-theme :test-field)
+      (let* ((gui:*theme* :test-field)
+             (v 1.0)                      ; the fill covers the whole bar
+             (points nil) (rect nil)
+             (draw (lambda ()
+                     (in-window
+                       (let* ((dl (gui:window-draw-list))
+                              (start (vtx-count dl)))
+                         (multiple-value-bind (new changed) (gui:fader-value "Vol" v :length 10)
+                           (when changed (setf v new)))
+                         (setf points (vtx-points dl start)
+                               rect (last-item-rect)))))))
+        (ctrl-click draw)
+        (with-test-frame () (funcall draw))
+        (is (some #'gui::control-state-edit-text
+                  (alexandria:hash-table-values gui::*control-states*))
+            "the field is open")
+        (destructuring-bind (x1 y1 x2 y2) rect
+          (declare (ignore y1 y2))
+          (let* ((field-left (+ x1 (/ (- x2 x1) 2)))
+                 (bar-colours (list (gui::control-color :frame) (gui::control-color :frame-hover)
+                                    (gui::control-color :accent)))
+                 (over (remove-if-not (lambda (p) (and (member (third p) bar-colours)
+                                                       (> (first p) (+ field-left 0.5))))
+                                      points)))
+            (is (null over) "~D bar/fill vertices drawn over the text field" (length over))))
+        (press-key %imgui:+key-escape+ draw))
+      (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert)))))

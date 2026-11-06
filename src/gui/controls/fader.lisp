@@ -76,15 +76,21 @@ centred in it."
              (text-y (+ y (/ (- thickness line) 2)))
              (value-color (control-color (if (control-frame-active-p frame) :text :text-dim))))
         (destructuring-bind (bar-x bar-y bar-w bar-h) bar
-          (draw-rect bar-x bar-y (+ bar-x bar-w) (+ bar-y bar-h)
-                     (control-color (if (or (control-frame-hovered-p frame)
-                                            (control-frame-active-p frame))
-                                        :frame-hover :frame))
-                     :filled t)
-          (when (> hi lo)
-            (destructuring-bind (x1 y1 x2 y2)
-                (fader-fill-rect vertical lo hi bar-x bar-y bar-w bar-h)
-              (draw-rect x1 y1 x2 y2 (control-color :accent) :filled t)))
+          ;; While a horizontal fader's text field is open over the right half
+          ;; of its bar, the bar and fill stop at the field so it stays visible.
+          (let ((right (if (and (not vertical) (control-frame-editing-p frame))
+                           (first value-rect)
+                           (+ bar-x bar-w))))
+            (draw-rect bar-x bar-y right (+ bar-y bar-h)
+                       (control-color (if (or (control-frame-hovered-p frame)
+                                              (control-frame-active-p frame))
+                                          :frame-hover :frame))
+                       :filled t)
+            (when (> hi lo)
+              (destructuring-bind (x1 y1 x2 y2)
+                  (fader-fill-rect vertical lo hi bar-x bar-y bar-w bar-h)
+                (when (> (min x2 right) x1)
+                  (draw-rect x1 y1 (min x2 right) y2 (control-color :accent) :filled t)))))
           (if vertical
               (progn
                 (when (plusp (length label-text))
