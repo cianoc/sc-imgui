@@ -357,3 +357,62 @@ seen by the text field: Escape there would be lost.)"
       (with-test-frame ()
         (signals gui:widget-value-error (in-window (gui:knob "k" v)))))
     (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+;;; Fader
+
+(test horizontal-fader-follows-horizontal-drag
+  (with-controls-env ()
+    (let ((v 0.0))
+      (prime-and-drag (gui::rem-px 5) 0 (lambda () (in-window (gui:fader "Vol" v))))
+      (is (< (abs (- v 0.5)) 0.02)))
+    (let ((v 0.0))
+      (prime-and-drag 0 -50 (lambda () (in-window (gui:fader "Vol" v))))
+      (is (= 0.0 v)))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test vertical-fader-follows-vertical-drag
+  (with-controls-env ()
+    (let ((v 0.0))
+      (prime-and-drag 0 (- (gui::rem-px 5)) (lambda () (in-window (gui:fader "Vol" v :vertical t))))
+      (is (< (abs (- v 0.5)) 0.02)))
+    (let ((v 0.0))
+      (prime-and-drag (gui::rem-px 5) 0 (lambda () (in-window (gui:fader "Vol" v :vertical t))))
+      (is (= 0.0 v)))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test fader-fills-width-and-bipolar-draws
+  (with-controls-env ()
+    (let ((v 0.0) rect avail frame-height)
+      (flet ((draw ()
+               (%imgui:set-next-window-size (gui::vec2 600 400) %imgui:+cond-always+)
+               (gui:with-window ("w")
+                 (setf avail (gui:content-region-avail)
+                       frame-height (%imgui:get-frame-height))
+                 (gui:fader "Pan" v :min -1 :max 1 :bipolar t :unit :pan)
+                 (setf rect (last-item-rect)))))
+        (dotimes (i 2) (with-test-frame () (draw))))
+      (is (>= (- (third rect) (first rect)) (* 0.8 600.0)) "~S" rect)
+      (is (= (- (third rect) (first rect)) avail) "~S ~S" rect avail)
+      (is (= (- (fourth rect) (second rect)) frame-height) "~S" rect))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test fader-sizes-follow-thickness-and-length
+  (with-controls-env ()
+    (with-test-frame ()
+      (in-window (gui:fader-value "h" 0.5 :length 10 :thickness 2)))
+    (destructuring-bind (x1 y1 x2 y2) *item-rect*
+      (is (= (- x2 x1) (gui::rem-px 10)))
+      (is (= (- y2 y1) (gui::rem-px 2))))
+    (let (fh)
+      (with-test-frame ()
+        (in-window (setf fh (%imgui:get-frame-height))
+                   (gui:fader-value "v" 0.5 :vertical t)))
+      (destructuring-bind (x1 y1 x2 y2) *item-rect*
+        (is (= (- x2 x1) fh))
+        (is (> (- y2 y1) (gui::rem-px 8)))))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test fader-wrong-type-signals
+  (with-controls-env ()
+    (signals gui:widget-value-error (gui:fader-value "v" nil))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))

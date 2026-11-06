@@ -30,7 +30,8 @@
                                            (:file "units")
                                            (:file "core")
                                            (:file "number-box")
-                                           (:file "knob")))))))
+                                           (:file "knob")
+                                           (:file "fader")))))))
 
 (asdf:defsystem "sc-imgui/generator"
   :description "Generates CFFI bindings from cimgui/cimplot JSON definitions."
