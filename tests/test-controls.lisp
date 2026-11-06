@@ -455,50 +455,99 @@ seen by the text field: Escape there would be lost.)"
 
 ;;; Fader
 
-(test horizontal-fader-follows-horizontal-drag
-  ;; A horizontal fader tracks the mouse 1:1: a full sweep is the bar's own
-  ;; length, so the fill edge stays under the cursor.  The window has a fixed
-  ;; size so the bar's length is known.
+(defvar *fader-bar* nil "Bar rect (x y w h) of the fader last drawn by FADER-DRAWER.")
+
+(defun fader-drawer (place-get place-set &rest args)
+  "A draw function for a fader (in a fixed 600x400 window) over a place
+accessed by PLACE-GET/PLACE-SET, recording its bar rect in *FADER-BAR*."
+  (lambda ()
+    (%imgui:set-next-window-size (gui::vec2 600 400) %imgui:+cond-always+)
+    (in-window
+      (multiple-value-bind (new changed) (apply #'gui:fader-value "Vol" (funcall place-get) args)
+        (when changed (funcall place-set new))))
+    (destructuring-bind (x y x2 y2) *item-rect*
+      (declare (ignore y2))
+      (let ((vertical (getf args :vertical)))
+        (setf *fader-bar*
+              (gui::fader-bar-rect vertical x y (- x2 x)
+                                   (if vertical (gui::rem-px 8) (- x2 x))
+                                   (%imgui:get-frame-height) (%imgui:get-font-size)
+                                   (gui::item-spacing-y)))))))
+
+(defun fader-point (fraction vertical)
+  "Screen point at FRACTION (0 = min, 1 = max) along *FADER-BAR*'s axis."
+  (destructuring-bind (x y w h) *fader-bar*
+    (if vertical
+        (values (+ x (/ w 2)) (+ y (* (- 1 fraction) h)))
+        (values (+ x (* fraction w)) (+ y (/ h 2))))))
+
+(defmacro with-fader ((v draw initial &rest args) &body body)
+  `(let* ((,v ,initial)
+          (,draw (fader-drawer (lambda () ,v) (lambda (n) (setf ,v n)) ,@args)))
+     (dotimes (i 2) (with-test-frame () (funcall ,draw)))
+     ,@body))
+
+(test fader-press-jumps-to-the-point
+  ;; Clicking a point on a fader's bar makes that point the value.
   (with-controls-env ()
-    (let ((v 0.0) (width nil))
-      (flet ((draw ()
-               (%imgui:set-next-window-size (gui::vec2 600 400) %imgui:+cond-always+)
-               (in-window (gui:fader "Vol" v))
-               (setf width (- (third *item-rect*) (first *item-rect*)))))
-        (dotimes (i 2) (with-test-frame () (draw)))
-        (prime-and-drag (/ width 2) 0 #'draw)
-        (is (< (abs (- v 0.5)) 0.02) "half the bar (~,1F px) gives ~A" (/ width 2) v)))
-    (let ((v 0.0) (width nil))
-      (flet ((draw ()
-               (%imgui:set-next-window-size (gui::vec2 600 400) %imgui:+cond-always+)
-               (in-window (gui:fader "Vol" v))
-               (setf width (- (third *item-rect*) (first *item-rect*)))))
-        (dotimes (i 2) (with-test-frame () (draw)))
-        (with-keys-held (:shift)
-          (prime-and-drag (/ width 2) 0 #'draw))
-        (is (< (abs (- v 0.05)) 0.01) "Shift: half the bar gives ~A" v)))
-    (let ((v 0.0))
-      (prime-and-drag 0 -50 (lambda () (in-window (gui:fader "Vol" v))))
-      (is (= 0.0 v)))
+    (dolist (vertical '(nil t))
+      (dolist (fraction '(0.25 0.9))
+        (with-fader (v draw 0.0 :vertical vertical)
+          (multiple-value-bind (x y) (fader-point fraction vertical)
+            (frames-with-click x y draw))
+          (is (< (abs (- v fraction)) 0.02) "~:[horizontal~;vertical~] click at ~A gives ~A"
+              vertical fraction v))))
     (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
 
-(test vertical-fader-follows-vertical-drag
-  ;; A vertical fader also tracks the mouse 1:1: a full sweep is the bar's
-  ;; length (8 rem by default; 6 rem here), so the fill edge stays under the cursor.
+(test fader-drag-tracks-the-mouse
+  ;; After the press jumps to the point, dragging keeps the fill edge under
+  ;; the cursor: 1:1 with the bar's length.
   (with-controls-env ()
-    (let ((v 0.0))
-      (prime-and-drag 0 (- (gui::rem-px 3)) (lambda () (in-window (gui:fader "Vol" v :vertical t :length 6))))
-      (is (< (abs (- v 0.5)) 0.02) "half the bar gives ~A" v))
-    (let ((v 0.0))
-      (prime-and-drag 0 (- (gui::rem-px 4)) (lambda () (in-window (gui:fader "Vol" v :vertical t))))
-      (is (< (abs (- v 0.5)) 0.02) "half the default 8 rem bar gives ~A" v))
-    (let ((v 0.0))
-      (with-keys-held (:shift)
-        (prime-and-drag 0 (- (gui::rem-px 4)) (lambda () (in-window (gui:fader "Vol" v :vertical t)))))
-      (is (< (abs (- v 0.05)) 0.01) "Shift: half the bar gives ~A" v))
-    (let ((v 0.0))
-      (prime-and-drag (gui::rem-px 5) 0 (lambda () (in-window (gui:fader "Vol" v :vertical t))))
-      (is (= 0.0 v)))
+    (dolist (vertical '(nil t))
+      (with-fader (v draw 0.0 :vertical vertical)
+        (multiple-value-bind (x y) (fader-point 0.5 vertical)
+          (let ((quarter (/ (if vertical (fourth *fader-bar*) (third *fader-bar*)) 4)))
+            (if vertical
+                (frames-with-drag x y 0 (- quarter) draw)
+                (frames-with-drag x y quarter 0 draw))))
+        (is (< (abs (- v 0.75)) 0.02) "~:[horizontal~;vertical~]: press at 0.5, drag a quarter: ~A"
+            vertical v)))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test fader-shift-press-does-not-jump
+  ;; Shift keeps fine, relative movement: the press doesn't jump, and a drag
+  ;; of half the bar moves a twentieth of the range.
+  (with-controls-env ()
+    (dolist (vertical '(nil t))
+      (with-fader (v draw 0.0 :vertical vertical)
+        (multiple-value-bind (x y) (fader-point 0.5 vertical)
+          (let ((half (/ (if vertical (fourth *fader-bar*) (third *fader-bar*)) 2)))
+            (with-keys-held (:shift)
+              (if vertical
+                  (frames-with-drag x y 0 (- half) draw)
+                  (frames-with-drag x y half 0 draw)))))
+        (is (< (abs (- v 0.05)) 0.01) "~:[horizontal~;vertical~] Shift: ~A" vertical v)))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test fader-drags-only-along-its-axis
+  ;; The press jumps to the point; a drag across the axis then changes nothing.
+  (with-controls-env ()
+    (dolist (vertical '(nil t))
+      (with-fader (v draw 0.0 :vertical vertical)
+        (multiple-value-bind (x y) (fader-point 0.5 vertical)
+          (if vertical
+              (frames-with-drag x y 50 0 draw)
+              (frames-with-drag x y 0 -50 draw)))
+        (is (< (abs (- v 0.5)) 0.02) "~:[horizontal~;vertical~] across-axis drag: ~A" vertical v)))
+    (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
+
+(test fader-double-click-resets-instead-of-jumping
+  (with-controls-env ()
+    (dolist (vertical '(nil t))
+      (with-fader (v draw 0.8 :vertical vertical :default 0.2)
+        (multiple-value-bind (x y) (fader-point 0.6 vertical)
+          (frames-with-double-click x y draw))
+        (is (< (abs (- v 0.2)) 1e-6) "~:[horizontal~;vertical~] double-click: ~A" vertical v)))
     (is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))))
 
 (test fader-fills-width-and-bipolar-draws

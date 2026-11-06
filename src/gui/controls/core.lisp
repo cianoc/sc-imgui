@@ -242,14 +242,18 @@ the range."
                          like))))
 
 (defun control-behavior (label spec value
-                         &key width height (axis :vertical) value-rect travel click-edits)
+                         &key width height (axis :vertical) value-rect travel click-edits
+                           press-position)
   "Reserve WIDTH x HEIGHT pixels at the cursor as one item named LABEL and
 apply the shared interaction to VALUE under SPEC: double-click reset,
 Ctrl/Cmd-click text entry (drawn over VALUE-RECT, (x y w h); without one,
 Ctrl/Cmd-click does nothing), drag along AXIS (a full sweep takes TRAVEL
 pixels, default 10 rem), then the wheel.  With CLICK-EDITS, a plain click
 (press and release without moving the value) also opens the text field, once
-ImGui's double-click time has passed without a second click.  Returns a
+ImGui's double-click time has passed without a second click.  With
+PRESS-POSITION, a function of the mouse's screen x and y returning a position
+in [0, 1] (or NIL), a press without Shift (and not a double-click) first jumps
+the value to that position.  Returns a
 CONTROL-FRAME whose value is the new value, or VALUE clamped for display when
 unchanged; CHANGED-P is true only when input changed it.  Never writes
 anything."
@@ -311,9 +315,19 @@ anything."
                         (setf state (ensure-control-state id)
                               (control-state-position state) (value->position spec new)
                               (control-state-moved state) nil)
-                        (when (%imgui:is-mouse-double-clicked-nil 0)
-                          (setf (control-state-double-click state) t
-                                (control-state-click-at state) nil)))
+                        (if (%imgui:is-mouse-double-clicked-nil 0)
+                            (setf (control-state-double-click state) t
+                                  (control-state-click-at state) nil)
+                            ;; Jump to the pressed point (not with Shift, which
+                            ;; keeps fine relative movement).
+                            (let ((p (and press-position (not shift)
+                                          (multiple-value-call press-position (mouse-pos)))))
+                              (when (and p (finite-p p))
+                                (let ((p (max 0.0 (min 1.0 (float p 1.0)))))
+                                  (setf (control-state-position state) p
+                                        (control-state-moved state) t
+                                        new (position->value spec p value)
+                                        input t))))))
                        (value-rect
                         (setf state (ensure-control-state id))
                         (start-text-entry state (format-control-value spec new)))))

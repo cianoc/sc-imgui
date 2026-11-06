@@ -21,6 +21,14 @@ centred in the item below the label LINE and SPACING."
       (list (+ x (/ (- item-width thickness) 2)) (+ y line spacing) thickness len)
       (list x y len thickness)))
 
+(defun fader-press-position (vertical bar mx my)
+  "The position (0 at min, 1 at max) of the screen point MX MY along BAR
+(x y w h): left to right when horizontal, bottom to top when VERTICAL."
+  (destructuring-bind (x y w h) bar
+    (if vertical
+        (and (plusp h) (- 1 (/ (- my y) h)))
+        (and (plusp w) (/ (- mx x) w)))))
+
 (defun fader-value (label value &rest spec &key vertical ((:length len)) thickness
                     &allow-other-keys)
   "Draw a fader for VALUE under SPEC (the value control keywords) and return
@@ -51,11 +59,15 @@ centred in it."
                              (list x (+ y line spacing-y len spacing-y) width frame-height)
                              (list (+ x (/ width 2)) (+ y (/ (- thickness frame-height) 2))
                                    (/ width 2) frame-height)))
+             (bar (fader-bar-rect vertical x y width len thickness line spacing-y))
              (frame (control-behavior label spec value
                                       :width width :height height
                                       :axis (if vertical :vertical :horizontal)
-                                      ;; A fader tracks the mouse 1:1 along its bar.
+                                      ;; A fader tracks the mouse 1:1 along its bar,
+                                      ;; and a press jumps to the pressed point.
                                       :travel len
+                                      :press-position (lambda (mx my)
+                                                        (fader-press-position vertical bar mx my))
                                       :value-rect value-rect))
              (position (value->position spec (control-frame-value frame)))
              (origin (value->position spec (control-spec-origin spec)))
@@ -63,8 +75,7 @@ centred in it."
              (hi (max position origin))
              (text-y (+ y (/ (- thickness line) 2)))
              (value-color (control-color (if (control-frame-active-p frame) :text :text-dim))))
-        (destructuring-bind (bar-x bar-y bar-w bar-h)
-            (fader-bar-rect vertical x y width len thickness line spacing-y)
+        (destructuring-bind (bar-x bar-y bar-w bar-h) bar
           (draw-rect bar-x bar-y (+ bar-x bar-w) (+ bar-y bar-h)
                      (control-color (if (or (control-frame-hovered-p frame)
                                             (control-frame-active-p frame))
