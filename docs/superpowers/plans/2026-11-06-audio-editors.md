@@ -33,6 +33,13 @@
     - FiveAM, new suite `editors`, run with `make test SUITE=editors`.
     - Every headless test ends with `(is (= 0 (%shim:assert-count)) "~A" (%shim:last-assert))`.
 
+- **The tests in this plan have never been run.** Their expected values were worked out by hand from the spec. When a test fails and the test itself looks wrong (an expected value, a coordinate, a helper call), don't change it to match the code:
+    1. Check the test's expectation against the spec section it exercises.
+    2. If the spec agrees with the test, fix the code.
+    3. If the spec disagrees with the test, fix the test to match the spec, and say so in the task's report: which test, the old value, the new value, and the spec line that decides it.
+    4. If the spec doesn't decide it, stop and ask your human partner rather than choosing.
+- Reviewers check every changed test against this rule.
+
 ## Review Focus
 
 Inputs the spec implies but doesn't spell out, most likely first. Each is pinned by a test in the owning task.
